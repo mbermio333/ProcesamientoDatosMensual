@@ -37,7 +37,6 @@ if df.empty:
 else:
     # Extraer día del mes
     df["DIA"] = pd.to_datetime(df["Tiempo"]).dt.day
-
     # Agrupar por estación, frecuencia y día
     agrupado = (
         df.groupby(["ESTACION", "Frecuencia (MHz)", "DIA"])["Level (dBµV/m)"]
