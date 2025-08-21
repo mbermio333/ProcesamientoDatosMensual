@@ -67,7 +67,7 @@ else:
          5: "mayo", 6: "junio", 7: "julio", 8: "agosto",
          9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"
     }[mes_objetivo]
-    nombre_archivo = f"promedios_{nombre_mes_es}_todas_estaciones2.csv"
+    nombre_archivo = f"promedios_{nombre_mes_es}_todas_estaciones.csv"
 
     # Guardar archivo con 3 decimales
     pivot.to_csv(nombre_archivo, index=False, float_format="%.3f")
