@@ -2,7 +2,7 @@ import pandas as pd
 import calendar
 
 # Leer el archivo original
-df = pd.read_csv("loja_julio_total.csv", encoding='unicode_escape')
+df = pd.read_csv("/Users/mateobermeo/Desktop/ProcesamientoDatosMensual/Mediciones_totalesCSV/FmL030_juliototal.csv", encoding='unicode_escape')
 
 # Conservar solo las primeras 9 columnas
 df = df.iloc[:, :9]
@@ -57,6 +57,13 @@ else:
 # Convertir a float y redondear a 3 decimales
     pivot["Promedio Mensual"] = promedios_sin_ceros.astype(float).round(3)
 
+    # 1. Ordenar por frecuencia
+    pivot = pivot.sort_values(by="Frecuencia (MHz)")
+
+    # 2. Reemplazar ceros por '-' en las columnas de días
+    pivot[todos_los_dias] = pivot[todos_los_dias].replace(0, "-")
+
+
     # Resetear índice
     pivot = pivot.reset_index()
 
@@ -66,9 +73,13 @@ else:
          5: "mayo", 6: "junio", 7: "julio", 8: "agosto",
          9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"
     }[mes_objetivo]
-    nombre_archivo = f"promedios_{nombre_mes_es}_todas_estaciones.csv"
+    
+    ruta_salida = "/Users/mateobermeo/Desktop/ProcesamientoDatosMensual/Promedios_estaciones/"
+    nombre_archivo = f"{ruta_salida}promedios_{nombre_mes_es}_todas_estaciones.csv"
+
 
     # Guardar archivo con 3 decimales
     pivot.to_csv(nombre_archivo, index=False, float_format="%.3f")
 
+   
     print(f"✅ Archivo generado: {nombre_archivo}")
