@@ -56,7 +56,7 @@ for archivo_entrada in os.listdir(ruta_entrada):
 
             # Promedio mensual de Level (dBµV/m), ignorando ceros
             promedios_sin_ceros = pivot.replace(0, pd.NA).mean(axis=1, skipna=True)
-            pivot["Promedio Mensual"] = promedios_sin_ceros.astype(float).round(3)
+            pivot["Promedio (dBuV/m)"] = promedios_sin_ceros.astype(float).round(3)
 
             # Promedio mensual Bandwidth (Hz) → kHz
             bandwidth_promedios = (
@@ -64,7 +64,7 @@ for archivo_entrada in os.listdir(ruta_entrada):
                 .mean()
                 .reset_index()
             )
-            bandwidth_promedios["Promedio Bandwidth (kHz)"] = (bandwidth_promedios["Bandwidth (Hz)"] / 1000).round(3)
+            bandwidth_promedios["Promedio Ancho de Banda (KHz)"] = (bandwidth_promedios["Bandwidth (Hz)"] / 1000).round(3)
             bandwidth_promedios = bandwidth_promedios.drop(columns=["Bandwidth (Hz)"])
             pivot = pivot.merge(bandwidth_promedios, on=["ESTACION", "Frecuencia (MHz)"], how="left")
 
@@ -75,15 +75,11 @@ for archivo_entrada in os.listdir(ruta_entrada):
             pivot[todos_los_dias] = pivot[todos_los_dias].replace(0, "-")
 
             # Agregar columnas vacías
-            pivot["Medicion Manual"] = ""
+            pivot["Medición Manual AB(KHz) o NIVEL (dBuV/m)"] = ""
             pivot["Observaciones"] = ""
 
             # Eliminar columna 'index' si existe
             pivot = pivot.reset_index(drop=True)  # Elimina el índice directamente
-
-
-            # Resetear índice
-            #pivot = pivot.reset_index()
 
             # Generar nombre del archivo de salida
             base_nombre = archivo_entrada.split("_")[0]  # antes del primer guion bajo
