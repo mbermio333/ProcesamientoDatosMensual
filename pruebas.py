@@ -79,6 +79,10 @@ else:
     nombre_excel = f"{base_nombre}_promediostotal.xlsx"
     ruta_excel_salida = os.path.join(ruta_salida, nombre_excel)
 
+    # Redondear columnas numéricas
+    for col in pivot.select_dtypes(include="number").columns:
+         pivot[col] = pivot[col].round(3)
+
     # Guardar en formato Excel
     with pd.ExcelWriter(ruta_excel_salida, engine="openpyxl") as writer:
         pivot.to_excel(writer, index=False, sheet_name="Resumen")
