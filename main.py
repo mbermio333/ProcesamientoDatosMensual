@@ -75,7 +75,7 @@ for archivo_entrada in os.listdir(ruta_entrada):
             pivot[todos_los_dias] = pivot[todos_los_dias].replace(0, "-")
 
             # Agregar columnas vacías
-            pivot["Medición Manual AB(KHz) o NIVEL (dBuV/m)"] = ""
+            pivot["Medición Manual AB(KHz) o nivel (dBuV/m)"] = ""
             pivot["Observaciones"] = ""
 
             # Eliminar columna 'index' si existe
