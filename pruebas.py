@@ -4,7 +4,7 @@ import os
 
 # -------- CONFIGURACIÓN --------
 ruta_entrada = "MedicionesCSV"
-archivo_entrada = "canar_juliototal.csv"  # ⚠️ Cambia el nombre si usas otro archivo
+archivo_entrada = "loja_juliototal.csv"  # ⚠️ Cambia el nombre si usas otro archivo
 ruta_salida = "pruebas"
 base_nombre = archivo_entrada.split("_")[0]
 os.makedirs(ruta_salida, exist_ok=True)
@@ -50,7 +50,7 @@ else:
 
     # Promedio mensual Level
     promedios_sin_ceros = pivot.replace(0, pd.NA).mean(axis=1, skipna=True)
-    pivot["Promedio Mensual"] = promedios_sin_ceros.astype(float).round(3)
+    pivot["Promedio Mensual"] = promedios_sin_ceros.astype(float).round(2)
 
     # Promedio mensual Bandwidth en kHz
     bandwidth_promedios = (
@@ -58,7 +58,7 @@ else:
         .mean()
         .reset_index()
     )
-    bandwidth_promedios["Promedio Bandwidth (kHz)"] = (bandwidth_promedios["Bandwidth (Hz)"] / 1000).round(3)
+    bandwidth_promedios["Promedio Bandwidth (kHz)"] = (bandwidth_promedios["Bandwidth (Hz)"] / 1000).round(2)
     bandwidth_promedios = bandwidth_promedios.drop(columns=["Bandwidth (Hz)"])
     pivot = pivot.merge(bandwidth_promedios, on=["ESTACION", "Frecuencia (MHz)"], how="left")
 
@@ -82,7 +82,7 @@ else:
 
     # Redondear columnas numéricas
     for col in pivot.select_dtypes(include="number").columns:
-         pivot[col] = pivot[col].round(3)
+         pivot[col] = pivot[col].round(2)
 
     with pd.ExcelWriter(ruta_excel_salida, engine="openpyxl") as writer:
         pivot.to_excel(writer, index=False, sheet_name="Resumen")
