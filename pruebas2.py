@@ -6,7 +6,6 @@ import os
 ruta_entrada = "MedicionesCSV"
 archivo_entrada = "canar_juliototal.csv"  # ⚠️ Cambia el nombre si usas otro archivo
 ruta_salida = "pruebas"
-base_nombre = archivo_entrada.split("_")[0]
 os.makedirs(ruta_salida, exist_ok=True)
 
 # Construir rutas
@@ -93,12 +92,10 @@ from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image as XLImage
 import os
 
+
 # Abrir el archivo
 wb = load_workbook(ruta_excel_salida)
 ws = wb["Resumen"] # o  si sabes el nombre de la hoja
-
-ws.sheet_view.showGridLines = False
-
 
 # Encabezado
 encabezado_lineas = [
@@ -108,7 +105,7 @@ encabezado_lineas = [
     "COORDINACIÓN ZONAL 6",
     "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
     "FORMULARIO DE CONTROL MENSUAL DE FM",
-    "CIUDAD:" + base_nombre.upper(),
+    "CIUDAD: [CIUDAD]",
     "PERIODO: JULIO DE 2025",
     "FECHA PRESENTACIÓN: 06/08/2025"
 ]
@@ -124,6 +121,10 @@ for i, texto in enumerate(encabezado_lineas, start=1):
     celda.alignment = Alignment(horizontal="center", vertical="center")
     celda.font = Font(bold=True, size=12)
 
+# Quitar bordes del encabezado
+for row in ws.iter_rows(min_row=1, max_row=len(encabezado_lineas), min_col=1, max_col=num_columnas):
+    for cell in row:
+        cell.border = Border()
 
 # Insertar imágenes
 ruta_imagenes = "Img"
@@ -132,19 +133,19 @@ logo_derecha = os.path.join(ruta_imagenes, "nEcuador.png")
 
 if os.path.exists(logo_izquierda):
     img_left = XLImage(logo_izquierda)
-    img_left.width = 500
-    img_left.height = 100
-    img_left.left = 10000
+    img_left.width = 120
+    img_left.height = 60
+    img_left.left = 1000
     img_left.top = 500
-    ws.add_image(img_left, "A4")
+    ws.add_image(img_left, "A1")
 
 if os.path.exists(logo_derecha):
     img_right = XLImage(logo_derecha)
-    img_right.width = 260
-    img_right.height = 120
-    img_right.left = 1000
+    img_right.width = 120
+    img_right.height = 60
+    img_right.left = -1000
     img_right.top = 500
-    ws.add_image(img_right, "AH3")
+    ws.add_image(img_right, f"{ultima_col}1")
 
 # Ajustar ancho de columnas
 for i in range(1, num_columnas + 1):
@@ -157,42 +158,23 @@ for i in range(1, num_columnas + 1):
             pass
     ws.column_dimensions[col_letter].width = max_length + 2
 
-
 # Agregar marco exterior con líneas más gruesas
-
-inicio_fila_tabla = len(encabezado_lineas) + 1 
-fin_fila_tabla = ws.max_row
-
-thin = Side(border_style="thin")
-border_thin = Border(top=thin, bottom=thin, left=thin, right=thin)
-for row in range(inicio_fila_tabla, fin_fila_tabla + 1):
-    for col in range(1, ws.max_column + 1):
-        ws.cell(row=row, column=col).border = border_thin
-
-
 borde_grueso = Side(border_style="medium")
+inicio_fila_tabla = len(encabezado_lineas) + 1
+fin_fila_tabla = ws.max_row
 for row in range(inicio_fila_tabla, fin_fila_tabla + 1):
     for col in range(1, num_columnas + 1):
         cell = ws.cell(row=row, column=col)
-        # Obtener el borde actual (el delgado ya aplicado antes)
-        current_border = cell.border
-
-        # Aplicar bordes gruesos en los extremos
-        new_border = Border(
-            top=borde_grueso if row == inicio_fila_tabla else current_border.top,
-            bottom=borde_grueso if row == fin_fila_tabla else current_border.bottom,
-            left=borde_grueso if col == 1 else current_border.left,
-            right=borde_grueso if col == num_columnas else current_border.right,
-        )
-
-        cell.border = new_border
-
-
-alineacion_centrada = Alignment(horizontal="center", vertical="center")
-
-for row in range(inicio_fila_tabla, fin_fila_tabla + 1):
-    for col in range(1, num_columnas + 1):
-        ws.cell(row=row, column=col).alignment = alineacion_centrada
+        borde = Border()
+        if row == inicio_fila_tabla:
+            borde += Border(top=borde_grueso)
+        if row == fin_fila_tabla:
+            borde += Border(bottom=borde_grueso)
+        if col == 1:
+            borde += Border(left=borde_grueso)
+        if col == num_columnas:
+            borde += Border(right=borde_grueso)
+        cell.border = cell.border + borde
 
 # Guardar
 wb.save(ruta_excel_salida)
