@@ -61,8 +61,9 @@ for archivo_entrada2 in os.listdir(ruta_entrada2):
 
             # Guardar a Excel
             base_nombre = archivo_entrada2.split("_")[0]
-            nombre_excel = f"{base_nombre}_promediostotal.xlsx"
+            nombre_excel = f"{base_nombre}_TVpromediostotal.xlsx"
             ruta_excel_salida = os.path.join(ruta_salida, nombre_excel)
+
             for col in pivot.select_dtypes(include="number").columns:
                 pivot[col] = pivot[col].round(2)
             with pd.ExcelWriter(ruta_excel_salida, engine="openpyxl") as writer:
@@ -74,7 +75,7 @@ for archivo_entrada2 in os.listdir(ruta_entrada2):
             ws.sheet_view.showGridLines = False
 
 
-            if base_nombre == "canar":
+            if base_nombre == "cañar":
                 base_nombre="tambo"
 
             # Encabezado
@@ -104,14 +105,14 @@ for archivo_entrada2 in os.listdir(ruta_entrada2):
                 img_left.height = 100
                 img_left.left = 10000
                 img_left.top = 500
-                ws.add_image(img_left, "A4")
+                ws.add_image(img_left, "A3")
             if os.path.exists(logo_derecha):
                 img_right = XLImage(logo_derecha)
                 img_right.width = 260
                 img_right.height = 120
                 img_right.left = 1000
                 img_right.top = 500
-                ws.add_image(img_right, "AH3")
+                ws.add_image(img_right, "AH2")
 
             # Ancho columnas
             for i in range(1, num_columnas + 1):
