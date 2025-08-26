@@ -109,7 +109,7 @@ for archivo_entrada in os.listdir(ruta_entrada):
             ws.sheet_view.showGridLines = False
             
             if base_nombre == "canar":
-                base_nombre2="tambo"
+                base_nombre="tambo"
 
             # Encabezado
             encabezado_lineas = [
@@ -119,7 +119,7 @@ for archivo_entrada in os.listdir(ruta_entrada):
                 "COORDINACIÓN ZONAL 6",
                 "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
                 "FORMULARIO DE CONTROL MENSUAL DE FM",
-                "CIUDAD:" + base_nombre2.upper(),
+                "CIUDAD:" + base_nombre.upper(),
                 "PERIODO:" + nombre_mes_es.upper(),
                 f"FECHA PRESENTACIÓN: {fecha_actual}"
             ]
