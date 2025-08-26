@@ -52,9 +52,22 @@ for archivo_entrada2 in os.listdir(ruta_entrada2):
             # Agrupación y pivot
             agrupado = df.groupby(["ESTACION", "Frecuencia (MHz)", "DIA"])["Level (dBµV/m)"].mean().reset_index()
             pivot = agrupado.pivot(index=["ESTACION", "Frecuencia (MHz)"], columns="DIA", values="Level (dBµV/m)")
+            
+            # Rellenar días del 1 al 31
             todos_los_dias = list(range(1, 32))
             pivot = pivot.reindex(columns=todos_los_dias, fill_value=0)
-            pivot["Promedio(dBuV/m)"] = pivot.replace(0, pd.NA).mean(axis=1, skipna=True).astype(float).round(2)
+
+                    # Reemplazar ceros por guiones en los días sin medición
+            pivot[todos_los_dias] = pivot[todos_los_dias].astype(float).replace(0.0, "-")
+
+            # Crear copia numérica ignorando guiones para el cálculo del promedio
+            pivot_numeric = pivot[todos_los_dias].replace("-", pd.NA)
+            pivot_numeric = pivot_numeric.apply(pd.to_numeric, errors="coerce")
+
+                                                                            
+            pivot["Promedio(dBuV/m)"] = pivot_numeric.mean(axis=1, skipna=True).round(2)
+
+
             pivot["Medición Manual"] = ""
             pivot["OBSERVACIONES"] = ""
             pivot = pivot.sort_values(by="Frecuencia (MHz)").reset_index()
