@@ -1,11 +1,14 @@
 import pandas as pd
 import calendar
 import os
+from datetime import datetime
+
 
 # ---------- CONFIGURACIÓN GENERAL ----------
-ruta_entrada = "MedicionesCSV"
+ruta_entrada = "MedicionesFmCSV"
 ruta_salida = "Promedios_mensuales"
 os.makedirs(ruta_salida, exist_ok=True)
+fecha_actual = datetime.today().strftime("%d/%m/%Y")
 
 # ---------- PROCESAMIENTO DE CADA ARCHIVO ----------
 for archivo_entrada in os.listdir(ruta_entrada):
@@ -117,8 +120,8 @@ for archivo_entrada in os.listdir(ruta_entrada):
                 "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
                 "FORMULARIO DE CONTROL MENSUAL DE FM",
                 "CIUDAD:" + base_nombre2.upper(),
-                "PERIODO: JULIO DE 2025",
-                "FECHA PRESENTACIÓN: 06/08/2025"
+                "PERIODO:" + nombre_mes_es.upper(),
+                f"FECHA PRESENTACIÓN: {fecha_actual}"
             ]
 
             num_columnas = ws.max_column
