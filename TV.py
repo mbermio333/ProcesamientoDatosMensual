@@ -10,7 +10,7 @@ from openpyxl.drawing.image import Image as XLImage
 
 # ---------- CONFIGURACIÓN GENERAL ----------
 ruta_entrada2 = "MedicionesTvCSV"
-ruta_salida = "pruebas"
+ruta_salida = "ReportesSeparados"
 ruta_imagenes = "Img"
 os.makedirs(ruta_salida, exist_ok=True)
 fecha_actual = datetime.today().strftime("%d/%m/%Y")

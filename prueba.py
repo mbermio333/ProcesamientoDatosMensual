@@ -32,8 +32,8 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
     logo_izquierda = os.path.join(ruta_imagenes, "ARCOTEL.png")
     logo_derecha = os.path.join(ruta_imagenes, "nEcuador.png")
 
-    fila_img_izq = fila_inicio + 3
-    fila_img_der = fila_inicio + 2
+    fila_img_izq = fila_inicio + 1
+    fila_img_der = fila_inicio + 1
 
     if os.path.exists(logo_izquierda):
         img_left = XLImage(logo_izquierda)

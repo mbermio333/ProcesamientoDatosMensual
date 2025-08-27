@@ -6,7 +6,7 @@ from datetime import datetime
 
 # ---------- CONFIGURACIÓN GENERAL ----------
 ruta_entrada = "MedicionesFmCSV"
-ruta_salida = "Promedios_mensuales"
+ruta_salida = "ReportesSeparados"
 os.makedirs(ruta_salida, exist_ok=True)
 fecha_actual = datetime.today().strftime("%d/%m/%Y")
 
