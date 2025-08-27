@@ -16,7 +16,23 @@ ruta_imagenes = "Img"
 os.makedirs(ruta_salida, exist_ok=True)
 fecha_actual = datetime.today().strftime("%d/%m/%Y")
 
-# ------------------ UTILIDADES ------------------
+# ------------------ FUNCIONES AUXILIARES ------------------
+
+def combinar_observaciones_solo_en_tv(ws, fila_inicio_tabla, fila_fin_tabla, num_columnas, es_tv=True):
+    """
+    Combina horizontalmente la última y penúltima columna para cada fila SOLO si es TV.
+    """
+    if es_tv:
+        for fila in range(fila_inicio_tabla + 1, fila_fin_tabla + 1):
+            ws.merge_cells(start_row=fila, start_column=num_columnas - 1, end_row=fila, end_column=num_columnas)
+        
+        # También combinar el encabezado (la celda con el nombre del campo)
+        ws.merge_cells(start_row=fila_inicio_tabla, start_column=num_columnas - 1, end_row=fila_inicio_tabla, end_column=num_columnas)
+        celda = ws.cell(row=fila_inicio_tabla, column=num_columnas - 1)
+        celda.value = "OBSERVACIONES"
+        celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        ws.cell(row=fila_inicio_tabla, column=num_columnas).value = None
+
 def formatear_hoja(ws, fila_inicio, encabezado_lineas):
     num_columnas = ws.max_column
     ws.insert_rows(fila_inicio, amount=len(encabezado_lineas))
@@ -100,9 +116,32 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
 
     ws.row_dimensions[inicio_fila_tabla].height = 45
 
+    # --- 🔁 Combinación solo para la tabla TV ---
+    nombre_hoja = ws.cell(row=fila_inicio + len(encabezado_lineas) - 1, column=1).value
+    if "TV" in nombre_hoja:
+        col_observaciones = num_columnas
+        col_manual = num_columnas - 1
+        ancho_observaciones = ws.column_dimensions[get_column_letter(col_observaciones)].width
+        ancho_manual = ws.column_dimensions[get_column_letter(col_manual)].width
+
+        for fila in range(inicio_fila_tabla + 1, fin_fila_tabla + 1):
+            ws.merge_cells(start_row=fila, start_column=col_manual, end_row=fila, end_column=col_observaciones)
+        ws.merge_cells(start_row=inicio_fila_tabla, start_column=col_manual, end_row=inicio_fila_tabla, end_column=col_observaciones)
+
+        # Reemplazar el texto del encabezado
+        celda = ws.cell(row=inicio_fila_tabla, column=col_manual)
+        celda.value = "OBSERVACIONES"
+        celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        ws.cell(row=inicio_fila_tabla, column=col_observaciones).value = None
+
+        # Asignar el nuevo ancho sumado
+        ws.column_dimensions[get_column_letter(col_manual)].width = ancho_observaciones + ancho_manual
+
 
 def obtener_base(nombre_archivo):
     return nombre_archivo.split("_")[0].lower().strip()
+
+# ------------------ PROCESAMIENTO ------------------
 
 archivos_fm = {obtener_base(f): os.path.join(ruta_fm, f) for f in os.listdir(ruta_fm) if f.endswith(".csv")}
 archivos_tv = {obtener_base(f): os.path.join(ruta_tv, f) for f in os.listdir(ruta_tv) if f.endswith(".csv")}
@@ -192,5 +231,65 @@ for base in nombres_bases:
         fila_actual = ws.max_row + 3
 
     nombre_salida = f"{base}_ReporteUnificado.xlsx"
+       
+    from openpyxl.utils import get_column_letter
+
+    for sheet in wb.worksheets:
+        if "Resumen" not in sheet.title:
+            continue
+
+        # Buscar fila del segundo encabezado (TV)
+        for fila in range(1, sheet.max_row + 1):
+            val = sheet.cell(row=fila, column=1).value
+            if isinstance(val, str) and "FORMULARIO DE CONTROL MENSUAL DE TV" in val:
+                fila_encabezado_tv = fila
+                break
+        else:
+            continue  # No hay TV en esta hoja
+
+        # Buscar fila exacta de la cabecera de la tabla (donde dice "ESTACION")
+        fila_tabla_tv = None
+        for fila in range(fila_encabezado_tv + 1, sheet.max_row + 1):
+            if sheet.cell(row=fila, column=1).value == "ESTACION":
+                fila_tabla_tv = fila
+                break
+
+        if fila_tabla_tv is None:
+            continue  # Seguridad por si no se encuentra
+
+        ultima_fila_tv = sheet.max_row
+        col_final = sheet.max_column
+        col_penultima = col_final - 1
+
+        # Obtener anchos actuales
+        ancho_col1 = sheet.column_dimensions[get_column_letter(col_penultima)].width
+        ancho_col2 = sheet.column_dimensions[get_column_letter(col_final)].width
+        ancho_combinado = (ancho_col1 or 10) + (ancho_col2 or 10)
+
+        # Combinar celdas del cuerpo de la tabla
+        for fila in range(fila_tabla_tv + 1, ultima_fila_tv + 1):
+            sheet.merge_cells(start_row=fila, start_column=col_penultima, end_row=fila, end_column=col_final)
+
+        # Combinar encabezado de tabla ("OBSERVACIONES")
+        sheet.merge_cells(start_row=fila_tabla_tv, start_column=col_penultima, end_row=fila_tabla_tv, end_column=col_final)
+        celda_obs = sheet.cell(row=fila_tabla_tv, column=col_penultima)
+        celda_obs.value = "OBSERVACIONES"
+        celda_obs.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+                # Combinar encabezado de tabla ("OBSERVACIONES")
+        sheet.merge_cells(start_row=fila_tabla_tv, start_column=col_penultima, end_row=fila_tabla_tv, end_column=col_final)
+
+        # Solo escribir en la celda principal de la combinación
+        celda_obs = sheet.cell(row=fila_tabla_tv, column=col_penultima)
+        celda_obs.value = "OBSERVACIONES"
+        celda_obs.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+# No escribas en col_final (ya está combinada)
+
+
+        # Asignar nuevo ancho
+        sheet.column_dimensions[get_column_letter(col_penultima)].width = ancho_combinado
+
+    
     wb.save(os.path.join(ruta_salida, nombre_salida))
     print(f"✅ Archivo generado: {nombre_salida}")
