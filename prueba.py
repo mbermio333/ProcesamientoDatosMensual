@@ -44,7 +44,7 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
     if os.path.exists(logo_derecha):
         img_right = XLImage(logo_derecha)
         img_right.width = 260
-        img_right.height = 140
+        img_right.height = 120
         ws.add_image(img_right, f"AH{fila_img_der}")
 
     # Ajustar anchos
