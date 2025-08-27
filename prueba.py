@@ -32,13 +32,13 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
     logo_izquierda = os.path.join(ruta_imagenes, "ARCOTEL.png")
     logo_derecha = os.path.join(ruta_imagenes, "nEcuador.png")
 
-    fila_img_izq = fila_inicio + 2
-    fila_img_der = fila_inicio + 1
+    fila_img_izq = fila_inicio + 3
+    fila_img_der = fila_inicio + 2
 
     if os.path.exists(logo_izquierda):
         img_left = XLImage(logo_izquierda)
-        img_left.width = 370
-        img_left.height = 70
+        img_left.width = 500
+        img_left.height = 100
         ws.add_image(img_left, f"A{fila_img_izq}")
 
     if os.path.exists(logo_derecha):
@@ -46,18 +46,6 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
         img_right.width = 260
         img_right.height = 120
         ws.add_image(img_right, f"AH{fila_img_der}")
-
-    # Ajustar anchos
-    for i in range(1, num_columnas + 1):
-        col_letter = get_column_letter(i)
-        max_length = 0
-        for cell in ws[col_letter]:
-            try:
-                if cell.value:
-                    max_length = max(max_length, len(str(cell.value)))
-            except:
-                pass
-        ws.column_dimensions[col_letter].width = max_length + 2
 
     # Bordes
     inicio_fila_tabla = fila_inicio + len(encabezado_lineas)
@@ -88,11 +76,28 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
         celda = ws.cell(row=inicio_fila_tabla, column=col)
         if celda.value == "Promedio(dBuV/m)":
             celda.value = "Promedio\n(dBuV/m)"
+            ws.column_dimensions[get_column_letter(col)].width = 15
         elif celda.value == "Ancho de Banda (KHz)":
             celda.value = "Ancho de Banda\n(KHz)"
         elif celda.value == "Medición Manual":
             celda.value = "Medición Manual\nAB(KHz) o NIVEL\n(dBµV/m)"
+            ws.column_dimensions[get_column_letter(col)].width = 23
         celda.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
+
+    # Ajustar anchos del resto
+    for i in range(1, num_columnas + 1):
+        if ws.column_dimensions[get_column_letter(i)].width in [15, 23]:
+            continue
+        col_letter = get_column_letter(i)
+        max_length = 0
+        for cell in ws[col_letter]:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+        ws.column_dimensions[col_letter].width = max_length + 2
+
     ws.row_dimensions[inicio_fila_tabla].height = 45
 
 
@@ -131,16 +136,11 @@ for base in nombres_bases:
         df = df[df["Tiempo"].apply(lambda x: x.month == mes_objetivo)]
         df["DIA"] = pd.to_datetime(df["Tiempo"]).dt.day
 
-        if tipo == "FM":
-            df["FRECUENCIA (MHz)"] = df["Frecuencia (Hz)"] / 1_000_000
-        else:
-            df["Frecuencia (MHz)"] = df["Frecuencia (Hz)"] / 1_000_000
-
+        df["Frecuencia (MHz)"] = df["Frecuencia (Hz)"] / 1_000_000
         df["Level (dBµV/m)"] = df["Level (dBµV/m)"].astype(str).str.replace(",", ".", regex=False).astype(float)
 
-        freq_col = "FRECUENCIA (MHz)" if tipo == "FM" else "Frecuencia (MHz)"
-        agrupado = df.groupby(["ESTACION", freq_col, "DIA"])["Level (dBµV/m)"].mean().reset_index()
-        pivot = agrupado.pivot(index=["ESTACION", freq_col], columns="DIA", values="Level (dBµV/m)")
+        agrupado = df.groupby(["ESTACION", "Frecuencia (MHz)", "DIA"])["Level (dBµV/m)"].mean().reset_index()
+        pivot = agrupado.pivot(index=["ESTACION", "Frecuencia (MHz)"], columns="DIA", values="Level (dBµV/m)")
         todos_los_dias = list(range(1, 32))
         pivot = pivot.reindex(columns=todos_los_dias, fill_value=0)
 
@@ -150,16 +150,16 @@ for base in nombres_bases:
 
         if tipo == "FM":
             ancho_banda = (
-                df.groupby(["ESTACION", freq_col])["Bandwidth (Hz)"].mean().reset_index()
+                df.groupby(["ESTACION", "Frecuencia (MHz)"])["Bandwidth (Hz)"].mean().reset_index()
             )
             ancho_banda["Ancho de Banda (KHz)"] = (ancho_banda["Bandwidth (Hz)"] / 1000).round(2)
-            pivot = pivot.reset_index().merge(ancho_banda.drop(columns=["Bandwidth (Hz)"]), on=["ESTACION", freq_col], how="left")
+            pivot = pivot.reset_index().merge(ancho_banda.drop(columns=["Bandwidth (Hz)"]), on=["ESTACION", "Frecuencia (MHz)"], how="left")
         else:
             pivot = pivot.reset_index()
 
         pivot["Medición Manual"] = ""
         pivot["OBSERVACIONES"] = ""
-        pivot = pivot.sort_values(by=freq_col)
+        pivot = pivot.sort_values(by="Frecuencia (MHz)")
 
         for col in pivot.select_dtypes(include="number").columns:
             pivot[col] = pivot[col].round(2)
@@ -167,7 +167,10 @@ for base in nombres_bases:
         for i, row in enumerate(dataframe_to_rows(pivot, index=False, header=True)):
             for j, val in enumerate(row, start=1):
                 ws.cell(row=fila_actual + i, column=j, value=val)
-        formatear_hoja(ws, fila_actual, [
+
+        encabezado_fm = [
+            "INFORME DE CONTROL TÉCNICO",
+            "No. IT-CZ06-R-2025-00XX",
             "AGENCIA DE REGULACIÓN Y CONTROL DE LAS TELECOMUNICACIONES",
             "COORDINACIÓN ZONAL 6",
             "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
@@ -175,7 +178,17 @@ for base in nombres_bases:
             "CIUDAD:" + ("tambo" if base == "cañar" else base.upper()),
             f"PERIODO: {nombre_mes_es.upper()}",
             f"FECHA PRESENTACIÓN: {fecha_actual}"
-        ])
+        ] if tipo == "FM" else [
+            "AGENCIA DE REGULACIÓN Y CONTROL DE LAS TELECOMUNICACIONES",
+            "COORDINACIÓN ZONAL 6",
+            "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
+            titulo,
+            "CIUDAD:" + ("tambo" if base == "cañar" else base.upper()),
+            f"PERIODO: {nombre_mes_es.upper()}",
+            f"FECHA PRESENTACIÓN: {fecha_actual}"
+        ]
+
+        formatear_hoja(ws, fila_actual, encabezado_fm)
         fila_actual = ws.max_row + 3
 
     nombre_salida = f"{base}_ReporteUnificado.xlsx"
