@@ -118,41 +118,72 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
 # ------------------ FUNCIÓN PARA COLOREAR CELDAS ------------------
 def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, columna_inicio, columna_fin):
     """
-    Colorea las celdas según su valor numérico:
-    - Verde: 0 a 100
-    - Amarillo: 100 a 200  
-    - Rojo: mayor a 200
+    Colorea las celdas con criterios específicos por columna
     """
     from openpyxl.styles import PatternFill
     
-    # Colores corregidos con formato ARGB (FF + código RGB)
+    # Colores para el rango principal (días 1-31)
     verde = PatternFill(start_color="FFCDFECE", end_color="FFCDFECE", fill_type="solid")
     amarillo = PatternFill(start_color="FFFFFE9F", end_color="FFFFFE9F", fill_type="solid")
     rosa = PatternFill(start_color="FFFD9BCB", end_color="FFFD9BCB", fill_type="solid")
-    rojo = PatternFill(start_color="FFFC4A2C", end_color="FFFC4A2C", fill_type="solid")  # por si lo necesitas también
+    
+    # Colores especiales para columnas específicas
+    rojo_ah = PatternFill(start_color="FFFF6666", end_color="FFFF6666", fill_type="solid")  # Rojo claro para AH > 60
+    rojo_ai = PatternFill(start_color="FFFF0000", end_color="FFFF0000", fill_type="solid")  # Rojo intenso para AI > 200
 
-    # Iterar por todas las celdas en el rango
+    # Columnas fijas AH y AI
+    col_ah = 34  # Columna AH
+    col_ai = 35  # Columna AI
+    
+    print(f"DEBUG: Coloreando AH(col{col_ah})>60 y AI(col{col_ai})>200")
+    
+    # 1. Colorear rango principal (días 1-31)
     for fila in range(fila_inicio, fila_fin + 1):
         for col in range(columna_inicio, columna_fin + 1):
-            celda = ws.cell(row=fila, column=col)
-            
-            # Verificar si la celda tiene un valor numérico
+            celda = ws.cell(row=fila, column=col)  
             try:
-                if celda.value is not None and str(celda.value).replace('.', '', 1).isdigit():
-                    valor = float(celda.value)
-                    
-                    # Aplicar color según el rango
-                    if 0 <= valor <= 43:
-                        celda.fill = rosa
-                    elif 43 < valor < 54:
-                        celda.fill = amarillo
-                    elif valor >= 54:
-                        celda.fill = verde
+                if celda.value is not None:
+                    valor_str = str(celda.value).replace(',', '.').strip()
+                    if valor_str.replace('.', '', 1).isdigit():
+                        valor = float(valor_str)
                         
+                        if 0 <= valor <= 43:
+                            celda.fill = rosa
+                        elif 43 < valor < 54:
+                            celda.fill = amarillo
+                        elif valor >= 54:
+                            celda.fill = verde
+                            
             except (ValueError, TypeError):
-                # Si no es número, no hacer nada
                 pass
-
+    
+    # 2. Colorear columnas especiales con criterios diferentes
+    for fila in range(fila_inicio, fila_fin + 1):
+        # --- COLUMNA AH (34) - Rojo si > 60 ---
+        celda_ah = ws.cell(row=fila, column=col_ah)
+        try:
+            if celda_ah.value is not None:
+                valor_str = str(celda_ah.value).replace(',', '.').strip()
+                if valor_str.replace('.', '', 1).isdigit():
+                    valor_ah = float(valor_str)
+                    if valor_ah > 60:
+                        celda_ah.fill = rojo_ah
+                        print(f"AH Fila {fila}: {valor_ah} > 60 → ROJO")
+        except (ValueError, TypeError):
+            pass
+        
+        # --- COLUMNA AI (35) - Rojo si > 200 ---
+        celda_ai = ws.cell(row=fila, column=col_ai)
+        try:
+            if celda_ai.value is not None:
+                valor_str = str(celda_ai.value).replace(',', '.').strip()
+                if valor_str.replace('.', '', 1).isdigit():
+                    valor_ai = float(valor_str)
+                    if valor_ai > 200:
+                        celda_ai.fill = rojo_ai
+                        print(f"AI Fila {fila}: {valor_ai} > 200 → ROJO")
+        except (ValueError, TypeError):
+            pass
 # ------------------ FUNCIÓN PARA ENCONTRAR COLUMNAS NUMÉRICAS ------------------
 def encontrar_columnas_numericas(ws, fila_encabezados):
     """
