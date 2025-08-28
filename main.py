@@ -125,12 +125,11 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, columna_inicio, columna
     """
     from openpyxl.styles import PatternFill
     
-    # Colores corregidos con formato ARGB (FF + código RGB)
-    verde = PatternFill(start_color="FFCDFECE", end_color="FFCDFECE", fill_type="solid")
-    amarillo = PatternFill(start_color="FFFFFE9F", end_color="FFFFFE9F", fill_type="solid")
-    rosa = PatternFill(start_color="FFFD9BCB", end_color="FFFD9BCB", fill_type="solid")
-    rojo = PatternFill(start_color="FFFC4A2C", end_color="FFFC4A2C", fill_type="solid")  # por si lo necesitas también
-
+    # Definir los colores
+    verde = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
+    amarillo = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+    rojo = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+    
     # Iterar por todas las celdas en el rango
     for fila in range(fila_inicio, fila_fin + 1):
         for col in range(columna_inicio, columna_fin + 1):
@@ -142,12 +141,12 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, columna_inicio, columna
                     valor = float(celda.value)
                     
                     # Aplicar color según el rango
-                    if 0 <= valor <= 43:
-                        celda.fill = rosa
-                    elif 43 < valor < 54:
-                        celda.fill = amarillo
-                    elif valor >= 54:
+                    if 0 <= valor <= 50:
                         celda.fill = verde
+                    elif 50 < valor <= 75:
+                        celda.fill = amarillo
+                    elif valor > 75:
+                        celda.fill = rojo
                         
             except (ValueError, TypeError):
                 # Si no es número, no hacer nada
