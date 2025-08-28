@@ -366,7 +366,7 @@ for base in nombres_bases:
 
         # Asignar nuevo ancho
         sheet.column_dimensions[get_column_letter(col_penultima)].width = ancho_combinado
-
-    
+        ws.sheet_view.showGridLines = False
+        
     wb.save(os.path.join(ruta_salida, nombre_salida))
     print(f"✅ Archivo generado: {nombre_salida}")
