@@ -168,7 +168,7 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, columna_inicio, columna
                     valor_ah = float(valor_str)
                     if valor_ah > 60:
                         celda_ah.fill = rojo_ah
-                        print(f"AH Fila {fila}: {valor_ah} > 60 → ROJO")
+                        #print(f"AH Fila {fila}: {valor_ah} > 60 → ROJO")
         except (ValueError, TypeError):
             pass
         
@@ -181,7 +181,7 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, columna_inicio, columna
                     valor_ai = float(valor_str)
                     if valor_ai > 200:
                         celda_ai.fill = rojo_ai
-                        print(f"AI Fila {fila}: {valor_ai} > 200 → ROJO")
+                        #print(f"AI Fila {fila}: {valor_ai} > 200 → ROJO")
         except (ValueError, TypeError):
             pass
 # ------------------ FUNCIÓN PARA ENCONTRAR COLUMNAS NUMÉRICAS ------------------
