@@ -115,6 +115,66 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
         ws.column_dimensions[col_letter].width = max_length + 2
 
     ws.row_dimensions[inicio_fila_tabla].height = 45
+# ------------------ FUNCIÓN PARA COLOREAR CELDAS ------------------
+def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, columna_inicio, columna_fin):
+    """
+    Colorea las celdas según su valor numérico:
+    - Verde: 0 a 100
+    - Amarillo: 100 a 200  
+    - Rojo: mayor a 200
+    """
+    from openpyxl.styles import PatternFill
+    
+    # Definir los colores
+    verde = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
+    amarillo = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+    rojo = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+    
+    # Iterar por todas las celdas en el rango
+    for fila in range(fila_inicio, fila_fin + 1):
+        for col in range(columna_inicio, columna_fin + 1):
+            celda = ws.cell(row=fila, column=col)
+            
+            # Verificar si la celda tiene un valor numérico
+            try:
+                if celda.value is not None and str(celda.value).replace('.', '', 1).isdigit():
+                    valor = float(celda.value)
+                    
+                    # Aplicar color según el rango
+                    if 0 <= valor <= 50:
+                        celda.fill = verde
+                    elif 50 < valor <= 75:
+                        celda.fill = amarillo
+                    elif valor > 75:
+                        celda.fill = rojo
+                        
+            except (ValueError, TypeError):
+                # Si no es número, no hacer nada
+                pass
+
+# ------------------ FUNCIÓN PARA ENCONTRAR COLUMNAS NUMÉRICAS ------------------
+def encontrar_columnas_numericas(ws, fila_encabezados):
+    """
+    Encuentra automáticamente las columnas que contienen valores numéricos
+    basándose en los encabezados de días (1 al 31)
+    """
+    columnas_numericas = []
+    
+    for col in range(1, ws.max_column + 1):
+        celda = ws.cell(row=fila_encabezados, column=col)
+        if celda.value and str(celda.value).isdigit():
+            try:
+                dia = int(celda.value)
+                if 1 <= dia <= 31:
+                    columnas_numericas.append(col)
+            except ValueError:
+                pass
+    
+    if columnas_numericas:
+        return min(columnas_numericas), max(columnas_numericas)
+    else:
+        # Valores por defecto si no encuentra días
+        return 3, 33
 
     # --- 🔁 Combinación solo para la tabla TV ---
     nombre_hoja = ws.cell(row=fila_inicio + len(encabezado_lineas) - 1, column=1).value
@@ -228,6 +288,22 @@ for base in nombres_bases:
         ]
 
         formatear_hoja(ws, fila_actual, encabezado_fm)
+
+        # ✅ ENCONTRAR Y COLOREAR CELDAS NUMÉRICAS
+        # Calcular fila de encabezados de columnas (donde dice "ESTACION", "Frecuencia", etc.)
+        fila_encabezados_columnas = fila_actual + len(encabezado_fm)
+
+        # Encontrar columnas con valores numéricos (días 1-31)
+        col_inicio_numeros, col_fin_numeros = encontrar_columnas_numericas(ws, fila_encabezados_columnas)
+
+        # Calcular filas de datos (después de los encabezados de columnas)
+        fila_inicio_datos = fila_encabezados_columnas + 1
+        fila_fin_datos = fila_inicio_datos + len(pivot) - 1
+
+        # Aplicar colores a las celdas numéricas
+        colorear_celdas_por_valor(ws, fila_inicio_datos, fila_fin_datos, 
+                                col_inicio_numeros, col_fin_numeros)
+
         fila_actual = ws.max_row + 3
 
     nombre_salida = f"{base}_ReporteUnificado.xlsx"
