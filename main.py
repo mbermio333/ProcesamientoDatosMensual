@@ -176,7 +176,7 @@ def encontrar_columnas_numericas(ws, fila_encabezados):
     else:
         # Valores por defecto si no encuentra días
         return 3, 33
-
+    #CAMBIOS 
     # --- 🔁 Combinación solo para la tabla TV ---
     nombre_hoja = ws.cell(row=fila_inicio + len(encabezado_lineas) - 1, column=1).value
     if "TV" in nombre_hoja:
