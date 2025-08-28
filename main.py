@@ -44,25 +44,6 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
         celda.alignment = Alignment(horizontal="center", vertical="center")
         celda.font = Font(bold=True, size=12)
 
-    # Insertar imágenes
-    logo_izquierda = os.path.join(ruta_imagenes, "ARCOTEL.png")
-    logo_derecha = os.path.join(ruta_imagenes, "nEcuador.png")
-
-    fila_img_izq = fila_inicio + 2
-    fila_img_der = fila_inicio + 2
-
-    if os.path.exists(logo_izquierda):
-        img_left = XLImage(logo_izquierda)
-        img_left.width = 500
-        img_left.height = 100
-        ws.add_image(img_left, f"A{fila_img_izq}")
-
-    if os.path.exists(logo_derecha):
-        img_right = XLImage(logo_derecha)
-        img_right.width = 260
-        img_right.height = 120
-        ws.add_image(img_right, f"AH{fila_img_der}")
-
     # Bordes
     inicio_fila_tabla = fila_inicio + len(encabezado_lineas)
     fin_fila_tabla = ws.max_row
@@ -115,6 +96,25 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
         ws.column_dimensions[col_letter].width = max_length + 2
 
     ws.row_dimensions[inicio_fila_tabla].height = 45
+
+def insertar_imagenes(ws, fila_destino, tipo):
+    logo_izquierda = os.path.join(ruta_imagenes, "ARCOTEL.png")
+    logo_derecha = os.path.join(ruta_imagenes, "nEcuador.png")
+
+    if os.path.exists(logo_izquierda):
+        img_left = XLImage(logo_izquierda)
+        img_left.width = 500
+        img_left.height = 100
+        ws.add_image(img_left, f"A{fila_destino}")
+
+    if os.path.exists(logo_derecha):
+        img_right = XLImage(logo_derecha)
+        img_right.width = 260
+        img_right.height = 120
+        ws.add_image(img_right, f"AJ{fila_destino}")
+
+
+    
 # ------------------ FUNCIÓN PARA COLOREAR CELDAS ------------------
 def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, columna_inicio, columna_fin):
     """
@@ -287,6 +287,10 @@ for base in nombres_bases:
             f"PERIODO: {nombre_mes_es.upper()}",
             f"FECHA PRESENTACIÓN: {fecha_actual}"
         ]
+        if tipo == "FM":
+            insertar_imagenes(ws, fila_actual + 4, tipo="FM")  # Posición relativa al inicio
+        elif tipo == "TV":
+            insertar_imagenes(ws, fila_actual + 2, tipo="TV")  # Posición después de la tabla FM
 
         formatear_hoja(ws, fila_actual, encabezado_fm)
 

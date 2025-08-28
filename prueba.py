@@ -44,25 +44,6 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
         celda.alignment = Alignment(horizontal="center", vertical="center")
         celda.font = Font(bold=True, size=12)
 
-    # Insertar imágenes
-    logo_izquierda = os.path.join(ruta_imagenes, "ARCOTEL.png")
-    logo_derecha = os.path.join(ruta_imagenes, "nEcuador.png")
-
-    fila_img_izq = fila_inicio + 2
-    fila_img_der = fila_inicio + 2
-
-    if os.path.exists(logo_izquierda):
-        img_left = XLImage(logo_izquierda)
-        img_left.width = 500
-        img_left.height = 100
-        ws.add_image(img_left, f"A{fila_img_izq}")
-
-    if os.path.exists(logo_derecha):
-        img_right = XLImage(logo_derecha)
-        img_right.width = 260
-        img_right.height = 120
-        ws.add_image(img_right, f"AH{fila_img_der}")
-
     # Bordes
     inicio_fila_tabla = fila_inicio + len(encabezado_lineas)
     fin_fila_tabla = ws.max_row
@@ -115,6 +96,86 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
         ws.column_dimensions[col_letter].width = max_length + 2
 
     ws.row_dimensions[inicio_fila_tabla].height = 45
+
+def insertar_imagenes(ws, fila_destino, tipo):
+    logo_izquierda = os.path.join(ruta_imagenes, "ARCOTEL.png")
+    logo_derecha = os.path.join(ruta_imagenes, "nEcuador.png")
+
+    if os.path.exists(logo_izquierda):
+        img_left = XLImage(logo_izquierda)
+        img_left.width = 500
+        img_left.height = 100
+        ws.add_image(img_left, f"A{fila_destino}")
+
+    if os.path.exists(logo_derecha):
+        img_right = XLImage(logo_derecha)
+        img_right.width = 260
+        img_right.height = 120
+        ws.add_image(img_right, f"AH{fila_destino}")
+
+
+    
+# ------------------ FUNCIÓN PARA COLOREAR CELDAS ------------------
+def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, columna_inicio, columna_fin):
+    """
+    Colorea las celdas según su valor numérico:
+    - Verde: 0 a 100
+    - Amarillo: 100 a 200  
+    - Rojo: mayor a 200
+    """
+    from openpyxl.styles import PatternFill
+    
+    # Colores corregidos con formato ARGB (FF + código RGB)
+    verde = PatternFill(start_color="FFCDFECE", end_color="FFCDFECE", fill_type="solid")
+    amarillo = PatternFill(start_color="FFFFFE9F", end_color="FFFFFE9F", fill_type="solid")
+    rosa = PatternFill(start_color="FFFD9BCB", end_color="FFFD9BCB", fill_type="solid")
+    rojo = PatternFill(start_color="FFFC4A2C", end_color="FFFC4A2C", fill_type="solid")  # por si lo necesitas también
+
+    # Iterar por todas las celdas en el rango
+    for fila in range(fila_inicio, fila_fin + 1):
+        for col in range(columna_inicio, columna_fin + 1):
+            celda = ws.cell(row=fila, column=col)
+            
+            # Verificar si la celda tiene un valor numérico
+            try:
+                if celda.value is not None and str(celda.value).replace('.', '', 1).isdigit():
+                    valor = float(celda.value)
+                    
+                    # Aplicar color según el rango
+                    if 0 <= valor <= 43:
+                        celda.fill = rosa
+                    elif 43 < valor < 54:
+                        celda.fill = amarillo
+                    elif valor >= 54:
+                        celda.fill = verde
+                        
+            except (ValueError, TypeError):
+                # Si no es número, no hacer nada
+                pass
+
+# ------------------ FUNCIÓN PARA ENCONTRAR COLUMNAS NUMÉRICAS ------------------
+def encontrar_columnas_numericas(ws, fila_encabezados):
+    """
+    Encuentra automáticamente las columnas que contienen valores numéricos
+    basándose en los encabezados de días (1 al 31)
+    """
+    columnas_numericas = []
+    
+    for col in range(1, ws.max_column + 1):
+        celda = ws.cell(row=fila_encabezados, column=col)
+        if celda.value and str(celda.value).isdigit():
+            try:
+                dia = int(celda.value)
+                if 1 <= dia <= 31:
+                    columnas_numericas.append(col)
+            except ValueError:
+                pass
+    
+    if columnas_numericas:
+        return min(columnas_numericas), max(columnas_numericas)
+    else:
+        # Valores por defecto si no encuentra días
+        return 3, 33
 
     # --- 🔁 Combinación solo para la tabla TV ---
     nombre_hoja = ws.cell(row=fila_inicio + len(encabezado_lineas) - 1, column=1).value
@@ -226,8 +287,28 @@ for base in nombres_bases:
             f"PERIODO: {nombre_mes_es.upper()}",
             f"FECHA PRESENTACIÓN: {fecha_actual}"
         ]
+        if tipo == "FM":
+            insertar_imagenes(ws, fila_actual + 4, tipo="FM")  # Posición relativa al inicio
+        elif tipo == "TV":
+            insertar_imagenes(ws, fila_actual + 2, tipo="TV")  # Posición después de la tabla FM
 
         formatear_hoja(ws, fila_actual, encabezado_fm)
+
+        # ✅ ENCONTRAR Y COLOREAR CELDAS NUMÉRICAS
+        # Calcular fila de encabezados de columnas (donde dice "ESTACION", "Frecuencia", etc.)
+        fila_encabezados_columnas = fila_actual + len(encabezado_fm)
+
+        # Encontrar columnas con valores numéricos (días 1-31)
+        col_inicio_numeros, col_fin_numeros = encontrar_columnas_numericas(ws, fila_encabezados_columnas)
+
+        # Calcular filas de datos (después de los encabezados de columnas)
+        fila_inicio_datos = fila_encabezados_columnas + 1
+        fila_fin_datos = fila_inicio_datos + len(pivot) - 1
+
+        # Aplicar colores a las celdas numéricas
+        colorear_celdas_por_valor(ws, fila_inicio_datos, fila_fin_datos, 
+                                col_inicio_numeros, col_fin_numeros)
+
         fila_actual = ws.max_row + 3
 
     nombre_salida = f"{base}_ReporteUnificado.xlsx"
@@ -289,7 +370,7 @@ for base in nombres_bases:
 
         # Asignar nuevo ancho
         sheet.column_dimensions[get_column_letter(col_penultima)].width = ancho_combinado
-
-    
+        ws.sheet_view.showGridLines = False
+        
     wb.save(os.path.join(ruta_salida, nombre_salida))
     print(f"✅ Archivo generado: {nombre_salida}")
