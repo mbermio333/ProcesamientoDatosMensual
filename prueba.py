@@ -152,10 +152,18 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
 
             # ----- COLOREO SEGÚN REGLAS -----
             if tipo == "FM":
-                if nombre_normalizado == "Promedio (dBuV/m)" and valor < 54:
-                    celda.fill = rojo
-                elif nombre_normalizado == "Ancho de Banda (KHz)" and valor > 220:
-                    celda.fill = rojo
+                if nombre_normalizado == "Promedio (dBuV/m)":
+                    if 0 <= valor <= 43:
+                        celda.fill = rojo
+                    elif 43 < valor < 54:
+                        celda.fill = amarillo
+                    elif valor >= 54:
+                        celda.fill = verde
+                elif nombre_normalizado == "Ancho de Banda (KHz)":
+                    if valor <= 220:
+                        celda.fill = verde
+                    elif valor > 220:
+                        celda.fill = rojo
                 elif nombre_normalizado in [str(d) for d in range(1, 32)]:
                     if 0 <= valor <= 43:
                         celda.fill = rosa
