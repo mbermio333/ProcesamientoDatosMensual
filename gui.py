@@ -2,6 +2,8 @@
 import sys
 import os
 import json
+import subprocess
+import platform
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QPushButton, QLabel, QTextEdit, 
                              QFileDialog, QProgressBar, QMessageBox, QGroupBox)
@@ -153,11 +155,17 @@ class MainWindow(QMainWindow):
         self.stop_btn.setStyleSheet("QPushButton { background-color: #f44336; color: white; font-weight: bold; padding: 10px; }")
         self.stop_btn.setEnabled(False)
         
+        # Nuevo botón para abrir carpeta de salida
+        self.open_output_btn = QPushButton("Abrir Carpeta de Salida")
+        self.open_output_btn.setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 10px; }")
+        self.open_output_btn.clicked.connect(self.open_output_folder)
+        
         self.start_btn.clicked.connect(self.start_processing)
         self.stop_btn.clicked.connect(self.stop_processing)
         
         action_layout.addWidget(self.start_btn)
         action_layout.addWidget(self.stop_btn)
+        action_layout.addWidget(self.open_output_btn)
         layout.addLayout(action_layout)
         
         # Barra de progreso
@@ -222,6 +230,31 @@ class MainWindow(QMainWindow):
                 self.config["output_path"] = new_path
                 self.save_config()
                 self.log_message(f"Ruta de salida cambiada a: {new_path}")
+    
+    def open_output_folder(self):
+        """Abrir la carpeta de salida en el explorador de archivos"""
+        output_path = self.output_path_label.text()
+        
+        if not os.path.exists(output_path):
+            self.log_message(f"La carpeta de salida no existe: {output_path}")
+            QMessageBox.warning(self, "Carpeta no encontrada", 
+                               f"La carpeta de salida no existe:\n{output_path}")
+            return
+        
+        try:
+            # Abrir la carpeta según el sistema operativo
+            if platform.system() == "Windows":
+                os.startfile(output_path)
+            elif platform.system() == "Darwin":  # macOS
+                subprocess.Popen(["open", output_path])
+            else:  # Linux
+                subprocess.Popen(["xdg-open", output_path])
+                
+            self.log_message(f"Carpeta de salida abierta: {output_path}")
+        except Exception as e:
+            error_msg = f"No se pudo abrir la carpeta: {str(e)}"
+            self.log_message(error_msg)
+            QMessageBox.critical(self, "Error", error_msg)
     
     def start_processing(self):
         """Iniciar el procesamiento"""
