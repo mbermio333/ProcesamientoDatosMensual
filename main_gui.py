@@ -98,6 +98,7 @@ class DatabaseApp(QMainWindow):
         paths_group.setLayout(paths_layout)
         layout.addWidget(paths_group)
         
+
         
         # Botón de procesamiento
         self.btn_start = QPushButton("Iniciar Procesamiento")
