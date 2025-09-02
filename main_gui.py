@@ -22,6 +22,8 @@ from PyQt5.QtGui import QIcon
 class DatabaseApp(QMainWindow):
     def __init__(self):
         super().__init__()
+        # Rutas fijas para las imágenes
+        self.ruta_imagenes = "Img"  # Ruta fija, no configurable
         self.initUI()
         
     def initUI(self):
@@ -59,7 +61,7 @@ class DatabaseApp(QMainWindow):
         config_tab = QWidget()
         layout = QVBoxLayout(config_tab)
         
-        # Grupo para rutas
+        # Grupo para rutas (solo las necesarias)
         paths_group = QGroupBox("Configuración de Rutas")
         paths_layout = QVBoxLayout()
         
@@ -93,18 +95,9 @@ class DatabaseApp(QMainWindow):
         output_layout.addWidget(self.btn_output_browse)
         paths_layout.addLayout(output_layout)
         
-        # Ruta Imágenes
-        img_layout = QHBoxLayout()
-        img_layout.addWidget(QLabel("Ruta de Imágenes:"))
-        self.img_path = QLineEdit("Img")
-        img_layout.addWidget(self.img_path)
-        self.btn_img_browse = QPushButton("Examinar")
-        self.btn_img_browse.clicked.connect(lambda: self.browse_folder(self.img_path))
-        img_layout.addWidget(self.btn_img_browse)
-        paths_layout.addLayout(img_layout)
-        
         paths_group.setLayout(paths_layout)
         layout.addWidget(paths_group)
+        
         
         # Botón de procesamiento
         self.btn_start = QPushButton("Iniciar Procesamiento")
@@ -139,9 +132,31 @@ class DatabaseApp(QMainWindow):
             line_edit.setText(folder)
     
     def start_processing(self):
+        # Verificar que existan las imágenes antes de procesar
+        if not self.verificar_imagenes():
+            QMessageBox.warning(self, "Advertencia", 
+                               "No se encontraron las imágenes necesarias en la carpeta 'Img/'.\n"
+                               "Asegúrese de tener ARCOTEL.png y nEcuador.png")
+            return
+        
         self.log_text.append("Iniciando procesamiento...")
         self.status_bar.showMessage("Procesando...")
         self.process_files()
+    
+    def verificar_imagenes(self):
+        """Verifica que existan las imágenes necesarias"""
+        logo_izquierda = os.path.join(self.ruta_imagenes, "ARCOTEL.png")
+        logo_derecha = os.path.join(self.ruta_imagenes, "nEcuador.png")
+        
+        arcotel_existe = os.path.exists(logo_izquierda)
+        necuador_existe = os.path.exists(logo_derecha)
+        
+        if not arcotel_existe:
+            self.log_text.append("⚠️ No se encontró: Img/ARCOTEL.png")
+        if not necuador_existe:
+            self.log_text.append("⚠️ No se encontró: Img/nEcuador.png")
+        
+        return arcotel_existe and necuador_existe
     
     # ------------------ FUNCIONES ACTUALIZADAS ------------------
     
@@ -222,20 +237,23 @@ class DatabaseApp(QMainWindow):
         ws.row_dimensions[inicio_fila_tabla].height = 45
 
     def insertar_imagenes(self, ws, fila_destino, tipo):
-        logo_izquierda = os.path.join(self.img_path.text(), "ARCOTEL.png")
-        logo_derecha = os.path.join(self.img_path.text(), "nEcuador.png")
+        # Usar la ruta fija de imágenes
+        logo_izquierda = os.path.join(self.ruta_imagenes, "ARCOTEL.png")
+        logo_derecha = os.path.join(self.ruta_imagenes, "nEcuador.png")
 
         if os.path.exists(logo_izquierda):
             img_left = XLImage(logo_izquierda)
             img_left.width = 500
             img_left.height = 100
             ws.add_image(img_left, f"A{fila_destino}")
+            self.log_text.append("✅ Imagen ARCOTEL.png insertada")
 
         if os.path.exists(logo_derecha):
             img_right = XLImage(logo_derecha)
             img_right.width = 260
             img_right.height = 120
             ws.add_image(img_right, f"AJ{fila_destino}")
+            self.log_text.append("✅ Imagen nEcuador.png insertada")
 
     def colorear_celdas_por_valor(self, ws, fila_inicio, fila_fin, tipo, col_names):
         """Colorea las celdas con criterios específicos por columna"""
@@ -373,7 +391,6 @@ class DatabaseApp(QMainWindow):
             ruta_fm = self.fm_path.text()
             ruta_tv = self.tv_path.text()
             ruta_salida = self.output_path.text()
-            ruta_imagenes = self.img_path.text()
             
             os.makedirs(ruta_salida, exist_ok=True)
             fecha_actual = datetime.today().strftime("%d/%m/%Y")
