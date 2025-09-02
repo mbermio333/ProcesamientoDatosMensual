@@ -116,44 +116,117 @@ def insertar_imagenes(ws, fila_destino, tipo):
 
     
 # ------------------ FUNCIÓN PARA COLOREAR CELDAS ------------------
-def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, columna_inicio, columna_fin):
-    """
-    Colorea las celdas según su valor numérico:
-    - Verde: 0 a 100
-    - Amarillo: 100 a 200  
-    - Rojo: mayor a 200
-    """
-    from openpyxl.styles import PatternFill
-    
-    # Colores corregidos con formato ARGB (FF + código RGB)
-    verde = PatternFill(start_color="FFCDFECE", end_color="FFCDFECE", fill_type="solid")
-    amarillo = PatternFill(start_color="FFFFFE9F", end_color="FFFFFE9F", fill_type="solid")
-    rosa = PatternFill(start_color="FFFD9BCB", end_color="FFFD9BCB", fill_type="solid")
-    rojo = PatternFill(start_color="FFFC4A2C", end_color="FFFC4A2C", fill_type="solid")  # por si lo necesitas también
 
-    # Iterar por todas las celdas en el rango
+def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
+    from openpyxl.styles import PatternFill
+
+    rojo = PatternFill(start_color="FFFC4A2C", end_color="FFFC4A2C", fill_type="solid")
+    amarillo = PatternFill(start_color="FFFFFE9F", end_color="FFFFFE9F", fill_type="solid")
+    verde = PatternFill(start_color="FFCDFECE", end_color="FFCDFECE", fill_type="solid")
+    rosa = PatternFill(start_color="FFFD9BCB", end_color="FFFD9BCB", fill_type="solid")
+
+    encabezados = {}
+    for col in range(1, ws.max_column + 1):
+        val = ws.cell(row=fila_inicio - 1, column=col).value
+        if isinstance(val, str):
+            val_normalizado = val.strip().replace('\n', ' ')
+            encabezados[val_normalizado] = col
+        elif isinstance(val, (int, float)):
+            encabezados[str(val)] = col
+
+    def obtener_banda(freq):
+        if (54 <= freq <= 72) or (76 <= freq <= 88):
+            return 'I'
+        elif 174 <= freq <= 216:
+            return 'III'
+        elif (470 <= freq <= 488) or (512 <= freq <= 608):
+            return 'IV'
+        elif 614 <= freq <= 698:
+            return 'V'
+        else:
+            return None
+
+    def get_umbral_color(banda, valor):
+        if banda == 'I':
+            if valor < 47:
+                return rosa
+            elif 47 <= valor < 68:
+                return amarillo
+            else:
+                return verde
+        elif banda == 'III':
+            if valor < 56:
+                return rosa
+            elif 56 <= valor < 71:
+                return amarillo
+            else:
+                return verde
+        elif banda in ['IV', 'V']:
+            if valor < 64:
+                return rosa
+            elif 64 <= valor < 74:
+                return amarillo
+            else:
+                return verde
+        else:
+            return None
+
     for fila in range(fila_inicio, fila_fin + 1):
-        for col in range(columna_inicio, columna_fin + 1):
+        frecuencia_col = None
+        for key in encabezados:
+            if "frecuencia" in key.lower():
+                frecuencia_col = encabezados[key]
+                break
+
+        frecuencia = ws.cell(row=fila, column=frecuencia_col).value
+        try:
+            frecuencia = float(frecuencia)
+            banda = obtener_banda(frecuencia)
+        except:
+            banda = None
+
+        for nombre_col in col_names:
+            nombre_normalizado = str(nombre_col).strip().replace('\n', ' ')
+            if nombre_normalizado not in encabezados:
+                continue
+
+            col = encabezados[nombre_normalizado]
             celda = ws.cell(row=fila, column=col)
-            
-            # Verificar si la celda tiene un valor numérico
+            valor = celda.value
+
             try:
-                if celda.value is not None and str(celda.value).replace('.', '', 1).isdigit():
-                    valor = float(celda.value)
-                    
-                    # Aplicar color según el rango
-                    if 0 <= valor <= 43:
-                        celda.fill = rosa
-                    elif 43 < valor < 54:
+                valor = float(valor)
+            except (ValueError, TypeError):
+                continue
+
+            if tipo == "FM":
+                if nombre_normalizado == "Promedio (dBuV/m)":
+                    if 0 <= valor <= 30:
+                        celda.fill = rojo
+                    elif 30 < valor < 54:
                         celda.fill = amarillo
                     elif valor >= 54:
                         celda.fill = verde
-                        
-            except (ValueError, TypeError):
-                # Si no es número, no hacer nada
-                pass
+                elif nombre_normalizado == "Ancho de Banda (KHz)":
+                    if valor <= 220:
+                        celda.fill = verde
+                    elif valor > 220:
+                        celda.fill = rojo
+                elif nombre_normalizado in [str(d) for d in range(1, 32)]:
+                    if 0 <= valor <= 30:
+                        celda.fill = rosa
+                    elif 30 < valor < 54:
+                        celda.fill = amarillo
+                    elif valor >= 54:
+                        celda.fill = verde
 
-# ------------------ FUNCIÓN PARA ENCONTRAR COLUMNAS NUMÉRICAS ------------------
+            elif tipo == "TV":
+                if banda:
+                    if nombre_normalizado == "Promedio (dBuV/m)" or nombre_normalizado in [str(d) for d in range(1, 32)]:
+                        color = get_umbral_color(banda, valor)
+                        if color:
+                            celda.fill = color
+
 def encontrar_columnas_numericas(ws, fila_encabezados):
     """
     Encuentra automáticamente las columnas que contienen valores numéricos
@@ -296,18 +369,14 @@ for base in nombres_bases:
 
         # ✅ ENCONTRAR Y COLOREAR CELDAS NUMÉRICAS
         # Calcular fila de encabezados de columnas (donde dice "ESTACION", "Frecuencia", etc.)
+        # Después de formatear la hoja y antes de aumentar fila_actual
         fila_encabezados_columnas = fila_actual + len(encabezado_fm)
-
-        # Encontrar columnas con valores numéricos (días 1-31)
-        col_inicio_numeros, col_fin_numeros = encontrar_columnas_numericas(ws, fila_encabezados_columnas)
-
-        # Calcular filas de datos (después de los encabezados de columnas)
         fila_inicio_datos = fila_encabezados_columnas + 1
         fila_fin_datos = fila_inicio_datos + len(pivot) - 1
 
-        # Aplicar colores a las celdas numéricas
-        colorear_celdas_por_valor(ws, fila_inicio_datos, fila_fin_datos, 
-                                col_inicio_numeros, col_fin_numeros)
+        columnas_colorear = ["Promedio (dBuV/m)", "Ancho de Banda\n(KHz)", *list(range(1, 32))]
+        colorear_celdas_por_valor(ws, fila_inicio_datos, fila_fin_datos, tipo, columnas_colorear)
+
 
         fila_actual = ws.max_row + 3
 

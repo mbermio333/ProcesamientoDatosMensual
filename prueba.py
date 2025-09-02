@@ -114,17 +114,17 @@ def insertar_imagenes(ws, fila_destino, tipo):
         ws.add_image(img_right, f"AJ{fila_destino}")
 
 
-    #####FUNCION PARA COLOREAR CELDAS#######
+    
+# ------------------ FUNCIÓN PARA COLOREAR CELDAS ------------------
+
 def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
     from openpyxl.styles import PatternFill
 
-    # Definición de colores
     rojo = PatternFill(start_color="FFFC4A2C", end_color="FFFC4A2C", fill_type="solid")
     amarillo = PatternFill(start_color="FFFFFE9F", end_color="FFFFFE9F", fill_type="solid")
     verde = PatternFill(start_color="FFCDFECE", end_color="FFCDFECE", fill_type="solid")
     rosa = PatternFill(start_color="FFFD9BCB", end_color="FFFD9BCB", fill_type="solid")
 
-    # Normaliza nombres de columnas
     encabezados = {}
     for col in range(1, ws.max_column + 1):
         val = ws.cell(row=fila_inicio - 1, column=col).value
@@ -134,9 +134,58 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
         elif isinstance(val, (int, float)):
             encabezados[str(val)] = col
 
+    def obtener_banda(freq):
+        if (54 <= freq <= 72) or (76 <= freq <= 88):
+            return 'I'
+        elif 174 <= freq <= 216:
+            return 'III'
+        elif (470 <= freq <= 488) or (512 <= freq <= 608):
+            return 'IV'
+        elif 614 <= freq <= 698:
+            return 'V'
+        else:
+            return None
+
+    def get_umbral_color(banda, valor):
+        if banda == 'I':
+            if valor < 47:
+                return rosa
+            elif 47 <= valor < 68:
+                return amarillo
+            else:
+                return verde
+        elif banda == 'III':
+            if valor < 56:
+                return rosa
+            elif 56 <= valor < 71:
+                return amarillo
+            else:
+                return verde
+        elif banda in ['IV', 'V']:
+            if valor < 64:
+                return rosa
+            elif 64 <= valor < 74:
+                return amarillo
+            else:
+                return verde
+        else:
+            return None
+
     for fila in range(fila_inicio, fila_fin + 1):
+        frecuencia_col = None
+        for key in encabezados:
+            if "frecuencia" in key.lower():
+                frecuencia_col = encabezados[key]
+                break
+
+        frecuencia = ws.cell(row=fila, column=frecuencia_col).value
+        try:
+            frecuencia = float(frecuencia)
+            banda = obtener_banda(frecuencia)
+        except:
+            banda = None
+
         for nombre_col in col_names:
-            # Tratar nombre_col como texto o número
             nombre_normalizado = str(nombre_col).strip().replace('\n', ' ')
             if nombre_normalizado not in encabezados:
                 continue
@@ -150,7 +199,6 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
             except (ValueError, TypeError):
                 continue
 
-            # ----- COLOREO SEGÚN REGLAS -----
             if tipo == "FM":
                 if nombre_normalizado == "Promedio (dBuV/m)":
                     if 0 <= valor <= 43:
@@ -173,23 +221,12 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
                         celda.fill = verde
 
             elif tipo == "TV":
-                if nombre_normalizado == "Promedio (dBuV/m)":
-                    if valor > 71:
-                        celda.fill = verde
-                    elif 56 <= valor <= 71:
-                        celda.fill = amarillo
-                    elif valor < 56:
-                        celda.fill = rojo
-                elif nombre_normalizado in [str(d) for d in range(1, 32)]:
-                    if valor > 71:
-                        celda.fill = verde
-                    elif 56 <= valor <= 71:
-                        celda.fill = amarillo
-                    elif valor < 56:
-                        celda.fill = rosa
+                if banda:
+                    if nombre_normalizado == "Promedio (dBuV/m)" or nombre_normalizado in [str(d) for d in range(1, 32)]:
+                        color = get_umbral_color(banda, valor)
+                        if color:
+                            celda.fill = color
 
-
-# ------------------ FUNCIÓN PARA ENCONTRAR COLUMNAS NUMÉRICAS ------------------
 def encontrar_columnas_numericas(ws, fila_encabezados):
     """
     Encuentra automáticamente las columnas que contienen valores numéricos
@@ -337,7 +374,7 @@ for base in nombres_bases:
         fila_inicio_datos = fila_encabezados_columnas + 1
         fila_fin_datos = fila_inicio_datos + len(pivot) - 1
 
-        columnas_colorear = ["Promedio (dBuV/m)", "Ancho de Banda (KHz)", *list(range(1, 32))]
+        columnas_colorear = ["Promedio (dBuV/m)", "Ancho de Banda\n(KHz)", *list(range(1, 32))]
         colorear_celdas_por_valor(ws, fila_inicio_datos, fila_fin_datos, tipo, columnas_colorear)
 
 
