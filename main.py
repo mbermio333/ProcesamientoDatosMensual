@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import json
 import pandas as pd
 from datetime import datetime
 from openpyxl import load_workbook, Workbook
@@ -9,10 +10,31 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.drawing.image import Image as XLImage
 
 # ------------------ CONFIGURACIÓN GENERAL ------------------
-# Estas variables ahora se pueden establecer desde la GUI
-ruta_fm = "MedicionesFmCSV"
-ruta_tv = "MedicionesTvCSV"
-ruta_salida = "ReportesUnificados"
+# Cargar configuración desde archivo
+CONFIG_FILE = "config.json"
+
+def cargar_configuracion():
+    """Cargar configuración desde archivo JSON"""
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                return config
+        except:
+            pass
+    
+    # Valores por defecto si no hay archivo de configuración
+    return {
+        "fm_path": "MedicionesFmCSV",
+        "tv_path": "MedicionesTvCSV", 
+        "output_path": "ReportesUnificados"
+    }
+
+# Cargar configuración al inicio
+config = cargar_configuracion()
+ruta_fm = config.get("fm_path", "MedicionesFmCSV")
+ruta_tv = config.get("tv_path", "MedicionesTvCSV")
+ruta_salida = config.get("output_path", "ReportesUnificados")
 ruta_imagenes = "Img"
 fecha_actual = datetime.now().strftime("%d/%m/%Y")  # Añadir aquí
 # ------------------ FUNCIONES AUXILIARES ------------------
@@ -322,7 +344,7 @@ def procesar_datos(callback_progreso=None, callback_log=None):
                 df["Tiempo"] = pd.to_datetime(df["Tiempo"], format="%d/%m/%Y  %H:%M:%S,%f", errors='coerce').dt.date
                 mes_objetivo = df["Tiempo"].dropna().apply(lambda x: x.month).value_counts().idxmax()
 
-                nombre_mes_es = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"][mes_objetivo - 1]
+                nombre_mes_es = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agusto", "septiembre", "octubre", "noviembre", "diciembre"][mes_objetivo - 1]
                 df = df[df["Tiempo"].apply(lambda x: x.month == mes_objetivo)]
                 df["DIA"] = pd.to_datetime(df["Tiempo"]).dt.day
 
@@ -350,6 +372,7 @@ def procesar_datos(callback_progreso=None, callback_log=None):
                 pivot["Medición Manual"] = ""
                 pivot["OBSERVACIONES"] = ""
                 pivot = pivot.sort_values(by="Frecuencia (MHz)")
+                pivot = pivot.reset_index(drop=True)
 
                 for col in pivot.select_dtypes(include="number").columns:
                     pivot[col] = pivot[col].round(2)

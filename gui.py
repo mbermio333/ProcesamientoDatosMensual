@@ -1,11 +1,20 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
+import json
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QPushButton, QLabel, QTextEdit, 
                              QFileDialog, QProgressBar, QMessageBox, QGroupBox)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont
+
+# Añadir constantes para el archivo de configuración
+CONFIG_FILE = "config.json"
+DEFAULT_PATHS = {
+    "fm_path": "MedicionesFmCSV",
+    "tv_path": "MedicionesTvCSV", 
+    "output_path": "ReportesUnificados"
+}
 
 class WorkerThread(QThread):
     """Hilo para ejecutar el procesamiento en segundo plano"""
@@ -53,8 +62,27 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.worker = None
+        self.config = self.load_config()
         self.initUI()
         
+    def load_config(self):
+        """Cargar configuración desde archivo JSON"""
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, 'r') as f:
+                    return json.load(f)
+            except:
+                return DEFAULT_PATHS.copy()
+        return DEFAULT_PATHS.copy()
+    
+    def save_config(self):
+        """Guardar configuración en archivo JSON"""
+        try:
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(self.config, f)
+        except Exception as e:
+            self.log_message(f"Error guardando configuración: {str(e)}")
+    
     def initUI(self):
         self.setWindowTitle("Sistema de Reportes Unificados - ARCOTEL")
         self.setGeometry(100, 100, 900, 700)  # Ventana un poco más grande
@@ -78,11 +106,11 @@ class MainWindow(QMainWindow):
         config_group.setStyleSheet("QGroupBox { font-weight: bold; }")
         config_layout = QVBoxLayout()
         
-        # Rutas de entrada con mejor formato
+        # Rutas de entrada con mejor formato - usar valores de configuración
         paths = [
-            ("Ruta FM:", "MedicionesFmCSV", "fm_path_label"),
-            ("Ruta TV:", "MedicionesTvCSV", "tv_path_label"), 
-            ("Ruta Salida:", "ReportesUnificados", "output_path_label")
+            ("Ruta FM:", self.config.get("fm_path", "MedicionesFmCSV"), "fm_path_label"),
+            ("Ruta TV:", self.config.get("tv_path", "MedicionesTvCSV"), "tv_path_label"), 
+            ("Ruta Salida:", self.config.get("output_path", "ReportesUnificados"), "output_path_label")
         ]
         
         for label_text, default_path, attr_name in paths:
@@ -173,6 +201,8 @@ class MainWindow(QMainWindow):
             new_path = dialog.getExistingDirectory(self, "Seleccionar directorio FM", current_path)
             if new_path:
                 self.fm_path_label.setText(new_path)
+                self.config["fm_path"] = new_path
+                self.save_config()
                 self.log_message(f"Ruta FM cambiada a: {new_path}")
                 
         elif path_type == "tv":
@@ -180,6 +210,8 @@ class MainWindow(QMainWindow):
             new_path = dialog.getExistingDirectory(self, "Seleccionar directorio TV", current_path)
             if new_path:
                 self.tv_path_label.setText(new_path)
+                self.config["tv_path"] = new_path
+                self.save_config()
                 self.log_message(f"Ruta TV cambiada a: {new_path}")
                 
         elif path_type == "output":
@@ -187,6 +219,8 @@ class MainWindow(QMainWindow):
             new_path = dialog.getExistingDirectory(self, "Seleccionar directorio de salida", current_path)
             if new_path:
                 self.output_path_label.setText(new_path)
+                self.config["output_path"] = new_path
+                self.save_config()
                 self.log_message(f"Ruta de salida cambiada a: {new_path}")
     
     def start_processing(self):
@@ -254,6 +288,11 @@ class MainWindow(QMainWindow):
             self.log_message("Error en el procesamiento.")
             self.status_label.setText("Error en el procesamiento")
             QMessageBox.warning(self, "Error", "Ocurrió un error durante el procesamiento.")
+    
+    def closeEvent(self, event):
+        """Se ejecuta cuando la ventana se cierra"""
+        self.save_config()
+        super().closeEvent(event)
 
 def main():
     # Configurar la aplicación
