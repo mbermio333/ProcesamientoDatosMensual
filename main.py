@@ -601,6 +601,28 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv):
                 num_lineas = str(celda.value).count("\n") + 1
                 ws_obs.row_dimensions[fila].height = max(ws_obs.row_dimensions[fila].height or 15, num_lineas * 15)
 
+# ------------------ FUNCIÓN PARA OBTENER EL CÓDIGO SEGÚN LA BASE ------------------
+def obtener_codigo_base(base):
+    """Obtiene el código correspondiente según el nombre de la base"""
+    correspondencia = {
+        "zamora": "SCS-L01",
+        "loja": "SCS-L02", 
+        "cañar": "SCS-L03",
+        "macas": "SCS-L04",
+        "machala": "SCC-L04",
+        "cuenca": "SCS-L05"
+    }
+    return correspondencia.get(base.lower(), f"SCS-{base.upper()}")
+
+# ------------------ FUNCIÓN PARA OBTENER EL NOMBRE DEL MES EN ESPAÑOL ------------------
+def obtener_nombre_mes_es(numero_mes):
+    """Convierte el número de mes a nombre en español"""
+    meses = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    return meses[numero_mes - 1] if 1 <= numero_mes <= 12 else ""
+
 # ------------------ FUNCIÓN PRINCIPAL DE PROCESAMIENTO ------------------
 
 def procesar_datos(callback_progreso=None, callback_log=None):
@@ -765,7 +787,10 @@ def procesar_datos(callback_progreso=None, callback_log=None):
                     wb.move_sheet(hoja, -len(orden_hojas))
                     orden_hojas.remove(hoja)
             
-            nombre_salida = f"{base}_ReporteUnificado.xlsx"
+            codigo_base = obtener_codigo_base(base)
+            nombre_ciudad = "TAMBO" if base.lower() == "cañar" else base.upper()
+            nombre_mes_completo = obtener_nombre_mes_es(mes_objetivo)
+            nombre_salida = f"{codigo_base}_Procesamiento{nombre_ciudad}_{nombre_mes_completo}2025.xlsx"
             
             # Combinar observaciones para TV
             for sheet in wb.worksheets:
