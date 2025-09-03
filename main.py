@@ -355,6 +355,16 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv):
     thin = Side(border_style="thin")
     borde_grueso = Side(border_style="medium")
     
+    # Definir anchos específicos para columnas
+    anchos_especificos = {
+        "ESTACION": 25,
+        "Frecuencia (MHz)": 18,
+        "Promedio(dBuV/m)": 18,
+        "Ancho de Banda (KHz)": 20,  # Ancho específico para esta columna
+        "Medición Manual AB(KHz) o NIVEL (dBµV/m)": 20,
+        "OBSERVACIONES": 35
+    }
+    
     # Agregar datos de FM (ordenados por frecuencia)
     if datos_fm is not None and not datos_fm.empty:
         # Ordenar datos FM por frecuencia (de menor a mayor)
@@ -370,7 +380,7 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv):
         
         # Encabezados de columnas para FM
         encabezados_fm = ["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", "Ancho de Banda (KHz)", 
-                         "Medición Manual\nAB(KHz) o NIVEL\n(dBµV/m)", "OBSERVACIONES"]
+                         "Medición Manual AB(KHz)\no NIVEL (dBµV/m)", "OBSERVACIONES"]
         
         for col, encabezado in enumerate(encabezados_fm, 1):
             ws_obs.cell(row=fila_actual, column=col, value=encabezado)
@@ -380,10 +390,13 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv):
             # Borde grueso para encabezados
             celda.border = Border(top=borde_grueso, bottom=thin, left=borde_grueso if col == 1 else thin, 
                                  right=borde_grueso if col == len(encabezados_fm) else thin)
+            
+            # Aplicar ancho específico si existe en el diccionario
+            if encabezado in anchos_especificos:
+                ws_obs.column_dimensions[get_column_letter(col)].width = anchos_especificos[encabezado]
         
         fila_inicio_fm = fila_actual
         fila_actual += 1
-
         
         # Datos de FM ordenados
         for _, row in datos_fm_ordenados.iterrows():
@@ -429,7 +442,7 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv):
         
         # Encabezados de columnas para TV
         encabezados_tv = ["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", 
-                         "Medición Manual\nAB(KHz) o NIVEL\n(dBµV/m)", "OBSERVACIONES"]
+                         "Medición Manual AB(KHz)\no NIVEL (dBµV/m)", "OBSERVACIONES"]
         
         for col, encabezado in enumerate(encabezados_tv, 1):
             ws_obs.cell(row=fila_actual, column=col, value=encabezado)
@@ -439,6 +452,10 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv):
             # Borde grueso para encabezados
             celda.border = Border(top=borde_grueso, bottom=thin, left=borde_grueso if col == 1 else thin, 
                                  right=borde_grueso if col == len(encabezados_tv) else thin)
+            
+            # Aplicar ancho específico si existe en el diccionario
+            if encabezado in anchos_especificos:
+                ws_obs.column_dimensions[get_column_letter(col)].width = anchos_especificos[encabezado]
         
         fila_inicio_tv = fila_actual
         fila_actual += 1
@@ -471,17 +488,19 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv):
         
         fila_fin_tv = fila_actual - 1
     
-    # Ajustar anchos de columnas
+    # Ajustar anchos automáticamente para columnas sin ancho específico
     for col in range(1, ws_obs.max_column + 1):
         col_letter = get_column_letter(col)
-        max_length = 0
-        for cell in ws_obs[col_letter]:
-            try:
-                if cell.value:
-                    max_length = max(max_length, len(str(cell.value)))
-            except:
-                pass
-        ws_obs.column_dimensions[col_letter].width = max_length + 2
+        # Solo ajustar si no se ha establecido un ancho específico
+        if ws_obs.column_dimensions[col_letter].width is None:
+            max_length = 0
+            for cell in ws_obs[col_letter]:
+                try:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                except:
+                    pass
+            ws_obs.column_dimensions[col_letter].width = max_length + 2
     
     # Colorear celdas según valores - APLICAR REGLAS DE COLOR MANUALMENTE
     from openpyxl.styles import PatternFill
@@ -628,7 +647,7 @@ def procesar_datos(callback_progreso=None, callback_log=None):
         try:
             wb = Workbook()
             ws = wb.active
-            ws.title = "Resumen"
+            ws.title = "Informe"
             fila_actual = 1
             
             # Variables para almacenar datos para la hoja de observaciones
@@ -704,7 +723,7 @@ def procesar_datos(callback_progreso=None, callback_log=None):
                     "COORDINACIÓN ZONAL 6",
                     "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
                     titulo,
-                    "CIUDAD:" + ("tambo" if base == "cañar" else base.upper()),
+                    "CIUDAD:" + ("TAMBO" if base == "cañar" else base.upper()),
                     f"PERIODO: {nombre_mes_es.upper()}",
                     f"FECHA PRESENTACIÓN: {fecha_actual}"
                 ] if tipo == "FM" else [
@@ -712,7 +731,7 @@ def procesar_datos(callback_progreso=None, callback_log=None):
                     "COORDINACIÓN ZONAL 6",
                     "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
                     titulo,
-                    "CIUDAD:" + ("tambo" if base == "cañar" else base.upper()),
+                    "CIUDAD:" + ("TAMBO" if base == "cañar" else base.upper()),
                     f"PERIODO: {nombre_mes_es.upper()}",
                     f"FECHA PRESENTACIÓN: {fecha_actual}"
                 ]
@@ -740,7 +759,7 @@ def procesar_datos(callback_progreso=None, callback_log=None):
             crear_hoja_observaciones(wb, datos_fm, datos_tv)
             
             # Reordenar hojas
-            orden_hojas = ["Resumen", "Manual FM", "Manual TV", "Observaciones"]
+            orden_hojas = ["Informe", "Manual FM", "Manual TV", "Observaciones"]
             for hoja in orden_hojas:
                 if hoja in wb.sheetnames:
                     wb.move_sheet(hoja, -len(orden_hojas))
@@ -750,7 +769,7 @@ def procesar_datos(callback_progreso=None, callback_log=None):
             
             # Combinar observaciones para TV
             for sheet in wb.worksheets:
-                if "Resumen" not in sheet.title:
+                if "Informe" not in sheet.title:
                     continue
 
                 # Buscar fila del segundo encabezado (TV)
