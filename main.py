@@ -237,6 +237,13 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
                         celda.fill = verde
                     elif valor > 220:
                         celda.fill = rojo
+                         # Escribir mensaje en la columna "OBSERVACIONES"
+                        col_obs = encabezados.get("OBSERVACIONES")
+                        if col_obs:
+                            celda_obs = ws.cell(row=fila, column=col_obs)
+                            mensaje = "Opera con ancho de banda mayor\na lo autorizado\n(medición automática)"
+                            celda_obs.value = mensaje
+                            celda_obs.alignment = Alignment(wrap_text=True)
                 elif nombre_normalizado in [str(d) for d in range(1, 32)]:
                     if 0 <= valor <= 30:
                         celda.fill = rosa
@@ -248,9 +255,32 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
             elif tipo == "TV":
                 if banda:
                     if nombre_normalizado == "Promedio (dBuV/m)" or nombre_normalizado in [str(d) for d in range(1, 32)]:
-                        color = get_umbral_color(banda, valor)
-                        if color:
-                            celda.fill = color
+                        frecuencia_col = encabezados.get("Frecuencia (MHz)")
+                        observaciones_col = encabezados.get("OBSERVACIONES")
+                        # Dentro de if nombre_normalizado == "Promedio (dBuV/m)":
+                        frecuencia = ws.cell(row=fila, column=frecuencia_col).value if frecuencia_col else None
+
+                        if frecuencia:
+                            banda = obtener_banda(frecuencia)
+                            color = get_umbral_color(banda, valor)
+
+                            if color:
+                                celda.fill = color
+                                # Agrega mensaje si es rosa (menor al mínimo por banda)
+                                if color == rosa and observaciones_col:
+                                    obs_cell = ws.cell(row=fila, column=observaciones_col)
+                                    existing = obs_cell.value or ""
+                                    mensaje = "Niveles por debajo del borde del área de cobertura principal y secundaria"
+                                    
+                                    if mensaje not in existing:
+                                        nuevo_texto = (existing + "\n" + mensaje).strip()
+                                        obs_cell.value = nuevo_texto
+                                        obs_cell.alignment = Alignment(wrap_text=True, vertical="center")
+                                        
+                                        # Estimar número de líneas para ajustar alto de fila
+                                        num_lineas = nuevo_texto.count("\n") + 1
+                                        altura = num_lineas * 15  # Puedes ajustar este valor según cómo se vea
+                                        ws.row_dimensions[fila].height = altura
 
 def encontrar_columnas_numericas(ws, fila_encabezados):
     """
