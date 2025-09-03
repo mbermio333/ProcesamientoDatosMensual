@@ -226,8 +226,6 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
                 elif nombre_normalizado in [str(d) for d in range(1, 32)]:
                     if 0 <= valor <= 30:
                         celda.fill = rosa
-                         # Escribir mensaje en la columna "OBSERVACIONES"
-                        col_obs = encabezados.get("OBSERVACIONES")
                     elif 30 < valor < 54:
                         celda.fill = amarillo
                     elif valor >= 54:
