@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import json
 import pandas as pd
 from datetime import datetime
 from openpyxl import load_workbook, Workbook
@@ -9,14 +10,42 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.drawing.image import Image as XLImage
 
 # ------------------ CONFIGURACIÓN GENERAL ------------------
-ruta_fm = "MedicionesFmCSV"
-ruta_tv = "MedicionesTvCSV"
-ruta_salida = "ReportesUnificados"
+# Cargar configuración desde archivo
+CONFIG_FILE = "config.json"
+
+def cargar_configuracion():
+    """Cargar configuración desde archivo JSON"""
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                return config
+        except:
+            pass
+    
+    # Valores por defecto si no hay archivo de configuración
+    return {
+        "fm_path": "MedicionesFmCSV",
+        "tv_path": "MedicionesTvCSV", 
+        "output_path": "ReportesUnificados"
+    }
+
+# Cargar configuración al inicio
+config = cargar_configuracion()
+ruta_fm = config.get("fm_path", "MedicionesFmCSV")
+ruta_tv = config.get("tv_path", "MedicionesTvCSV")
+ruta_salida = config.get("output_path", "ReportesUnificados")
 ruta_imagenes = "Img"
-os.makedirs(ruta_salida, exist_ok=True)
-fecha_actual = datetime.today().strftime("%d/%m/%Y")
+fecha_actual = datetime.now().strftime("%d/%m/%Y")
 
 # ------------------ FUNCIONES AUXILIARES ------------------
+
+def inicializar_directorios():
+    """Crear los directorios necesarios si no existen"""
+    os.makedirs(ruta_salida, exist_ok=True)
+    os.makedirs(ruta_fm, exist_ok=True)
+    os.makedirs(ruta_tv, exist_ok=True)
+    os.makedirs(ruta_imagenes, exist_ok=True)
 
 def combinar_observaciones_solo_en_tv(ws, fila_inicio_tabla, fila_fin_tabla, num_columnas, es_tv=True):
     """
@@ -33,43 +62,46 @@ def combinar_observaciones_solo_en_tv(ws, fila_inicio_tabla, fila_fin_tabla, num
         celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         ws.cell(row=fila_inicio_tabla, column=num_columnas).value = None
 
-def formatear_hoja(ws, fila_inicio, encabezado_lineas):
-    num_columnas = ws.max_column
-    ws.insert_rows(fila_inicio, amount=len(encabezado_lineas))
+def formatear_hoja(ws, fila_inicio, encabezado_lineas=None):
+    """Formatea una hoja de cálculo con bordes y estilos"""
+    if encabezado_lineas:
+        num_columnas = ws.max_column
+        ws.insert_rows(fila_inicio, amount=len(encabezado_lineas))
 
-    for i, texto in enumerate(encabezado_lineas):
-        fila = fila_inicio + i
-        celda = ws.cell(row=fila, column=1, value=texto)
-        ws.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=num_columnas)
-        celda.alignment = Alignment(horizontal="center", vertical="center")
-        celda.font = Font(bold=True, size=12)
-
+        for i, texto in enumerate(encabezado_lineas):
+            fila = fila_inicio + i
+            celda = ws.cell(row=fila, column=1, value=texto)
+            ws.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=num_columnas)
+            celda.alignment = Alignment(horizontal="center", vertical="center")
+            celda.font = Font(bold=True, size=12)
+    
     # Bordes
-    inicio_fila_tabla = fila_inicio + len(encabezado_lineas)
+    inicio_fila_tabla = fila_inicio + (len(encabezado_lineas) if encabezado_lineas else 0)
     fin_fila_tabla = ws.max_row
     thin = Side(border_style="thin")
     borde_grueso = Side(border_style="medium")
 
     for row in range(inicio_fila_tabla, fin_fila_tabla + 1):
-        for col in range(1, num_columnas + 1):
+        for col in range(1, ws.max_column + 1):
             cell = ws.cell(row=row, column=col)
             cell.border = Border(top=thin, bottom=thin, left=thin, right=thin)
             if row == inicio_fila_tabla:
                 cell.border = Border(top=borde_grueso, bottom=thin,
                                      left=borde_grueso if col == 1 else thin,
-                                     right=borde_grueso if col == num_columnas else thin)
+                                     right=borde_grueso if col == ws.max_column else thin)
             elif row == fin_fila_tabla:
                 cell.border = Border(top=thin, bottom=borde_grueso,
                                      left=borde_grueso if col == 1 else thin,
-                                     right=borde_grueso if col == num_columnas else thin)
+                                     right=borde_grueso if col == ws.max_column else thin)
             elif col == 1:
                 cell.border = Border(left=borde_grueso, top=thin, bottom=thin, right=thin)
-            elif col == num_columnas:
+            elif col == ws.max_column:
                 cell.border = Border(right=borde_grueso, top=thin, bottom=thin, left=thin)
 
             cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    for col in range(1, num_columnas + 1):
+    # Ajustar anchos de columnas
+    for col in range(1, ws.max_column + 1):
         celda = ws.cell(row=inicio_fila_tabla, column=col)
         if celda.value == "Promedio(dBuV/m)":
             celda.value = "Promedio\n(dBuV/m)"
@@ -82,7 +114,7 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
         celda.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
 
     # Ajustar anchos del resto
-    for i in range(1, num_columnas + 1):
+    for i in range(1, ws.max_column + 1):
         if ws.column_dimensions[get_column_letter(i)].width in [15, 23]:
             continue
         col_letter = get_column_letter(i)
@@ -95,7 +127,8 @@ def formatear_hoja(ws, fila_inicio, encabezado_lineas):
                 pass
         ws.column_dimensions[col_letter].width = max_length + 2
 
-    ws.row_dimensions[inicio_fila_tabla].height = 45
+    if encabezado_lineas:
+        ws.row_dimensions[inicio_fila_tabla].height = 45
 
 def insertar_imagenes(ws, fila_destino, tipo):
     logo_izquierda = os.path.join(ruta_imagenes, "ARCOTEL.png")
@@ -113,8 +146,6 @@ def insertar_imagenes(ws, fila_destino, tipo):
         img_right.height = 120
         ws.add_image(img_right, f"AJ{fila_destino}")
 
-
-    
 # ------------------ FUNCIÓN PARA COLOREAR CELDAS ------------------
 
 def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
@@ -201,9 +232,9 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
 
             if tipo == "FM":
                 if nombre_normalizado == "Promedio (dBuV/m)":
-                    if 0 <= valor <= 43:
+                    if 0 <= valor <= 30:
                         celda.fill = rojo
-                    elif 43 < valor < 54:
+                    elif 30 < valor < 54:
                         celda.fill = amarillo
                     elif valor >= 54:
                         celda.fill = verde
@@ -212,10 +243,17 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
                         celda.fill = verde
                     elif valor > 220:
                         celda.fill = rojo
+                         # Escribir mensaje en la columna "OBSERVACIONES"
+                        col_obs = encabezados.get("OBSERVACIONES")
+                        if col_obs:
+                            celda_obs = ws.cell(row=fila, column=col_obs)
+                            mensaje = "Opera con ancho de banda mayor\na lo autorizado\n(medición automática)"
+                            celda_obs.value = mensaje
+                            celda_obs.alignment = Alignment(wrap_text=True)
                 elif nombre_normalizado in [str(d) for d in range(1, 32)]:
-                    if 0 <= valor <= 43:
+                    if 0 <= valor <= 30:
                         celda.fill = rosa
-                    elif 43 < valor < 54:
+                    elif 30 < valor < 54:
                         celda.fill = amarillo
                     elif valor >= 54:
                         celda.fill = verde
@@ -223,9 +261,32 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
             elif tipo == "TV":
                 if banda:
                     if nombre_normalizado == "Promedio (dBuV/m)" or nombre_normalizado in [str(d) for d in range(1, 32)]:
-                        color = get_umbral_color(banda, valor)
-                        if color:
-                            celda.fill = color
+                        frecuencia_col = encabezados.get("Frecuencia (MHz)")
+                        observaciones_col = encabezados.get("OBSERVACIONES")
+                        # Dentro de if nombre_normalizado == "Promedio (dBuV/m)":
+                        frecuencia = ws.cell(row=fila, column=frecuencia_col).value if frecuencia_col else None
+
+                        if frecuencia:
+                            banda = obtener_banda(frecuencia)
+                            color = get_umbral_color(banda, valor)
+
+                            if color:
+                                celda.fill = color
+                                # Agrega mensaje si es rosa (menor al mínimo por banda)
+                                if color == rosa and observaciones_col:
+                                    obs_cell = ws.cell(row=fila, column=observaciones_col)
+                                    existing = obs_cell.value or ""
+                                    mensaje = "Niveles por debajo del borde del área de cobertura principal y secundaria"
+                                    
+                                    if mensaje not in existing:
+                                        nuevo_texto = (existing + "\n" + mensaje).strip()
+                                        obs_cell.value = nuevo_texto
+                                        obs_cell.alignment = Alignment(wrap_text=True, vertical="center")
+                                        
+                                        # Estimar número de líneas para ajustar alto de fila
+                                        num_lineas = nuevo_texto.count("\n") + 1
+                                        altura = num_lineas * 15  # Puedes ajustar este valor según cómo se vea
+                                        ws.row_dimensions[fila].height = altura
 
 def encontrar_columnas_numericas(ws, fila_encabezados):
     """
@@ -250,196 +311,369 @@ def encontrar_columnas_numericas(ws, fila_encabezados):
         # Valores por defecto si no encuentra días
         return 3, 33
 
-    # --- 🔁 Combinación solo para la tabla TV ---
-    nombre_hoja = ws.cell(row=fila_inicio + len(encabezado_lineas) - 1, column=1).value
-    if "TV" in nombre_hoja:
-        col_observaciones = num_columnas
-        col_manual = num_columnas - 1
-        ancho_observaciones = ws.column_dimensions[get_column_letter(col_observaciones)].width
-        ancho_manual = ws.column_dimensions[get_column_letter(col_manual)].width
-
-        for fila in range(inicio_fila_tabla + 1, fin_fila_tabla + 1):
-            ws.merge_cells(start_row=fila, start_column=col_manual, end_row=fila, end_column=col_observaciones)
-        ws.merge_cells(start_row=inicio_fila_tabla, start_column=col_manual, end_row=inicio_fila_tabla, end_column=col_observaciones)
-
-        # Reemplazar el texto del encabezado
-        celda = ws.cell(row=inicio_fila_tabla, column=col_manual)
-        celda.value = "OBSERVACIONES"
-        celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        ws.cell(row=inicio_fila_tabla, column=col_observaciones).value = None
-
-        # Asignar el nuevo ancho sumado
-        ws.column_dimensions[get_column_letter(col_manual)].width = ancho_observaciones + ancho_manual
-
-
 def obtener_base(nombre_archivo):
     return nombre_archivo.split("_")[0].lower().strip()
 
-# ------------------ PROCESAMIENTO ------------------
+# ------------------ FUNCIONES PARA CREAR HOJAS ADICIONALES ------------------
 
-archivos_fm = {obtener_base(f): os.path.join(ruta_fm, f) for f in os.listdir(ruta_fm) if f.endswith(".csv")}
-archivos_tv = {obtener_base(f): os.path.join(ruta_tv, f) for f in os.listdir(ruta_tv) if f.endswith(".csv")}
+def crear_hoja_manual(wb, nombre_hoja):
+    """Crea una hoja en blanco con el nombre especificado"""
+    if nombre_hoja not in wb.sheetnames:
+        ws = wb.create_sheet(nombre_hoja)
+        # Agregar encabezados básicos
+        if "FM" in nombre_hoja:
+            encabezados = ["ESTACION", "Frecuencia (MHz)", "Medición Manual AB(KHz) o NIVEL (dBµV/m)", "OBSERVACIONES"]
+        else:
+            encabezados = ["ESTACION", "Frecuencia (MHz)", "Medición Manual AB(KHz) o NIVEL (dBµV/m)", "OBSERVACIONES"]
+        
+        for col, encabezado in enumerate(encabezados, 1):
+            ws.cell(row=1, column=col, value=encabezado)
+        
+        # Aplicar formato básico
+        for col in range(1, len(encabezados) + 1):
+            ws.column_dimensions[get_column_letter(col)].width = 20
+            celda = ws.cell(row=1, column=col)
+            celda.font = Font(bold=True)
+            celda.alignment = Alignment(horizontal="center", vertical="center")
+        
+        # Aplicar bordes a la fila de encabezados
+        thin = Side(border_style="thin")
+        for col in range(1, len(encabezados) + 1):
+            ws.cell(row=1, column=col).border = Border(top=thin, bottom=thin, left=thin, right=thin)
 
-nombres_bases = set(archivos_fm.keys()).union(archivos_tv.keys())
-
-for base in nombres_bases:
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Resumen"
+def crear_hoja_observaciones(wb, datos_fm, datos_tv):
+    """Crea la hoja de observaciones con los datos de FM y TV"""
+    if "Observaciones" in wb.sheetnames:
+        ws_obs = wb["Observaciones"]
+    else:
+        ws_obs = wb.create_sheet("Observaciones")
+    
+    # Limpiar hoja existente
+    ws_obs.delete_rows(1, ws_obs.max_row)
+    
     fila_actual = 1
+    
+    # Agregar datos de FM
+    if datos_fm is not None and not datos_fm.empty:
+        # Encabezado para FM
+        ws_obs.cell(row=fila_actual, column=1, value="TABLA FM")
+        ws_obs.merge_cells(start_row=fila_actual, start_column=1, end_row=fila_actual, end_column=6)
+        celda = ws_obs.cell(row=fila_actual, column=1)
+        celda.font = Font(bold=True, size=14)
+        celda.alignment = Alignment(horizontal="center", vertical="center")
+        fila_actual += 1
+        
+        # Encabezados de columnas para FM
+        encabezados_fm = ["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", "Ancho de Banda (KHz)", 
+                         "Medición Manual AB(KHz) o NIVEL (dBµV/m)", "OBSERVACIONES"]
+        
+        for col, encabezado in enumerate(encabezados_fm, 1):
+            ws_obs.cell(row=fila_actual, column=col, value=encabezado)
+            celda = ws_obs.cell(row=fila_actual, column=col)
+            celda.font = Font(bold=True)
+            celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        
+        fila_actual += 1
+        
+        # Datos de FM
+        for _, row in datos_fm.iterrows():
+            ws_obs.cell(row=fila_actual, column=1, value=row["ESTACION"])
+            ws_obs.cell(row=fila_actual, column=2, value=row["Frecuencia (MHz)"])
+            ws_obs.cell(row=fila_actual, column=3, value=row["Promedio(dBuV/m)"])
+            ws_obs.cell(row=fila_actual, column=4, value=row["Ancho de Banda (KHz)"])
+            ws_obs.cell(row=fila_actual, column=5, value=row["Medición Manual"])
+            ws_obs.cell(row=fila_actual, column=6, value=row["OBSERVACIONES"])
+            fila_actual += 1
+        
+        fila_actual += 2  # Espacio de 2 filas entre tablas
+    
+    # Agregar datos de TV
+    if datos_tv is not None and not datos_tv.empty:
+        # Encabezado para TV
+        ws_obs.cell(row=fila_actual, column=1, value="TABLA TV")
+        ws_obs.merge_cells(start_row=fila_actual, start_column=1, end_row=fila_actual, end_column=5)
+        celda = ws_obs.cell(row=fila_actual, column=1)
+        celda.font = Font(bold=True, size=14)
+        celda.alignment = Alignment(horizontal="center", vertical="center")
+        fila_actual += 1
+        
+        # Encabezados de columnas para TV
+        encabezados_tv = ["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", 
+                         "Medición Manual AB(KHz) o NIVEL (dBµV/m)", "OBSERVACIONES"]
+        
+        for col, encabezado in enumerate(encabezados_tv, 1):
+            ws_obs.cell(row=fila_actual, column=col, value=encabezado)
+            celda = ws_obs.cell(row=fila_actual, column=col)
+            celda.font = Font(bold=True)
+            celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        
+        fila_actual += 1
+        
+        # Datos de TV
+        for _, row in datos_tv.iterrows():
+            ws_obs.cell(row=fila_actual, column=1, value=row["ESTACION"])
+            ws_obs.cell(row=fila_actual, column=2, value=row["Frecuencia (MHz)"])
+            ws_obs.cell(row=fila_actual, column=3, value=row["Promedio(dBuV/m)"])
+            ws_obs.cell(row=fila_actual, column=4, value=row["Medición Manual"])
+            ws_obs.cell(row=fila_actual, column=5, value=row["OBSERVACIONES"])
+            fila_actual += 1
+    
+    # Aplicar formato a toda la hoja
+    formatear_hoja(ws_obs, 1, None)
+    
+    # Colorear celdas según valores
+    if datos_fm is not None and not datos_fm.empty:
+        fila_inicio_fm = 3
+        fila_fin_fm = fila_inicio_fm + len(datos_fm) - 1
+        columnas_colorear_fm = ["Promedio (dBuV/m)", "Ancho de Banda (KHz)"]
+        colorear_celdas_por_valor(ws_obs, fila_inicio_fm, fila_fin_fm, "FM", columnas_colorear_fm)
+    
+    if datos_tv is not None and not datos_tv.empty:
+        fila_inicio_tv = fila_inicio_fm + len(datos_fm) + 4 if datos_fm is not None and not datos_fm.empty else 3
+        fila_fin_tv = fila_inicio_tv + len(datos_tv) - 1
+        columnas_colorear_tv = ["Promedio (dBuV/m)"]
+        colorear_celdas_por_valor(ws_obs, fila_inicio_tv, fila_fin_tv, "TV", columnas_colorear_tv)
 
-    for tipo, archivos, titulo in [
-        ("FM", archivos_fm, "FORMULARIO DE CONTROL MENSUAL DE FM"),
-        ("TV", archivos_tv, "FORMULARIO DE CONTROL MENSUAL DE TV")
-    ]:
-        if base not in archivos:
-            continue
+# ------------------ FUNCIÓN PRINCIPAL DE PROCESAMIENTO ------------------
 
-        ruta_archivo = archivos[base]
-        df = pd.read_csv(ruta_archivo, encoding="unicode_escape")
-        df = df.rename(columns={"Nombre de la estación": "ESTACION"}) if tipo == "TV" else df
-        df = df[df.columns[:9]] if tipo == "FM" else df[df.columns[:5]]
+def procesar_datos(callback_progreso=None, callback_log=None):
+    """
+    Función principal que procesa todos los datos
+    """
+    # Inicializar directorios
+    inicializar_directorios()
+    
+    if callback_log:
+        callback_log("Iniciando procesamiento de datos...")
+        callback_log(f"Ruta FM: {ruta_fm}")
+        callback_log(f"Ruta TV: {ruta_tv}")
+        callback_log(f"Ruta salida: {ruta_salida}")
+    
+    # Obtener listas de archivos
+    try:
+        archivos_fm = {obtener_base(f): os.path.join(ruta_fm, f) for f in os.listdir(ruta_fm) if f.endswith(".csv")}
+        archivos_tv = {obtener_base(f): os.path.join(ruta_tv, f) for f in os.listdir(ruta_tv) if f.endswith(".csv")}
+        
+        if callback_log:
+            callback_log(f"Encontrados {len(archivos_fm)} archivos FM y {len(archivos_tv)} archivos TV")
+    except Exception as e:
+        if callback_log:
+            callback_log(f"Error al leer archivos: {str(e)}")
+        return False
 
-        df["ESTACION"] = df["ESTACION"].astype(str).str.strip()
-        df = df[df["ESTACION"].notna() & (df["ESTACION"] != "")]
-        df["Tiempo"] = pd.to_datetime(df["Tiempo"], format="%d/%m/%Y  %H:%M:%S,%f", errors='coerce').dt.date
-        mes_objetivo = df["Tiempo"].dropna().apply(lambda x: x.month).value_counts().idxmax()
+    nombres_bases = set(archivos_fm.keys()).union(archivos_tv.keys())
+    total_bases = len(nombres_bases)
+    
+    if callback_log:
+        callback_log(f"Procesando {total_bases} bases de datos")
+    
+    # Procesar cada base
+    for i, base in enumerate(nombres_bases):
+        if callback_progreso:
+            # Calcular progreso (0-100)
+            progreso = int((i / total_bases) * 100)
+            callback_progreso(progreso)
+            
+        if callback_log:
+            callback_log(f"Procesando base: {base}")
+        
+        try:
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Resumen"
+            fila_actual = 1
+            
+            # Variables para almacenar datos para la hoja de observaciones
+            datos_fm = None
+            datos_tv = None
 
-        nombre_mes_es = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"][mes_objetivo - 1]
-        df = df[df["Tiempo"].apply(lambda x: x.month == mes_objetivo)]
-        df["DIA"] = pd.to_datetime(df["Tiempo"]).dt.day
+            for tipo, archivos, titulo in [
+                ("FM", archivos_fm, "FORMULARIO DE CONTROL MENSUAL DE FM"),
+                ("TV", archivos_tv, "FORMULARIO DE CONTROL MENSUAL DE TV")
+            ]:
+                if base not in archivos:
+                    continue
 
-        df["Frecuencia (MHz)"] = df["Frecuencia (Hz)"] / 1_000_000
-        df["Level (dBµV/m)"] = df["Level (dBµV/m)"].astype(str).str.replace(",", ".", regex=False).astype(float)
+                ruta_archivo = archivos[base]
+                df = pd.read_csv(ruta_archivo, encoding="unicode_escape")
+                df = df.rename(columns={"Nombre de la estación": "ESTACION"}) if tipo == "TV" else df
+                df = df[df.columns[:9]] if tipo == "FM" else df[df.columns[:5]]
 
-        agrupado = df.groupby(["ESTACION", "Frecuencia (MHz)", "DIA"])["Level (dBµV/m)"].mean().reset_index()
-        pivot = agrupado.pivot(index=["ESTACION", "Frecuencia (MHz)"], columns="DIA", values="Level (dBµV/m)")
-        todos_los_dias = list(range(1, 32))
-        pivot = pivot.reindex(columns=todos_los_dias, fill_value=0)
+                df["ESTACION"] = df["ESTACION"].astype(str).str.strip()
+                df = df[df["ESTACION"].notna() & (df["ESTACION"] != "")]
+                df["Tiempo"] = pd.to_datetime(df["Tiempo"], format="%d/%m/%Y  %H:%M:%S,%f", errors='coerce').dt.date
+                mes_objetivo = df["Tiempo"].dropna().apply(lambda x: x.month).value_counts().idxmax()
 
-        pivot[todos_los_dias] = pivot[todos_los_dias].replace(0, "-")
-        pivot_numeric = pivot[todos_los_dias].replace("-", pd.NA).apply(pd.to_numeric, errors="coerce")
-        pivot["Promedio(dBuV/m)"] = pivot_numeric.mean(axis=1, skipna=True).round(2)
+                nombre_mes_es = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"][mes_objetivo - 1]
+                df = df[df["Tiempo"].apply(lambda x: x.month == mes_objetivo)]
+                df["DIA"] = pd.to_datetime(df["Tiempo"]).dt.day
 
-        if tipo == "FM":
-            ancho_banda = (
-                df.groupby(["ESTACION", "Frecuencia (MHz)"])["Bandwidth (Hz)"].mean().reset_index()
-            )
-            ancho_banda["Ancho de Banda (KHz)"] = (ancho_banda["Bandwidth (Hz)"] / 1000).round(2)
-            pivot = pivot.reset_index().merge(ancho_banda.drop(columns=["Bandwidth (Hz)"]), on=["ESTACION", "Frecuencia (MHz)"], how="left")
-        else:
-            pivot = pivot.reset_index()
+                df["Frecuencia (MHz)"] = df["Frecuencia (Hz)"] / 1_000_000
+                df["Level (dBµV/m)"] = df["Level (dBµV/m)"].astype(str).str.replace(",", ".", regex=False).astype(float)
 
-        pivot["Medición Manual"] = ""
-        pivot["OBSERVACIONES"] = ""
-        pivot = pivot.sort_values(by="Frecuencia (MHz)")
+                agrupado = df.groupby(["ESTACION", "Frecuencia (MHz)", "DIA"])["Level (dBµV/m)"].mean().reset_index()
+                pivot = agrupado.pivot(index=["ESTACION", "Frecuencia (MHz)"], columns="DIA", values="Level (dBµV/m)")
+                todos_los_dias = list(range(1, 32))
+                pivot = pivot.reindex(columns=todos_los_dias, fill_value=0)
 
-        for col in pivot.select_dtypes(include="number").columns:
-            pivot[col] = pivot[col].round(2)
+                pivot[todos_los_dias] = pivot[todos_los_dias].replace(0, "-")
+                pivot_numeric = pivot[todos_los_dias].replace("-", pd.NA).apply(pd.to_numeric, errors="coerce")
+                pivot["Promedio(dBuV/m)"] = pivot_numeric.mean(axis=1, skipna=True).round(2)
 
-        for i, row in enumerate(dataframe_to_rows(pivot, index=False, header=True)):
-            for j, val in enumerate(row, start=1):
-                ws.cell(row=fila_actual + i, column=j, value=val)
+                if tipo == "FM":
+                    ancho_banda = (
+                        df.groupby(["ESTACION", "Frecuencia (MHz)"])["Bandwidth (Hz)"].mean().reset_index()
+                    )
+                    ancho_banda["Ancho de Banda (KHz)"] = (ancho_banda["Bandwidth (Hz)"] / 1000).round(2)
+                    pivot = pivot.reset_index().merge(ancho_banda.drop(columns=["Bandwidth (Hz)"]), on=["ESTACION", "Frecuencia (MHz)"], how="left")
+                    # Guardar datos para hoja de observaciones
+                    datos_fm = pivot[["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", "Ancho de Banda (KHz)", "Medición Manual", "OBSERVACIONES"]].copy()
+                else:
+                    pivot = pivot.reset_index()
+                    # Guardar datos para hoja de observaciones
+                    datos_tv = pivot[["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", "Medición Manual", "OBSERVACIONES"]].copy()
 
-        encabezado_fm = [
-            "INFORME DE CONTROL TÉCNICO",
-            "No. IT-CZ06-R-2025-00XX",
-            "AGENCIA DE REGULACIÓN Y CONTROL DE LAS TELECOMUNICACIONES",
-            "COORDINACIÓN ZONAL 6",
-            "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
-            titulo,
-            "CIUDAD:" + ("tambo" if base == "cañar" else base.upper()),
-            f"PERIODO: {nombre_mes_es.upper()}",
-            f"FECHA PRESENTACIÓN: {fecha_actual}"
-        ] if tipo == "FM" else [
-            "AGENCIA DE REGULACIÓN Y CONTROL DE LAS TELECOMUNICACIONES",
-            "COORDINACIÓN ZONAL 6",
-            "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
-            titulo,
-            "CIUDAD:" + ("tambo" if base == "cañar" else base.upper()),
-            f"PERIODO: {nombre_mes_es.upper()}",
-            f"FECHA PRESENTACIÓN: {fecha_actual}"
-        ]
-        if tipo == "FM":
-            insertar_imagenes(ws, fila_actual + 4, tipo="FM")  # Posición relativa al inicio
-        elif tipo == "TV":
-            insertar_imagenes(ws, fila_actual + 2, tipo="TV")  # Posición después de la tabla FM
+                pivot["Medición Manual"] = ""
+                pivot["OBSERVACIONES"] = ""
+                pivot = pivot.sort_values(by="Frecuencia (MHz)")
+                pivot = pivot.reset_index(drop=True)
 
-        formatear_hoja(ws, fila_actual, encabezado_fm)
+                for col in pivot.select_dtypes(include="number").columns:
+                    pivot[col] = pivot[col].round(2)
 
-        # ✅ ENCONTRAR Y COLOREAR CELDAS NUMÉRICAS
-        # Calcular fila de encabezados de columnas (donde dice "ESTACION", "Frecuencia", etc.)
-        # Después de formatear la hoja y antes de aumentar fila_actual
-        fila_encabezados_columnas = fila_actual + len(encabezado_fm)
-        fila_inicio_datos = fila_encabezados_columnas + 1
-        fila_fin_datos = fila_inicio_datos + len(pivot) - 1
+                for i, row in enumerate(dataframe_to_rows(pivot, index=False, header=True)):
+                    for j, val in enumerate(row, start=1):
+                        ws.cell(row=fila_actual + i, column=j, value=val)
 
-        columnas_colorear = ["Promedio (dBuV/m)", "Ancho de Banda\n(KHz)", *list(range(1, 32))]
-        colorear_celdas_por_valor(ws, fila_inicio_datos, fila_fin_datos, tipo, columnas_colorear)
+                encabezado_fm = [
+                    "INFORME DE CONTROL TÉCNICO",
+                    "No. IT-CZ06-R-2025-00XX",
+                    "AGENCIA DE REGULACIÓN Y CONTROL DE LAS TELECOMUNICACIONES",
+                    "COORDINACIÓN ZONAL 6",
+                    "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
+                    titulo,
+                    "CIUDAD:" + ("tambo" if base == "cañar" else base.upper()),
+                    f"PERIODO: {nombre_mes_es.upper()}",
+                    f"FECHA PRESENTACIÓN: {fecha_actual}"
+                ] if tipo == "FM" else [
+                    "AGENCIA DE REGULACIÓN Y CONTROL DE LAS TELECOMUNICACIONES",
+                    "COORDINACIÓN ZONAL 6",
+                    "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
+                    titulo,
+                    "CIUDAD:" + ("tambo" if base == "cañar" else base.upper()),
+                    f"PERIODO: {nombre_mes_es.upper()}",
+                    f"FECHA PRESENTACIÓN: {fecha_actual}"
+                ]
+                
+                if tipo == "FM":
+                    insertar_imagenes(ws, fila_actual + 4, tipo="FM")
+                elif tipo == "TV":
+                    insertar_imagenes(ws, fila_actual + 2, tipo="TV")
 
+                formatear_hoja(ws, fila_actual, encabezado_fm)
 
-        fila_actual = ws.max_row + 3
+                # Colorear celdas
+                fila_encabezados_columnas = fila_actual + len(encabezado_fm)
+                fila_inicio_datos = fila_encabezados_columnas + 1
+                fila_fin_datos = fila_inicio_datos + len(pivot) - 1
 
-    nombre_salida = f"{base}_ReporteUnificado.xlsx"
-       
-    from openpyxl.utils import get_column_letter
+                columnas_colorear = ["Promedio (dBuV/m)", "Ancho de Banda\n(KHz)", *list(range(1, 32))]
+                colorear_celdas_por_valor(ws, fila_inicio_datos, fila_fin_datos, tipo, columnas_colorear)
 
-    for sheet in wb.worksheets:
-        if "Resumen" not in sheet.title:
-            continue
+                fila_actual = ws.max_row + 3
 
-        # Buscar fila del segundo encabezado (TV)
-        for fila in range(1, sheet.max_row + 1):
-            val = sheet.cell(row=fila, column=1).value
-            if isinstance(val, str) and "FORMULARIO DE CONTROL MENSUAL DE TV" in val:
-                fila_encabezado_tv = fila
-                break
-        else:
-            continue  # No hay TV en esta hoja
+            # Crear hojas adicionales
+            crear_hoja_manual(wb, "Manual FM")
+            crear_hoja_manual(wb, "Manual TV")
+            crear_hoja_observaciones(wb, datos_fm, datos_tv)
+            
+            # Reordenar hojas
+            orden_hojas = ["Resumen", "Manual FM", "Manual TV", "Observaciones"]
+            for hoja in orden_hojas:
+                if hoja in wb.sheetnames:
+                    wb.move_sheet(hoja, -len(orden_hojas))
+                    orden_hojas.remove(hoja)
+            
+            nombre_salida = f"{base}_ReporteUnificado.xlsx"
+            
+            # Combinar observaciones para TV
+            for sheet in wb.worksheets:
+                if "Resumen" not in sheet.title:
+                    continue
 
-        # Buscar fila exacta de la cabecera de la tabla (donde dice "ESTACION")
-        fila_tabla_tv = None
-        for fila in range(fila_encabezado_tv + 1, sheet.max_row + 1):
-            if sheet.cell(row=fila, column=1).value == "ESTACION":
-                fila_tabla_tv = fila
-                break
+                # Buscar fila del segundo encabezado (TV)
+                for fila in range(1, sheet.max_row + 1):
+                    val = sheet.cell(row=fila, column=1).value
+                    if isinstance(val, str) and "FORMULARIO DE CONTROL MENSUAL DE TV" in val:
+                        fila_encabezado_tv = fila
+                        break
+                else:
+                    continue  # No hay TV en esta hoja
 
-        if fila_tabla_tv is None:
-            continue  # Seguridad por si no se encuentra
+                # Buscar fila exacta de la cabecera de la tabla (donde dice "ESTACION")
+                fila_tabla_tv = None
+                for fila in range(fila_encabezado_tv + 1, sheet.max_row + 1):
+                    if sheet.cell(row=fila, column=1).value == "ESTACION":
+                        fila_tabla_tv = fila
+                        break
 
-        ultima_fila_tv = sheet.max_row
-        col_final = sheet.max_column
-        col_penultima = col_final - 1
+                if fila_tabla_tv is None:
+                    continue  # Seguridad por si no se encuentra
 
-        # Obtener anchos actuales
-        ancho_col1 = sheet.column_dimensions[get_column_letter(col_penultima)].width
-        ancho_col2 = sheet.column_dimensions[get_column_letter(col_final)].width
-        ancho_combinado = (ancho_col1 or 10) + (ancho_col2 or 10)
+                ultima_fila_tv = sheet.max_row
+                col_final = sheet.max_column
+                col_penultima = col_final - 1
 
-        # Combinar celdas del cuerpo de la tabla
-        for fila in range(fila_tabla_tv + 1, ultima_fila_tv + 1):
-            sheet.merge_cells(start_row=fila, start_column=col_penultima, end_row=fila, end_column=col_final)
+                # Obtener anchos actuales
+                ancho_col1 = sheet.column_dimensions[get_column_letter(col_penultima)].width
+                ancho_col2 = sheet.column_dimensions[get_column_letter(col_final)].width
+                ancho_combinado = (ancho_col1 or 10) + (ancho_col2 or 10)
 
-        # Combinar encabezado de tabla ("OBSERVACIONES")
-        sheet.merge_cells(start_row=fila_tabla_tv, start_column=col_penultima, end_row=fila_tabla_tv, end_column=col_final)
-        celda_obs = sheet.cell(row=fila_tabla_tv, column=col_penultima)
-        celda_obs.value = "OBSERVACIONES"
-        celda_obs.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                # Combinar celdas del cuerpo de la tabla
+                for fila in range(fila_tabla_tv + 1, ultima_fila_tv + 1):
+                    sheet.merge_cells(start_row=fila, start_column=col_penultima, end_row=fila, end_column=col_final)
 
                 # Combinar encabezado de tabla ("OBSERVACIONES")
-        sheet.merge_cells(start_row=fila_tabla_tv, start_column=col_penultima, end_row=fila_tabla_tv, end_column=col_final)
+                sheet.merge_cells(start_row=fila_tabla_tv, start_column=col_penultima, end_row=fila_tabla_tv, end_column=col_final)
+                celda_obs = sheet.cell(row=fila_tabla_tv, column=col_penultima)
+                celda_obs.value = "OBSERVACIONES"
+                celda_obs.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-        # Solo escribir en la celda principal de la combinación
-        celda_obs = sheet.cell(row=fila_tabla_tv, column=col_penultima)
-        celda_obs.value = "OBSERVACIONES"
-        celda_obs.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
-# No escribas en col_final (ya está combinada)
-
-
-        # Asignar nuevo ancho
-        sheet.column_dimensions[get_column_letter(col_penultima)].width = ancho_combinado
-        ws.sheet_view.showGridLines = False
+                # Asignar nuevo ancho
+                sheet.column_dimensions[get_column_letter(col_penultima)].width = ancho_combinado
+                ws.sheet_view.showGridLines = False
+                
+            wb.save(os.path.join(ruta_salida, nombre_salida))
+            
+            if callback_log:
+                callback_log(f"✅ Archivo generado: {nombre_salida}")
+                
+        except Exception as e:
+            if callback_log:
+                callback_log(f"❌ Error procesando base {base}: {str(e)}")
+    
+    if callback_progreso:
+        callback_progreso(100)
         
-    wb.save(os.path.join(ruta_salida, nombre_salida))
-    print(f"✅ Archivo generado: {nombre_salida}")
+    if callback_log:
+        callback_log("Procesamiento completado")
+    
+    return True
+
+# ------------------ EJECUCIÓN DIRECTA (para testing) ------------------
+
+if __name__ == "__main__":
+    # Si se ejecuta directamente, usar callbacks simples
+    def mostrar_progreso(progreso):
+        print(f"Progreso: {progreso}%")
+    
+    def mostrar_log(mensaje):
+        print(mensaje)
+    
+    # Procesar datos
+    resultado = procesar_datos(mostrar_progreso, mostrar_log)
+    
+    if resultado:
+        print("Procesamiento completado con éxito")
+    else:
+        print("Ocurrieron errores durante el procesamiento")
