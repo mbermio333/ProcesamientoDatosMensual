@@ -776,8 +776,10 @@ def procesar_datos(callback_progreso=None, callback_log=None):
                 fila_actual = ws.max_row + 3
 
             # Crear hojas adicionales
-            crear_hoja_manual(wb, "Manual FM")
-            crear_hoja_manual(wb, "Manual TV")
+            #crear_hoja_manual(wb, "Manual FM")
+            #crear_hoja_manual(wb, "Manual TV")
+            wb.create_sheet("Manual FM")
+            wb.create_sheet("Manual TV")
             crear_hoja_observaciones(wb, datos_fm, datos_tv)
             
             # Reordenar hojas
@@ -838,6 +840,15 @@ def procesar_datos(callback_progreso=None, callback_log=None):
                 # Asignar nuevo ancho
                 sheet.column_dimensions[get_column_letter(col_penultima)].width = ancho_combinado
                 ws.sheet_view.showGridLines = False
+
+                        # Limpiar las hojas manteniendo solo la primera fila (encabezados)
+ # Asignar nuevo ancho
+                sheet.column_dimensions[get_column_letter(col_penultima)].width = ancho_combinado
+                ws.sheet_view.showGridLines = False
+
+                        # Limpiar las hojas manteniendo solo la primera fila (encabezados)
+
+
                 
             wb.save(os.path.join(ruta_salida, nombre_salida))
             
