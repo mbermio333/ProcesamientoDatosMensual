@@ -85,6 +85,12 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.log_message(f"Error guardando configuración: {str(e)}")
     
+    def truncar_texto(self, texto, max_caracteres=30):
+        """Truncar texto largo para mostrar con puntos suspensivos"""
+        if len(texto) > max_caracteres:
+            return "..." + texto[-max_caracteres:]
+        return texto
+    
     def initUI(self):
         self.setWindowTitle("Sistema de Reportes Unificados - ARCOTEL")
         self.setGeometry(100, 100, 900, 700)  # Ventana un poco más grande
@@ -110,43 +116,50 @@ class MainWindow(QMainWindow):
         
         # Rutas de entrada con mejor formato - usar valores de configuración
         paths = [
-            ("Ruta FM:", self.config.get("fm_path", "MedicionesFmCSV"), "fm_path_label"),
+            ("Ruta FM:", self.config.get("fm_path", "MedicionesFmCSV"), "fm_path_label."),
             ("Ruta TV:", self.config.get("tv_path", "MedicionesTvCSV"), "tv_path_label"), 
             ("Ruta Salida:", self.config.get("output_path", "ReportesUnificados"), "output_path_label")
         ]
         
         for label_text, default_path, attr_name in paths:
             path_layout = QHBoxLayout()
-            path_layout.addWidget(QLabel(label_text))
             
-            label = QLabel(default_path)
-            label.setStyleSheet("background-color: #e8e8e8; padding: 5px; border: 1px solid #ccc;")
-            label.setMinimumWidth(300)
-            setattr(self, attr_name, label)
+            # Crear etiqueta para el texto descriptivo
+            label_desc = QLabel(label_text)
+            label_desc.setMinimumWidth(80)  # Ancho fijo para alinear las etiquetas
             
-            path_layout.addWidget(label)
-            path_layout.addStretch()
+            # Crear etiqueta para la ruta (con texto truncado)
+            label_ruta = QLabel(self.truncar_texto(default_path))
+            label_ruta.setStyleSheet("background-color: #e8e8e8; padding: 5px; border: 1px solid #ccc;")
+            label_ruta.setMinimumWidth(300)  # Un poco más ancho para mostrar más texto
+            label_ruta.setToolTip(default_path)  # Tooltip con la ruta completa
+            setattr(self, attr_name, label_ruta)
+            
+            # Crear botón "..." para cambiar ruta
+            btn_change = QPushButton("...")
+            btn_change.setFixedSize(30, 30)  # Botón pequeño
+            btn_change.setStyleSheet("QPushButton { font-weight: bold; }")
+            
+            # Conectar señal según el tipo de ruta
+            if "fm" in attr_name:
+                btn_change.clicked.connect(lambda: self.change_path("fm"))
+                self.change_fm_btn = btn_change
+            elif "tv" in attr_name:
+                btn_change.clicked.connect(lambda: self.change_path("tv"))
+                self.change_tv_btn = btn_change
+            elif "output" in attr_name:
+                btn_change.clicked.connect(lambda: self.change_path("output"))
+                self.change_output_btn = btn_change
+            
+            path_layout.addWidget(label_desc)
+            path_layout.addWidget(label_ruta)
+            path_layout.addWidget(btn_change)
             config_layout.addLayout(path_layout)
         
-        # Botones para cambiar rutas
-        path_buttons_layout = QHBoxLayout()
-        self.change_fm_btn = QPushButton("Cambiar Ruta FM")
-        self.change_tv_btn = QPushButton("Cambiar Ruta TV") 
-        self.change_output_btn = QPushButton("Cambiar Ruta Salida")
-        
-        self.change_fm_btn.clicked.connect(lambda: self.change_path("fm"))
-        self.change_tv_btn.clicked.connect(lambda: self.change_path("tv"))
-        self.change_output_btn.clicked.connect(lambda: self.change_path("output"))
-        
-        path_buttons_layout.addWidget(self.change_fm_btn)
-        path_buttons_layout.addWidget(self.change_tv_btn)
-        path_buttons_layout.addWidget(self.change_output_btn)
-        
-        config_layout.addLayout(path_buttons_layout)
         config_group.setLayout(config_layout)
         layout.addWidget(config_group)
         
-        # Botones de acción
+        # Botones de acción (mantener el diseño original)
         action_layout = QHBoxLayout()
         self.start_btn = QPushButton("Iniciar Procesamiento")
         self.start_btn.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; padding: 10px; }")
@@ -205,35 +218,44 @@ class MainWindow(QMainWindow):
         dialog.setFileMode(QFileDialog.Directory)
         
         if path_type == "fm":
-            current_path = self.fm_path_label.text()
+            current_path = self.fm_path_label.text().replace("...", "")
             new_path = dialog.getExistingDirectory(self, "Seleccionar directorio FM", current_path)
             if new_path:
-                self.fm_path_label.setText(new_path)
+                truncated_text = self.truncar_texto(new_path)
+                self.fm_path_label.setText(truncated_text)
+                self.fm_path_label.setToolTip(new_path)  # Tooltip con la ruta completa
                 self.config["fm_path"] = new_path
                 self.save_config()
                 self.log_message(f"Ruta FM cambiada a: {new_path}")
                 
         elif path_type == "tv":
-            current_path = self.tv_path_label.text()
+            current_path = self.tv_path_label.text().replace("...", "")
             new_path = dialog.getExistingDirectory(self, "Seleccionar directorio TV", current_path)
             if new_path:
-                self.tv_path_label.setText(new_path)
+                truncated_text = self.truncar_texto(new_path)
+                self.tv_path_label.setText(truncated_text)
+                self.tv_path_label.setToolTip(new_path)  # Tooltip con la ruta completa
                 self.config["tv_path"] = new_path
                 self.save_config()
                 self.log_message(f"Ruta TV cambiada a: {new_path}")
                 
         elif path_type == "output":
-            current_path = self.output_path_label.text()
+            current_path = self.output_path_label.text().replace("...", "")
             new_path = dialog.getExistingDirectory(self, "Seleccionar directorio de salida", current_path)
             if new_path:
-                self.output_path_label.setText(new_path)
+                truncated_text = self.truncar_texto(new_path)
+                self.output_path_label.setText(truncated_text)
+                self.output_path_label.setToolTip(new_path)  # Tooltip con la ruta completa
                 self.config["output_path"] = new_path
                 self.save_config()
                 self.log_message(f"Ruta de salida cambiada a: {new_path}")
     
     def open_output_folder(self):
         """Abrir la carpeta de salida en el explorador de archivos"""
-        output_path = self.output_path_label.text()
+        output_path = self.output_path_label.toolTip()  # Obtener la ruta completa del tooltip
+        
+        if not output_path:  # Si no hay tooltip, usar el texto (sin los puntos suspensivos)
+            output_path = self.output_path_label.text().replace("...", "")
         
         if not os.path.exists(output_path):
             self.log_message(f"La carpeta de salida no existe: {output_path}")
@@ -258,21 +280,22 @@ class MainWindow(QMainWindow):
     
     def start_processing(self):
         """Iniciar el procesamiento"""
+        # Obtener las rutas completas de los tooltips
+        fm_path = self.fm_path_label.toolTip() or self.fm_path_label.text().replace("...", "")
+        tv_path = self.tv_path_label.toolTip() or self.tv_path_label.text().replace("...", "")
+        output_path = self.output_path_label.toolTip() or self.output_path_label.text().replace("...", "")
+        
         # Verificar que las rutas existan
-        if not os.path.exists(self.fm_path_label.text()):
-            self.log_message(f"ERROR: La ruta FM no existe: {self.fm_path_label.text()}")
+        if not os.path.exists(fm_path):
+            self.log_message(f"ERROR: La ruta FM no existe: {fm_path}")
             return
             
-        if not os.path.exists(self.tv_path_label.text()):
-            self.log_message(f"ERROR: La ruta TV no existe: {self.tv_path_label.text()}")
+        if not os.path.exists(tv_path):
+            self.log_message(f"ERROR: La ruta TV no existe: {tv_path}")
             return
         
         # Crear el hilo de trabajo con las rutas configuradas
-        self.worker = WorkerThread(
-            self.fm_path_label.text(),
-            self.tv_path_label.text(),
-            self.output_path_label.text()
-        )
+        self.worker = WorkerThread(fm_path, tv_path, output_path)
         
         self.worker.progress_signal.connect(self.update_progress)
         self.worker.log_signal.connect(self.log_message)
