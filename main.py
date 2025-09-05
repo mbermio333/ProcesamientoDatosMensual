@@ -623,6 +623,27 @@ def obtener_nombre_mes_es(numero_mes):
     ]
     return meses[numero_mes - 1] if 1 <= numero_mes <= 12 else ""
 
+def procesar_ocupacion(callback_progreso=None, callback_log=None):
+    """
+    Función para procesar datos de ocupación (placeholder)
+    """
+    if callback_log:
+        callback_log("Iniciando análisis de ocupación...")
+        callback_log("Esta funcionalidad está en desarrollo")
+    
+    # Simular progreso
+    for i in range(101):
+        if callback_progreso:
+            callback_progreso(i)
+        time.sleep(0.05)  # Pequeña pausa para simular trabajo
+    
+    if callback_log:
+        callback_log("Análisis de ocupación completado")
+    
+    return True
+
+
+
 # ------------------ FUNCIÓN PRINCIPAL DE PROCESAMIENTO ------------------
 
 def procesar_datos(callback_progreso=None, callback_log=None):
@@ -884,3 +905,5 @@ if __name__ == "__main__":
         print("Procesamiento completado con éxito")
     else:
         print("Ocurrieron errores durante el procesamiento")
+
+
