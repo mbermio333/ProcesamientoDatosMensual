@@ -16,7 +16,8 @@ CONFIG_FILE = "config.json"
 DEFAULT_PATHS = {
     "fm_path": "MedicionesFmCSV",
     "tv_path": "MedicionesTvCSV", 
-    "output_path": "ReportesUnificados"
+    "output_path": "ReportesUnificados",
+    "ocupacion_output_path": "ReportesOcupacion"  # Nueva ruta para ocupación
 }
 
 class WorkerThread(QThread):
@@ -35,12 +36,17 @@ class WorkerThread(QThread):
         
     def run(self):
         try:
-            # Importar y configurar el módulo principal
-            import main
-            
             if self.mode == "procesamiento":
+                # Importar y configurar el módulo principal de procesamiento
+                import main
+                
                 # Ejecutar el procesamiento principal
                 self.log_signal.emit("Iniciando procesamiento...")
+                
+                # Configurar rutas en el módulo main
+                main.ruta_fm = self.fm_path
+                main.ruta_tv = self.tv_path
+                main.ruta_salida = self.output_path
                 
                 # Llamar a la función principal con nuestros callbacks
                 resultado = main.procesar_datos(
@@ -48,11 +54,19 @@ class WorkerThread(QThread):
                     callback_log=self.log_signal.emit
                 )
             else:
+                # Importar y configurar el módulo principal de ocupación
+                import main2
+                
                 # Ejecutar el procesamiento de ocupación
                 self.log_signal.emit("Iniciando análisis de ocupación...")
                 
+                # Configurar rutas en el módulo main2
+                main2.ruta_fm = self.fm_path
+                main2.ruta_tv = self.tv_path
+                main2.ruta_salida = self.output_path
+                
                 # Llamar a la función de ocupación con nuestros callbacks
-                resultado = main.procesar_ocupacion(
+                resultado = main2.procesar_ocupacion(
                     callback_progreso=self.progress_signal.emit,
                     callback_log=self.log_signal.emit
                 )
@@ -80,7 +94,7 @@ class ProcesamientoTab(QWidget):
         layout = QVBoxLayout(self)
         
         # Grupo de configuración
-        config_group = QGroupBox("Configuración de Directorios")
+        config_group = QGroupBox("Configuración de Directorios - Procesamiento")
         config_group.setStyleSheet("QGroupBox { font-weight: bold; }")
         config_layout = QVBoxLayout()
         
@@ -96,32 +110,32 @@ class ProcesamientoTab(QWidget):
             
             # Crear etiqueta para el texto descriptivo
             label_desc = QLabel(label_text)
-            label_desc.setMinimumWidth(80)  # Ancho fijo para alinear las etiquetas
+            label_desc.setMinimumWidth(80)
             
             # Crear etiqueta para la ruta (con texto truncado)
             label_ruta = QLabel(self.parent.truncar_texto(default_path))
             label_ruta.setStyleSheet("background-color: #e8e8e8; padding: 5px; border: 1px solid #ccc;")
-            label_ruta.setMinimumWidth(300)  # Un poco más ancho para mostrar más texto
-            label_ruta.setToolTip(default_path)  # Tooltip con la ruta completa
+            label_ruta.setMinimumWidth(300)
+            label_ruta.setToolTip(default_path)
             setattr(self, attr_name, label_ruta)
             
             # Crear botón "..." para cambiar ruta
             btn_change = QPushButton("...")
-            btn_change.setFixedSize(30, 30)  # Botón pequeño
+            btn_change.setFixedSize(30, 30)
             btn_change.setStyleSheet("QPushButton { font-weight: bold; }")
             
             # Conectar señal según el tipo de ruta
             if "fm" in attr_name:
-                btn_change.clicked.connect(lambda: self.parent.change_path("fm", self))
+                btn_change.clicked.connect(lambda: self.parent.change_path("fm", self, "procesamiento"))
             elif "tv" in attr_name:
-                btn_change.clicked.connect(lambda: self.parent.change_path("tv", self))
+                btn_change.clicked.connect(lambda: self.parent.change_path("tv", self, "procesamiento"))
             elif "output" in attr_name:
-                btn_change.clicked.connect(lambda: self.parent.change_path("output", self))
+                btn_change.clicked.connect(lambda: self.parent.change_path("output", self, "procesamiento"))
             
             path_layout.addWidget(label_desc)
             path_layout.addWidget(label_ruta)
             path_layout.addWidget(btn_change)
-            path_layout.addStretch(1)  # Esto empujará todo a la izquierda
+            path_layout.addStretch(1)
             config_layout.addLayout(path_layout)
         
         config_group.setLayout(config_layout)
@@ -139,7 +153,7 @@ class ProcesamientoTab(QWidget):
         # Nuevo botón para abrir carpeta de salida
         self.open_output_btn = QPushButton("Abrir Carpeta de Salida")
         self.open_output_btn.setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 10px; }")
-        self.open_output_btn.clicked.connect(self.parent.open_output_folder)
+        self.open_output_btn.clicked.connect(lambda: self.parent.open_output_folder("procesamiento"))
         
         self.start_btn.clicked.connect(lambda: self.parent.start_processing("procesamiento"))
         self.stop_btn.clicked.connect(self.parent.stop_processing)
@@ -186,7 +200,7 @@ class OcupacionTab(QWidget):
         layout = QVBoxLayout(self)
         
         # Grupo de configuración
-        config_group = QGroupBox("Configuración de Directorios")
+        config_group = QGroupBox("Configuración de Directorios - Ocupación")
         config_group.setStyleSheet("QGroupBox { font-weight: bold; }")
         config_layout = QVBoxLayout()
         
@@ -194,7 +208,7 @@ class OcupacionTab(QWidget):
         paths = [
             ("Ruta FM:", self.parent.config.get("fm_path", "MedicionesFmCSV"), "fm_path_label_ocup"),
             ("Ruta TV:", self.parent.config.get("tv_path", "MedicionesTvCSV"), "tv_path_label_ocup"), 
-            ("Ruta Salida:", self.parent.config.get("output_path", "ReportesUnificados"), "output_path_label_ocup")
+            ("Ruta Salida:", self.parent.config.get("ocupacion_output_path", "ReportesOcupacion"), "output_path_label_ocup")
         ]
         
         for label_text, default_path, attr_name in paths:
@@ -202,32 +216,32 @@ class OcupacionTab(QWidget):
             
             # Crear etiqueta para el texto descriptivo
             label_desc = QLabel(label_text)
-            label_desc.setMinimumWidth(80)  # Ancho fijo para alinear las etiquetas
+            label_desc.setMinimumWidth(80)
             
             # Crear etiqueta para la ruta (con texto truncado)
             label_ruta = QLabel(self.parent.truncar_texto(default_path))
             label_ruta.setStyleSheet("background-color: #e8e8e8; padding: 5px; border: 1px solid #ccc;")
-            label_ruta.setMinimumWidth(300)  # Un poco más ancho para mostrar más texto
-            label_ruta.setToolTip(default_path)  # Tooltip con la ruta completa
+            label_ruta.setMinimumWidth(300)
+            label_ruta.setToolTip(default_path)
             setattr(self, attr_name, label_ruta)
             
             # Crear botón "..." para cambiar ruta
             btn_change = QPushButton("...")
-            btn_change.setFixedSize(30, 30)  # Botón pequeño
+            btn_change.setFixedSize(30, 30)
             btn_change.setStyleSheet("QPushButton { font-weight: bold; }")
             
             # Conectar señal según el tipo de ruta
             if "fm" in attr_name:
-                btn_change.clicked.connect(lambda: self.parent.change_path("fm", self))
+                btn_change.clicked.connect(lambda: self.parent.change_path("fm", self, "ocupacion"))
             elif "tv" in attr_name:
-                btn_change.clicked.connect(lambda: self.parent.change_path("tv", self))
+                btn_change.clicked.connect(lambda: self.parent.change_path("tv", self, "ocupacion"))
             elif "output" in attr_name:
-                btn_change.clicked.connect(lambda: self.parent.change_path("output", self))
+                btn_change.clicked.connect(lambda: self.parent.change_path("ocupacion_output", self, "ocupacion"))
             
             path_layout.addWidget(label_desc)
             path_layout.addWidget(label_ruta)
             path_layout.addWidget(btn_change)
-            path_layout.addStretch(1)  # Esto empujará todo a la izquierda
+            path_layout.addStretch(1)
             config_layout.addLayout(path_layout)
         
         config_group.setLayout(config_layout)
@@ -245,7 +259,7 @@ class OcupacionTab(QWidget):
         # Nuevo botón para abrir carpeta de salida
         self.open_output_btn = QPushButton("Abrir Carpeta de Salida")
         self.open_output_btn.setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 10px; }")
-        self.open_output_btn.clicked.connect(self.parent.open_output_folder)
+        self.open_output_btn.clicked.connect(lambda: self.parent.open_output_folder("ocupacion"))
         
         self.start_btn.clicked.connect(lambda: self.parent.start_processing("ocupacion"))
         self.stop_btn.clicked.connect(self.parent.stop_processing)
@@ -315,7 +329,7 @@ class MainWindow(QMainWindow):
     
     def initUI(self):
         self.setWindowTitle("Sistema de Reportes Unificados - ARCOTEL")
-        self.setGeometry(100, 100, 900, 700)  # Ventana un poco más grande
+        self.setGeometry(100, 100, 900, 700)
         
         # Widget central
         central_widget = QWidget()
@@ -366,89 +380,73 @@ class MainWindow(QMainWindow):
         self.log_message("Ventana principal visible", "procesamiento")
         self.log_message("Ventana principal visible", "ocupacion")
     
-    def change_path(self, path_type, tab):
+    def change_path(self, path_type, tab, mode):
         """Cambiar las rutas de los directorios"""
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.Directory)
         
-        if path_type == "fm":
-            if hasattr(tab, 'fm_path_label'):
+        # Obtener la ruta actual según el tipo y modo
+        if mode == "procesamiento":
+            if path_type == "fm":
                 current_path = tab.fm_path_label.text().replace("...", "")
-            else:
-                current_path = tab.fm_path_label_ocup.text().replace("...", "")
-                
-            new_path = dialog.getExistingDirectory(self, "Seleccionar directorio FM", current_path)
-            if new_path:
-                truncated_text = self.truncar_texto(new_path)
-                if hasattr(tab, 'fm_path_label'):
-                    tab.fm_path_label.setText(truncated_text)
-                    tab.fm_path_label.setToolTip(new_path)
-                else:
-                    tab.fm_path_label_ocup.setText(truncated_text)
-                    tab.fm_path_label_ocup.setToolTip(new_path)
-                self.config["fm_path"] = new_path
-                self.save_config()
-                self.log_message(f"Ruta FM cambiada a: {new_path}", "procesamiento" if hasattr(tab, 'fm_path_label') else "ocupacion")
-                
-        elif path_type == "tv":
-            if hasattr(tab, 'tv_path_label'):
+            elif path_type == "tv":
                 current_path = tab.tv_path_label.text().replace("...", "")
-            else:
-                current_path = tab.tv_path_label_ocup.text().replace("...", "")
-                
-            new_path = dialog.getExistingDirectory(self, "Seleccionar directorio TV", current_path)
-            if new_path:
-                truncated_text = self.truncar_texto(new_path)
-                if hasattr(tab, 'tv_path_label'):
-                    tab.tv_path_label.setText(truncated_text)
-                    tab.tv_path_label.setToolTip(new_path)
-                else:
-                    tab.tv_path_label_ocup.setText(truncated_text)
-                    tab.tv_path_label_ocup.setToolTip(new_path)
-                self.config["tv_path"] = new_path
-                self.save_config()
-                self.log_message(f"Ruta TV cambiada a: {new_path}", "procesamiento" if hasattr(tab, 'tv_path_label') else "ocupacion")
-                
-        elif path_type == "output":
-            if hasattr(tab, 'output_path_label'):
+            elif path_type == "output":
                 current_path = tab.output_path_label.text().replace("...", "")
-            else:
+        else:  # ocupacion
+            if path_type == "fm":
+                current_path = tab.fm_path_label_ocup.text().replace("...", "")
+            elif path_type == "tv":
+                current_path = tab.tv_path_label_ocup.text().replace("...", "")
+            elif path_type == "ocupacion_output":
                 current_path = tab.output_path_label_ocup.text().replace("...", "")
-                
-            new_path = dialog.getExistingDirectory(self, "Seleccionar directorio de salida", current_path)
-            if new_path:
-                truncated_text = self.truncar_texto(new_path)
-                if hasattr(tab, 'output_path_label'):
-                    tab.output_path_label.setText(truncated_text)
-                    tab.output_path_label.setToolTip(new_path)
-                else:
-                    tab.output_path_label_ocup.setText(truncated_text)
-                    tab.output_path_label_ocup.setToolTip(new_path)
+        
+        new_path = dialog.getExistingDirectory(self, f"Seleccionar directorio {path_type.upper()}", current_path)
+        if not new_path:
+            return
+            
+        truncated_text = self.truncar_texto(new_path)
+        
+        if mode == "procesamiento":
+            if path_type == "fm":
+                tab.fm_path_label.setText(truncated_text)
+                tab.fm_path_label.setToolTip(new_path)
+                self.config["fm_path"] = new_path
+            elif path_type == "tv":
+                tab.tv_path_label.setText(truncated_text)
+                tab.tv_path_label.setToolTip(new_path)
+                self.config["tv_path"] = new_path
+            elif path_type == "output":
+                tab.output_path_label.setText(truncated_text)
+                tab.output_path_label.setToolTip(new_path)
                 self.config["output_path"] = new_path
-                self.save_config()
-                self.log_message(f"Ruta de salida cambiada a: {new_path}", "procesamiento" if hasattr(tab, 'output_path_label') else "ocupacion")
+        else:  # ocupacion
+            if path_type == "fm":
+                tab.fm_path_label_ocup.setText(truncated_text)
+                tab.fm_path_label_ocup.setToolTip(new_path)
+                self.config["fm_path"] = new_path
+            elif path_type == "tv":
+                tab.tv_path_label_ocup.setText(truncated_text)
+                tab.tv_path_label_ocup.setToolTip(new_path)
+                self.config["tv_path"] = new_path
+            elif path_type == "ocupacion_output":
+                tab.output_path_label_ocup.setText(truncated_text)
+                tab.output_path_label_ocup.setToolTip(new_path)
+                self.config["ocupacion_output_path"] = new_path
+        
+        self.save_config()
+        self.log_message(f"Ruta {path_type} cambiada a: {new_path}", mode)
     
-    def open_output_folder(self):
+    def open_output_folder(self, mode):
         """Abrir la carpeta de salida en el explorador de archivos"""
-        # Determinar qué pestaña está activa
-        current_tab = self.tabs.currentWidget()
-        
-        if hasattr(current_tab, 'output_path_label'):
-            output_path = current_tab.output_path_label.toolTip()
-        else:
-            output_path = current_tab.output_path_label_ocup.toolTip()
-        
-        if not output_path:  # Si no hay tooltip, usar el texto (sin los puntos suspensivos)
-            if hasattr(current_tab, 'output_path_label'):
-                output_path = current_tab.output_path_label.text().replace("...", "")
-            else:
-                output_path = current_tab.output_path_label_ocup.text().replace("...", "")
+        if mode == "procesamiento":
+            output_path = self.procesamiento_tab.output_path_label.toolTip() or self.procesamiento_tab.output_path_label.text().replace("...", "")
+        else:  # ocupacion
+            output_path = self.ocupacion_tab.output_path_label_ocup.toolTip() or self.ocupacion_tab.output_path_label_ocup.text().replace("...", "")
         
         if not os.path.exists(output_path):
-            self.log_message(f"La carpeta de salida no existe: {output_path}", 
-                            "procesamiento" if hasattr(current_tab, 'output_path_label') else "ocupacion")
-            QMessageBox.warning(self, "Carpeta no encontrada", 
-                               f"La carpeta de salida no existe:\n{output_path}")
+            self.log_message(f"La carpeta de salida no existe: {output_path}", mode)
+            QMessageBox.warning(self, "Carpeta no encontrada", f"La carpeta de salida no existe:\n{output_path}")
             return
         
         try:
@@ -460,27 +458,24 @@ class MainWindow(QMainWindow):
             else:  # Linux
                 subprocess.Popen(["xdg-open", output_path])
                 
-            self.log_message(f"Carpeta de salida abierta: {output_path}", 
-                            "procesamiento" if hasattr(current_tab, 'output_path_label') else "ocupacion")
+            self.log_message(f"Carpeta de salida abierta: {output_path}", mode)
         except Exception as e:
             error_msg = f"No se pudo abrir la carpeta: {str(e)}"
-            self.log_message(error_msg, "procesamiento" if hasattr(current_tab, 'output_path_label') else "ocupacion")
+            self.log_message(error_msg, mode)
             QMessageBox.critical(self, "Error", error_msg)
     
     def start_processing(self, mode):
         """Iniciar el procesamiento"""
-        # Determinar qué pestaña está activa
-        current_tab = self.tabs.currentWidget()
-        
-        # Obtener las rutas completas de los tooltips
-        if hasattr(current_tab, 'fm_path_label'):
-            fm_path = current_tab.fm_path_label.toolTip() or current_tab.fm_path_label.text().replace("...", "")
-            tv_path = current_tab.tv_path_label.toolTip() or current_tab.tv_path_label.text().replace("...", "")
-            output_path = current_tab.output_path_label.toolTip() or current_tab.output_path_label.text().replace("...", "")
-        else:
-            fm_path = current_tab.fm_path_label_ocup.toolTip() or current_tab.fm_path_label_ocup.text().replace("...", "")
-            tv_path = current_tab.tv_path_label_ocup.toolTip() or current_tab.tv_path_label_ocup.text().replace("...", "")
-            output_path = current_tab.output_path_label_ocup.toolTip() or current_tab.output_path_label_ocup.text().replace("...", "")
+        if mode == "procesamiento":
+            # Obtener rutas desde la pestaña de procesamiento
+            fm_path = self.procesamiento_tab.fm_path_label.toolTip() or self.procesamiento_tab.fm_path_label.text().replace("...", "")
+            tv_path = self.procesamiento_tab.tv_path_label.toolTip() or self.procesamiento_tab.tv_path_label.text().replace("...", "")
+            output_path = self.procesamiento_tab.output_path_label.toolTip() or self.procesamiento_tab.output_path_label.text().replace("...", "")
+        else:  # ocupacion
+            # Obtener rutas desde la pestaña de ocupación
+            fm_path = self.ocupacion_tab.fm_path_label_ocup.toolTip() or self.ocupacion_tab.fm_path_label_ocup.text().replace("...", "")
+            tv_path = self.ocupacion_tab.tv_path_label_ocup.toolTip() or self.ocupacion_tab.tv_path_label_ocup.text().replace("...", "")
+            output_path = self.ocupacion_tab.output_path_label_ocup.toolTip() or self.ocupacion_tab.output_path_label_ocup.text().replace("...", "")
         
         # Verificar que las rutas existan
         if not os.path.exists(fm_path):
@@ -523,8 +518,8 @@ class MainWindow(QMainWindow):
             self.worker.wait()
             
             # Determinar qué pestaña está activa
-            current_tab = self.tabs.currentWidget()
-            mode = "procesamiento" if hasattr(current_tab, 'fm_path_label') else "ocupacion"
+            current_tab_index = self.tabs.currentIndex()
+            mode = "procesamiento" if current_tab_index == 0 else "ocupacion"
             
             self.log_message("Procesamiento detenido por el usuario", mode)
         
