@@ -154,6 +154,7 @@ class MainWindow(QMainWindow):
             path_layout.addWidget(label_desc)
             path_layout.addWidget(label_ruta)
             path_layout.addWidget(btn_change)
+            path_layout.addStretch(1)  # Esto empujará todo a la izquierda
             config_layout.addLayout(path_layout)
         
         config_group.setLayout(config_layout)
