@@ -116,7 +116,7 @@ class MainWindow(QMainWindow):
         
         # Rutas de entrada con mejor formato - usar valores de configuración
         paths = [
-            ("Ruta FM:", self.config.get("fm_path", "MedicionesFmCSV"), "fm_path_label."),
+            ("Ruta FM:", self.config.get("fm_path", "MedicionesFmCSV"), "fm_path_label"),
             ("Ruta TV:", self.config.get("tv_path", "MedicionesTvCSV"), "tv_path_label"), 
             ("Ruta Salida:", self.config.get("output_path", "ReportesUnificados"), "output_path_label")
         ]
