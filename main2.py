@@ -121,7 +121,7 @@ def formatear_hoja_ocupacion(ws, datos, tipo):
         ]
     else:  # TV
         encabezados = [
-            "Frecuencia (MHz)", "Canal", "Ocupación (%)",
+            "Frecuencia (MHz)", "Banda", "Canal", "Ocupación (%)",
             "Level (dBµV/m)", "Bandwidth (Hz)", "Offset (Hz)", "AM (%)"
         ]
     
@@ -144,12 +144,13 @@ def formatear_hoja_ocupacion(ws, datos, tipo):
             ws.cell(row=fila_idx, column=7, value=fila["FM (kHz)"])
         else:  # TV
             ws.cell(row=fila_idx, column=1, value=fila["Frecuencia (MHz)"])
-            ws.cell(row=fila_idx, column=2, value=fila["Canal"])
-            ws.cell(row=fila_idx, column=3, value=fila["Ocupación (%)"])  # Valor original con decimales
-            ws.cell(row=fila_idx, column=4, value=fila["Level (dBµV/m)"])
-            ws.cell(row=fila_idx, column=5, value=fila["Bandwidth (Hz)"])
-            ws.cell(row=fila_idx, column=6, value=fila["Offset (Hz)"])
-            ws.cell(row=fila_idx, column=7, value=fila["AM (%)"])
+            ws.cell(row=fila_idx, column=2, value=fila["Banda"])
+            ws.cell(row=fila_idx, column=3, value=fila["Canal"])  # Valor original del canal
+            ws.cell(row=fila_idx, column=4, value=fila["Ocupación (%)"])  # Valor original con decimales
+            ws.cell(row=fila_idx, column=5, value=fila["Level (dBµV/m)"])
+            ws.cell(row=fila_idx, column=6, value=fila["Bandwidth (Hz)"])
+            ws.cell(row=fila_idx, column=7, value=fila["Offset (Hz)"])
+            ws.cell(row=fila_idx, column=8, value=fila["AM (%)"])
     
     # Aplicar bordes y formato
     thin = Side(border_style="thin")
@@ -216,6 +217,20 @@ def buscar_columna_por_patron(df, patrones):
             if patron.lower() in col.lower():
                 return col
     return None
+
+def obtener_banda_por_frecuencia(freq):
+    """Determina la banda según la frecuencia"""
+    # Bandas de TV según estándares internacionales
+    if 55.25 <= freq <= 88: 
+        return "Bandas I-III (VHF)"
+    elif 174 <= freq <= 216: 
+        return "Banda III (VHF)"
+    elif 470 <= freq <= 608: 
+        return "Bandas IV-V (UHF)"
+    elif 614 <= freq <= 698: 
+        return "Bandas IV-V (UHF)"
+    else: 
+        return "Otra banda"
 
 def procesar_archivo_fm(ruta_archivo):
     """Procesa archivo FM y extrae datos de ocupación en el rango desde 88.1 MHz"""
@@ -309,7 +324,7 @@ def procesar_archivo_fm(ruta_archivo):
                     bandwidth_val = limpiar_valor_numerico(row[columna_bandwidth]) if columna_bandwidth else np.nan
                     offset_val = limpiar_valor_numerico(row[columna_offset]) if columna_offset else np.nan
                     
-                    # Para FM, si se encontró AM en lugar de FM, convertir a kHz
+                    # Para FM, si se encontró AM en lugar de FM, convertir to kHz
                     fm_val = np.nan
                     if columna_fm:
                         fm_val = limpiar_valor_numerico(row[columna_fm])
@@ -374,17 +389,9 @@ def procesar_archivo_tv(ruta_archivo):
         else:
             mes_objetivo = df["Tiempo"].dropna().apply(lambda x: x.month).value_counts().idxmax()
         
-        # Mapeo de frecuencia a canal (para TV)
-        def frecuencia_a_canal(freq):
-            # Bandas de TV según estándares internacionales
-            if 55.25 <= freq <= 88: return "Bandas I-III (VHF)"
-            elif 174 <= freq <= 216: return "Banda III (VHF)"
-            elif 470 <= freq <= 608: return "Bandas IV-V (UHF)"
-            elif 614 <= freq <= 698: return "Bandas IV-V (UHF)"
-            else: return "Otra banda"
-        
         # Buscar las columnas necesarias
         columna_ocupacion = buscar_columna_por_patron(df_filtrado, ['ocupaci'])
+        columna_canal = buscar_columna_por_patron(df_filtrado, ['canal', 'channel'])
         columna_level = buscar_columna_por_patron(df_filtrado, ['level', 'nivel'])
         columna_bandwidth = buscar_columna_por_patron(df_filtrado, ['bandwidth', 'ancho de banda'])
         columna_offset = buscar_columna_por_patron(df_filtrado, ['offset', 'desplazamiento'])
@@ -401,14 +408,19 @@ def procesar_archivo_tv(ruta_archivo):
                     ocupacion_val = limpiar_valor_numerico(row[columna_ocupacion])
                     if not np.isnan(ocupacion_val):
                         # Obtener los demás valores
+                        canal_val = row[columna_canal] if columna_canal else np.nan
                         level_val = limpiar_valor_numerico(row[columna_level]) if columna_level else np.nan
                         bandwidth_val = limpiar_valor_numerico(row[columna_bandwidth]) if columna_bandwidth else np.nan
                         offset_val = limpiar_valor_numerico(row[columna_offset]) if columna_offset else np.nan
                         am_val = limpiar_valor_numerico(row[columna_am]) if columna_am else np.nan
                         
+                        # Determinar la banda según la frecuencia
+                        banda_val = obtener_banda_por_frecuencia(row["Frecuencia (MHz)"])
+                        
                         ocupacion_data.append({
                             "Frecuencia (MHz)": row["Frecuencia (MHz)"],
-                            "Canal": frecuencia_a_canal(row["Frecuencia (MHz)"]),
+                            "Banda": banda_val,
+                            "Canal": canal_val,  # Valor original del canal
                             "Ocupación (%)": ocupacion_val,  # Valor original con decimales
                             "Level (dBµV/m)": level_val,
                             "Bandwidth (Hz)": bandwidth_val,
@@ -422,14 +434,19 @@ def procesar_archivo_tv(ruta_archivo):
             for _, row in df_filtrado.iterrows():
                 try:
                     # Obtener los demás valores
+                    canal_val = row[columna_canal] if columna_canal else np.nan
                     level_val = limpiar_valor_numerico(row[columna_level]) if columna_level else np.nan
                     bandwidth_val = limpiar_valor_numerico(row[columna_bandwidth]) if columna_bandwidth else np.nan
                     offset_val = limpiar_valor_numerico(row[columna_offset]) if columna_offset else np.nan
                     am_val = limpiar_valor_numerico(row[columna_am]) if columna_am else np.nan
                     
+                    # Determinar la banda según la frecuencia
+                    banda_val = obtener_banda_por_frecuencia(row["Frecuencia (MHz)"])
+                    
                     ocupacion_data.append({
                         "Frecuencia (MHz)": row["Frecuencia (MHz)"],
-                        "Canal": frecuencia_a_canal(row["Frecuencia (MHz)"]),
+                        "Banda": banda_val,
+                        "Canal": canal_val,  # Valor original del canal
                         "Ocupación (%)": 100.0,
                         "Level (dBµV/m)": level_val,
                         "Bandwidth (Hz)": bandwidth_val,
