@@ -49,7 +49,7 @@ def obtener_codigo_base(base):
     correspondencia = {
         "zamora": "SCS-L01",
         "loja": "SCS-L02", 
-        "canar": "SCS-L03",
+        "cañar": "SCS-L03",
         "macas": "SCS-L04",
         "machala": "SCC-L04",
         "cuenca": "SCS-L05"
@@ -113,11 +113,17 @@ def formatear_hoja_ocupacion(ws, datos, tipo):
     # Limpiar hoja existente
     ws.delete_rows(1, ws.max_row)
     
-    # Agregar encabezado
+    # Agregar encabezado según el tipo
     if tipo == "FM":
-        encabezados = ["Frecuencia (MHz)", "FECHA DE SUSCRIPCION", "Ocupación (%)"]
+        encabezados = [
+            "Frecuencia (MHz)", "FECHA DE SUSCRIPCION", "Ocupación (%)",
+            "Level (dBµV/m)", "Bandwidth (Hz)", "Offset (Hz)", "FM (kHz)"
+        ]
     else:  # TV
-        encabezados = ["Frecuencia (MHz)", "Canal", "Ocupación (%)"]
+        encabezados = [
+            "Frecuencia (MHz)", "Canal", "Ocupación (%)",
+            "Level (dBµV/m)", "Bandwidth (Hz)", "Offset (Hz)", "AM (%)"
+        ]
     
     # Escribir encabezados
     for col, encabezado in enumerate(encabezados, 1):
@@ -131,13 +137,19 @@ def formatear_hoja_ocupacion(ws, datos, tipo):
         if tipo == "FM":
             ws.cell(row=fila_idx, column=1, value=fila["Frecuencia (MHz)"])
             ws.cell(row=fila_idx, column=2, value=fila["FECHA DE SUSCRIPCION"])
-            # Conservar los decimales originales de ocupación
-            ws.cell(row=fila_idx, column=3, value=fila["Ocupación (%)"])
+            ws.cell(row=fila_idx, column=3, value=fila["Ocupación (%)"])  # Valor original con decimales
+            ws.cell(row=fila_idx, column=4, value=fila["Level (dBµV/m)"])
+            ws.cell(row=fila_idx, column=5, value=fila["Bandwidth (Hz)"])
+            ws.cell(row=fila_idx, column=6, value=fila["Offset (Hz)"])
+            ws.cell(row=fila_idx, column=7, value=fila["FM (kHz)"])
         else:  # TV
             ws.cell(row=fila_idx, column=1, value=fila["Frecuencia (MHz)"])
             ws.cell(row=fila_idx, column=2, value=fila["Canal"])
-            # Conservar los decimales originales de ocupación
-            ws.cell(row=fila_idx, column=3, value=fila["Ocupación (%)"])
+            ws.cell(row=fila_idx, column=3, value=fila["Ocupación (%)"])  # Valor original con decimales
+            ws.cell(row=fila_idx, column=4, value=fila["Level (dBµV/m)"])
+            ws.cell(row=fila_idx, column=5, value=fila["Bandwidth (Hz)"])
+            ws.cell(row=fila_idx, column=6, value=fila["Offset (Hz)"])
+            ws.cell(row=fila_idx, column=7, value=fila["AM (%)"])
     
     # Aplicar bordes y formato
     thin = Side(border_style="thin")
@@ -197,6 +209,14 @@ def limpiar_valor_numerico(valor):
     except ValueError:
         return np.nan
 
+def buscar_columna_por_patron(df, patrones):
+    """Busca una columna en el DataFrame que coincida con alguno de los patrones"""
+    for patron in patrones:
+        for col in df.columns:
+            if patron.lower() in col.lower():
+                return col
+    return None
+
 def procesar_archivo_fm(ruta_archivo):
     """Procesa archivo FM y extrae datos de ocupación en el rango desde 88.1 MHz"""
     try:
@@ -232,12 +252,18 @@ def procesar_archivo_fm(ruta_archivo):
         else:
             mes_objetivo = df["Tiempo"].dropna().apply(lambda x: x.month).value_counts().idxmax()
         
-        # Buscar la columna de ocupación (puede tener diferentes nombres por encoding)
-        columna_ocupacion = None
-        for col in df_filtrado.columns:
-            if 'ocupaci' in col.lower():
-                columna_ocupacion = col
-                break
+        # Buscar las columnas necesarias
+        columna_ocupacion = buscar_columna_por_patron(df_filtrado, ['ocupaci'])
+        columna_level = buscar_columna_por_patron(df_filtrado, ['level', 'nivel'])
+        columna_bandwidth = buscar_columna_por_patron(df_filtrado, ['bandwidth', 'ancho de banda'])
+        columna_offset = buscar_columna_por_patron(df_filtrado, ['offset', 'desplazamiento'])
+        columna_fm = buscar_columna_por_patron(df_filtrado, ['fm', 'frecuencia modulada'])
+        
+        # Si no se encuentra FM, buscar AM y convertir a kHz
+        if columna_fm is None:
+            columna_am = buscar_columna_por_patron(df_filtrado, ['am', 'amplitud modulada'])
+            if columna_am is not None:
+                columna_fm = columna_am
         
         # Calcular ocupación usando los valores reales del archivo
         ocupacion_data = []
@@ -249,28 +275,59 @@ def procesar_archivo_fm(ruta_archivo):
                     # Limpiar y convertir el valor de ocupación
                     ocupacion_val = limpiar_valor_numerico(row[columna_ocupacion])
                     if not np.isnan(ocupacion_val):
-                        # Conservar el valor original con sus decimales
+                        # Obtener los demás valores
+                        level_val = limpiar_valor_numerico(row[columna_level]) if columna_level else np.nan
+                        bandwidth_val = limpiar_valor_numerico(row[columna_bandwidth]) if columna_bandwidth else np.nan
+                        offset_val = limpiar_valor_numerico(row[columna_offset]) if columna_offset else np.nan
+                        
+                        # Para FM, si se encontró AM en lugar de FM, convertir a kHz
+                        fm_val = np.nan
+                        if columna_fm:
+                            fm_val = limpiar_valor_numerico(row[columna_fm])
+                            # Si el valor es de AM (%), convertirlo a FM (kHz)
+                            # Asumimos que valores mayores a 100 son kHz, menores son %
+                            if fm_val <= 100:
+                                fm_val = fm_val * 10  # Convertir % a kHz (aproximación)
+                        
                         ocupacion_data.append({
                             "Frecuencia (MHz)": row["Frecuencia (MHz)"],
                             "FECHA DE SUSCRIPCION": datetime.now().strftime("%Y-%m-%d"),
-                            "Ocupación (%)": ocupacion_val  # Valor original con decimales
+                            "Ocupación (%)": ocupacion_val,  # Valor original con decimales
+                            "Level (dBµV/m)": level_val,
+                            "Bandwidth (Hz)": bandwidth_val,
+                            "Offset (Hz)": offset_val,
+                            "FM (kHz)": fm_val
                         })
                 except (ValueError, TypeError):
                     continue
         else:
             # Si no hay columna de ocupación, usar 100% para frecuencias con señal
-            frecuencias_unicas = df_filtrado["Frecuencia (MHz)"].unique()
-            
-            for freq in frecuencias_unicas:
-                # Calcular porcentaje de tiempo con señal en esta frecuencia
-                mediciones_freq = df_filtrado[df_filtrado["Frecuencia (MHz)"] == freq]
-                if not mediciones_freq.empty:
-                    # Asumir que si hay medición, hay 100% de ocupación
+            for _, row in df_filtrado.iterrows():
+                try:
+                    # Obtener los demás valores
+                    level_val = limpiar_valor_numerico(row[columna_level]) if columna_level else np.nan
+                    bandwidth_val = limpiar_valor_numerico(row[columna_bandwidth]) if columna_bandwidth else np.nan
+                    offset_val = limpiar_valor_numerico(row[columna_offset]) if columna_offset else np.nan
+                    
+                    # Para FM, si se encontró AM en lugar de FM, convertir a kHz
+                    fm_val = np.nan
+                    if columna_fm:
+                        fm_val = limpiar_valor_numerico(row[columna_fm])
+                        # Si el valor es de AM (%), convertirlo a FM (kHz)
+                        if fm_val <= 100:
+                            fm_val = fm_val * 10  # Convertir % a kHz (aproximación)
+                    
                     ocupacion_data.append({
-                        "Frecuencia (MHz)": freq,
+                        "Frecuencia (MHz)": row["Frecuencia (MHz)"],
                         "FECHA DE SUSCRIPCION": datetime.now().strftime("%Y-%m-%d"),
-                        "Ocupación (%)": 100.0
+                        "Ocupación (%)": 100.0,
+                        "Level (dBµV/m)": level_val,
+                        "Bandwidth (Hz)": bandwidth_val,
+                        "Offset (Hz)": offset_val,
+                        "FM (kHz)": fm_val
                     })
+                except (ValueError, TypeError):
+                    continue
         
         resultado = pd.DataFrame(ocupacion_data)
         resultado["Mes"] = mes_objetivo
@@ -326,12 +383,12 @@ def procesar_archivo_tv(ruta_archivo):
             elif 614 <= freq <= 698: return "Bandas IV-V (UHF)"
             else: return "Otra banda"
         
-        # Buscar la columna de ocupación (puede tener diferentes nombres por encoding)
-        columna_ocupacion = None
-        for col in df_filtrado.columns:
-            if 'ocupaci' in col.lower():
-                columna_ocupacion = col
-                break
+        # Buscar las columnas necesarias
+        columna_ocupacion = buscar_columna_por_patron(df_filtrado, ['ocupaci'])
+        columna_level = buscar_columna_por_patron(df_filtrado, ['level', 'nivel'])
+        columna_bandwidth = buscar_columna_por_patron(df_filtrado, ['bandwidth', 'ancho de banda'])
+        columna_offset = buscar_columna_por_patron(df_filtrado, ['offset', 'desplazamiento'])
+        columna_am = buscar_columna_por_patron(df_filtrado, ['am', 'amplitud modulada'])
         
         # Calcular ocupación usando los valores reales del archivo
         ocupacion_data = []
@@ -343,28 +400,44 @@ def procesar_archivo_tv(ruta_archivo):
                     # Limpiar y convertir el valor de ocupación
                     ocupacion_val = limpiar_valor_numerico(row[columna_ocupacion])
                     if not np.isnan(ocupacion_val):
-                        # Conservar el valor original con sus decimales
+                        # Obtener los demás valores
+                        level_val = limpiar_valor_numerico(row[columna_level]) if columna_level else np.nan
+                        bandwidth_val = limpiar_valor_numerico(row[columna_bandwidth]) if columna_bandwidth else np.nan
+                        offset_val = limpiar_valor_numerico(row[columna_offset]) if columna_offset else np.nan
+                        am_val = limpiar_valor_numerico(row[columna_am]) if columna_am else np.nan
+                        
                         ocupacion_data.append({
                             "Frecuencia (MHz)": row["Frecuencia (MHz)"],
                             "Canal": frecuencia_a_canal(row["Frecuencia (MHz)"]),
-                            "Ocupación (%)": ocupacion_val  # Valor original con decimales
+                            "Ocupación (%)": ocupacion_val,  # Valor original con decimales
+                            "Level (dBµV/m)": level_val,
+                            "Bandwidth (Hz)": bandwidth_val,
+                            "Offset (Hz)": offset_val,
+                            "AM (%)": am_val
                         })
                 except (ValueError, TypeError):
                     continue
         else:
             # Si no hay columna de ocupación, usar 100% para frecuencias con señal
-            frecuencias_unicas = df_filtrado["Frecuencia (MHz)"].unique()
-            
-            for freq in frecuencias_unicas:
-                # Calcular porcentaje de tiempo con señal en esta frecuencia
-                mediciones_freq = df_filtrado[df_filtrado["Frecuencia (MHz)"] == freq]
-                if not mediciones_freq.empty:
-                    # Asumir que si hay medición, hay 100% de ocupación
+            for _, row in df_filtrado.iterrows():
+                try:
+                    # Obtener los demás valores
+                    level_val = limpiar_valor_numerico(row[columna_level]) if columna_level else np.nan
+                    bandwidth_val = limpiar_valor_numerico(row[columna_bandwidth]) if columna_bandwidth else np.nan
+                    offset_val = limpiar_valor_numerico(row[columna_offset]) if columna_offset else np.nan
+                    am_val = limpiar_valor_numerico(row[columna_am]) if columna_am else np.nan
+                    
                     ocupacion_data.append({
-                        "Frecuencia (MHz)": freq,
-                        "Canal": frecuencia_a_canal(freq),
-                        "Ocupación (%)": 100.0
+                        "Frecuencia (MHz)": row["Frecuencia (MHz)"],
+                        "Canal": frecuencia_a_canal(row["Frecuencia (MHz)"]),
+                        "Ocupación (%)": 100.0,
+                        "Level (dBµV/m)": level_val,
+                        "Bandwidth (Hz)": bandwidth_val,
+                        "Offset (Hz)": offset_val,
+                        "AM (%)": am_val
                     })
+                except (ValueError, TypeError):
+                    continue
         
         resultado = pd.DataFrame(ocupacion_data)
         resultado["Mes"] = mes_objetivo
@@ -470,7 +543,7 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
             
             # Generar nombre de archivo
             codigo_base = obtener_codigo_base(base)
-            nombre_ciudad = "TAMBO" if base.lower() == "canar" else base.upper()
+            nombre_ciudad = "TAMBO" if base.lower() == "cañar" else base.upper()
             nombre_mes_completo = obtener_nombre_mes_es(mes_referencia) if mes_referencia else "Desconocido"
             nombre_salida = f"{codigo_base}_Ocupacion{nombre_ciudad}_{nombre_mes_completo}2025.xlsx"
             
