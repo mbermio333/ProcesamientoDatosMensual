@@ -8,6 +8,7 @@ from openpyxl.styles import Alignment, Font, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.drawing.image import Image as XLImage
+import time
 
 # ------------------ CONFIGURACIÓN GENERAL ------------------
 # Cargar configuración desde archivo
@@ -15,20 +16,78 @@ CONFIG_FILE = "config.json"
 
 def cargar_configuracion():
     """Cargar configuración desde archivo JSON"""
+    config_default = {
+        "fm_path": "MedicionesFmCSV",
+        "tv_path": "MedicionesTvCSV", 
+        "output_path": "ReportesUnificados",
+        "emisoras_por_ciudad": {}
+    }
+    
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, 'r') as f:
                 config = json.load(f)
+                # Asegurarse de que exista la clave para emisoras por ciudad
+                if "emisoras_por_ciudad" not in config:
+                    config["emisoras_por_ciudad"] = {}
                 return config
         except:
-            pass
+            return config_default
     
-    # Valores por defecto si no hay archivo de configuración
-    return {
-        "fm_path": "MedicionesFmCSV",
-        "tv_path": "MedicionesTvCSV", 
-        "output_path": "ReportesUnificados"
-    }
+    return config_default
+
+def guardar_configuracion(config):
+    """Guardar configuración en archivo JSON"""
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config, f, indent=4, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print(f"Error al guardar configuración: {e}")
+        return False
+    
+def extraer_nombres_emisoras(ruta_archivo, tipo):
+    """Extraer nombres únicos de emisoras de un archivo CSV con sus frecuencias"""
+    try:
+        df = pd.read_csv(ruta_archivo, encoding="unicode_escape")
+        emisoras_con_frecuencia = []
+
+        columnas_posibles_nombre = ["ESTACION", "Estación", "Station", "STATION", "Nombre de la estación"]
+        columna_nombre = None
+
+        for col in columnas_posibles_nombre:
+            if col in df.columns:
+                columna_nombre = col
+                break
+
+        if columna_nombre is None:
+            print(f"No se encontró columna de nombre en {ruta_archivo}")
+            return []
+
+        if "Frecuencia (Hz)" not in df.columns:
+            print(f"No se encontró columna 'Frecuencia (Hz)' en {ruta_archivo}")
+            return []
+
+        # Obtener pares únicos estación + frecuencia, sin usar groupby
+        grouped = df[[columna_nombre, "Frecuencia (Hz)"]].dropna().drop_duplicates()
+
+        for _, row in grouped.iterrows():
+            nombre = str(row[columna_nombre]).strip()
+            frecuencia = row["Frecuencia (Hz)"] / 1_000_000  # Convertir a MHz
+
+            if nombre and nombre != "nan" and nombre != "None" and nombre.strip() != "":
+                emisoras_con_frecuencia.append({
+                    "nombre": nombre,
+                    "frecuencia": round(frecuencia, 2),
+                    "tipo": tipo
+                })
+
+        return emisoras_con_frecuencia
+
+    except Exception as e:
+        print(f"Error al extraer nombres de {tipo} desde {ruta_archivo}: {e}")
+        return []
+
 
 # Cargar configuración al inicio
 config = cargar_configuracion()
@@ -644,6 +703,7 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
 
 
 
+
 # ------------------ FUNCIÓN PRINCIPAL DE PROCESAMIENTO ------------------
 
 def procesar_datos(callback_progreso=None, callback_log=None):
@@ -652,6 +712,9 @@ def procesar_datos(callback_progreso=None, callback_log=None):
     """
     # Inicializar directorios
     inicializar_directorios()
+    
+    # Cargar configuración actual
+    config = cargar_configuracion()
     
     if callback_log:
         callback_log("Iniciando procesamiento de datos...")
@@ -670,6 +733,46 @@ def procesar_datos(callback_progreso=None, callback_log=None):
         if callback_log:
             callback_log(f"Error al leer archivos: {str(e)}")
         return False
+
+    # Extraer nombres de emisoras de todos los archivos por ciudad
+    emisoras_por_ciudad = config.get("emisoras_por_ciudad", {})
+
+    for base, archivo in archivos_fm.items():
+        emisoras_fm = extraer_nombres_emisoras(archivo, "FM")
+        if base not in emisoras_por_ciudad:
+            emisoras_por_ciudad[base] = {"FM": [], "TV": []}
+        # Limpiar duplicados y agregar
+        emisoras_existentes = {e["nombre"] for e in emisoras_por_ciudad[base]["FM"]}
+        for emisora in emisoras_fm:
+            if emisora["nombre"] not in emisoras_existentes:
+                emisoras_por_ciudad[base]["FM"].append(emisora)
+
+    for base, archivo in archivos_tv.items():
+        emisoras_tv = extraer_nombres_emisoras(archivo, "TV")
+        if base not in emisoras_por_ciudad:
+            emisoras_por_ciudad[base] = {"FM": [], "TV": []}
+        # Limpiar duplicados y agregar
+        emisoras_existentes = {e["nombre"] for e in emisoras_por_ciudad[base]["TV"]}
+        for emisora in emisoras_tv:
+            if emisora["nombre"] not in emisoras_existentes:
+                emisoras_por_ciudad[base]["TV"].append(emisora)
+    
+    # Actualizar configuración
+    config["emisoras_por_ciudad"] = emisoras_por_ciudad
+    
+    # Guardar configuración actualizada
+    if guardar_configuracion(config):
+        total_fm = sum(len(ciudad["FM"]) for ciudad in emisoras_por_ciudad.values())
+        total_tv = sum(len(ciudad["TV"]) for ciudad in emisoras_por_ciudad.values())
+        if callback_log:
+            callback_log(f"Guardadas {total_fm} emisoras FM y {total_tv} emisoras TV por ciudad en config.json")
+    else:
+        if callback_log:
+            callback_log("Error al guardar nombres de emisoras en config.json")
+    
+    # Resto del código de procesamiento...
+    
+
 
     nombres_bases = set(archivos_fm.keys()).union(archivos_tv.keys())
     total_bases = len(nombres_bases)

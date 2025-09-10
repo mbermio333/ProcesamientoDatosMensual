@@ -1,1 +1,1032 @@
-{"fm_path": "/Users/mateobermeo/Desktop/Ocupacion/FM", "tv_path": "/Users/mateobermeo/Desktop/Ocupacion/TV", "output_path": "/Users/mateobermeo/Desktop/ProcesamientoDatosMensual/ReportesUnificados"}
+{
+    "fm_path": "/Users/mateobermeo/Desktop/ProcesamientoDatosMensual/MedicionesFmCSV",
+    "tv_path": "/Users/mateobermeo/Desktop/ProcesamientoDatosMensual/MedicionesTvCSV",
+    "output_path": "/Users/mateobermeo/Desktop/ProcesamientoDatosMensual/ReportesUnificados",
+    "emisoras_por_ciudad": {
+        "cañar": {
+            "FM": [
+                {
+                    "nombre": "SUSCAL RADIO DIGITAL FM",
+                    "frecuencia": 88.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA VOZ DEL TAMBO",
+                    "frecuencia": 89.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "W RADIO",
+                    "frecuencia": 90.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "SUPER S",
+                    "frecuencia": 90.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA SUPER DEPORTIVA",
+                    "frecuencia": 91.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "GCG MAGICA FM",
+                    "frecuencia": 92.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO K1",
+                    "frecuencia": 92.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO GENESIS",
+                    "frecuencia": 93.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO QUITUMBE (SIS NO AUTORI)",
+                    "frecuencia": 94.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA VOZ DE INGAPIRCA FM",
+                    "frecuencia": 94.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "ONDAS CAÑARIS FM",
+                    "frecuencia": 95.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO CATEDRAL 95.7",
+                    "frecuencia": 95.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO COSMOS",
+                    "frecuencia": 97.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIOHIT FM",
+                    "frecuencia": 98.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA RADIO DE LA ASAMBLEA NACIONA",
+                    "frecuencia": 98.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO ESTELAR",
+                    "frecuencia": 99.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO COMPLICE FM",
+                    "frecuencia": 99.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO ROJA DEL CAÑAR",
+                    "frecuencia": 101.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO SONORAMA FM",
+                    "frecuencia": 105.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO VISION CUENCA 106.1 FM",
+                    "frecuencia": 106.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "CUMBRES FM",
+                    "frecuencia": 106.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "CANELA AUSTRO",
+                    "frecuencia": 107.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO CAÑARI",
+                    "frecuencia": 107.7,
+                    "tipo": "FM"
+                }
+            ],
+            "TV": [
+                {
+                    "nombre": "TELEAMAZONAS",
+                    "frecuencia": 61.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELERAMA",
+                    "frecuencia": 83.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEVISION DEL PACIFICO",
+                    "frecuencia": 181.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "RED TELESISTEMA (R.T.S)",
+                    "frecuencia": 193.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "CADENA ECUATORIANA DE TELE",
+                    "frecuencia": 205.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "CANAL UNO (NO AUTORIZADO)",
+                    "frecuencia": 519.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEVICENTRO",
+                    "frecuencia": 567.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TV AUSTRAL",
+                    "frecuencia": 579.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "UCSG TELEVISION",
+                    "frecuencia": 591.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "OROMAR",
+                    "frecuencia": 621.25,
+                    "tipo": "TV"
+                }
+            ]
+        },
+        "loja": {
+            "FM": [
+                {
+                    "nombre": "RADIO LUZ Y VIDA",
+                    "frecuencia": 88.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO CHASKI STEREO",
+                    "frecuencia": 88.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA HECHICERA 88.9 FM",
+                    "frecuencia": 88.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LATIDOS FM",
+                    "frecuencia": 89.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "SEMILLAS DE AMOR",
+                    "frecuencia": 89.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO MUNICIPAL",
+                    "frecuencia": 90.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "PUBLICA FM",
+                    "frecuencia": 90.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIOACTIVA",
+                    "frecuencia": 90.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "AMAZONAS FM",
+                    "frecuencia": 92.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "WG MILENIO",
+                    "frecuencia": 92.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO VIGIA FM",
+                    "frecuencia": 93.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "BOQUERON FM",
+                    "frecuencia": 93.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "ONDAS DE ESPERANZA",
+                    "frecuencia": 94.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO BUENISIMA FM 94.5",
+                    "frecuencia": 94.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "MISION SAN ANTONIO",
+                    "frecuencia": 94.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "SONICA PODER",
+                    "frecuencia": 95.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA RADIO DE LA ASAMBLEA NACIONA",
+                    "frecuencia": 95.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "ZAPOTILLO FM",
+                    "frecuencia": 96.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "CAÑAVERAL FM",
+                    "frecuencia": 96.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO CLIP",
+                    "frecuencia": 96.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO CORPORACIÓN 97.3 FM",
+                    "frecuencia": 97.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LOJA 97.9 FM",
+                    "frecuencia": 97.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "EKOOS FM 98.1",
+                    "frecuencia": 98.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "ESTACION RADIO Y TELEVISION UNI",
+                    "frecuencia": 98.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO MARIA",
+                    "frecuencia": 98.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "SOCIEDAD FM",
+                    "frecuencia": 99.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "MATOVELLE FM",
+                    "frecuencia": 100.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "BAKANA",
+                    "frecuencia": 100.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "SATELITAL 100.9 FM",
+                    "frecuencia": 100.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "DI BLU",
+                    "frecuencia": 101.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO ECUASUR",
+                    "frecuencia": 102.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO SONORAMA FM",
+                    "frecuencia": 103.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA LUNA FM",
+                    "frecuencia": 104.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "KOCODRILO RADIO",
+                    "frecuencia": 104.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "SUPER LASER PANAMERICANA",
+                    "frecuencia": 104.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO MIX",
+                    "frecuencia": 105.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "PLANETA F.M. STEREO",
+                    "frecuencia": 106.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO NACIONAL DEL ECUADOR",
+                    "frecuencia": 106.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RUMBA STEREO",
+                    "frecuencia": 106.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "JC RADIO",
+                    "frecuencia": 107.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO POSITIVA FM",
+                    "frecuencia": 107.7,
+                    "tipo": "FM"
+                }
+            ],
+            "TV": [
+                {
+                    "nombre": "CORPORACION ECUATORIANA DE",
+                    "frecuencia": 55.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "UV TELEVISION",
+                    "frecuencia": 67.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEAMAZONAS",
+                    "frecuencia": 77.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "ECUADOR TV",
+                    "frecuencia": 175.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "CADENA ECUATORIANA DE TELE",
+                    "frecuencia": 181.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "RED TELESISTEMA (R.T.S)",
+                    "frecuencia": 187.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEVISION DEL PACIFICO",
+                    "frecuencia": 199.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "ECOTEL",
+                    "frecuencia": 519.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELERAMA",
+                    "frecuencia": 531.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "PLUS TV",
+                    "frecuencia": 537.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "CANAL UNO",
+                    "frecuencia": 543.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEATAHUALPA (RTU)",
+                    "frecuencia": 567.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEVICENTRO TVC",
+                    "frecuencia": 579.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "UCSG TELEVISION",
+                    "frecuencia": 591.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "OROMAR",
+                    "frecuencia": 603.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "CANAL SUR - TELEVISION MUN",
+                    "frecuencia": 621.25,
+                    "tipo": "TV"
+                }
+            ]
+        },
+        "zamora": {
+            "FM": [
+                {
+                    "nombre": "RADIO SONORAMA FM",
+                    "frecuencia": 88.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA RADIO DE LA ASAMBLEA NACIONA",
+                    "frecuencia": 88.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO ONDA MUNICIPAL FM",
+                    "frecuencia": 90.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "AMAZONAS FM",
+                    "frecuencia": 92.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA KARIBEÑA",
+                    "frecuencia": 94.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO ROMÁNTICA FM",
+                    "frecuencia": 95.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO PODOCARPUS",
+                    "frecuencia": 98.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "ZT RADIO LA RUMBERA",
+                    "frecuencia": 100.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LUCA RADIO 101.3",
+                    "frecuencia": 101.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "INTEGRACION FM",
+                    "frecuencia": 104.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "PUBLICA FM",
+                    "frecuencia": 105.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "ZETA",
+                    "frecuencia": 106.9,
+                    "tipo": "FM"
+                }
+            ],
+            "TV": [
+                {
+                    "nombre": "RED TELESISTEMA (R.T.S)",
+                    "frecuencia": 55.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEVISION DEL PACIFICO",
+                    "frecuencia": 67.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TV CATOLICA LOS ENCUENTROS",
+                    "frecuencia": 77.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "ECUADOR TV",
+                    "frecuencia": 175.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "UV TELEVISION",
+                    "frecuencia": 187.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEAMAZONAS",
+                    "frecuencia": 199.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "CADENA ECUATORIANA DE TELE",
+                    "frecuencia": 211.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "UCSG TELEVISION",
+                    "frecuencia": 525.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "OROMAR",
+                    "frecuencia": 537.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TV LEGISLATIVA",
+                    "frecuencia": 549.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELECIUDADANA",
+                    "frecuencia": 681.25,
+                    "tipo": "TV"
+                }
+            ]
+        },
+        "macas": {
+            "FM": [
+                {
+                    "nombre": "PUBLICA FM",
+                    "frecuencia": 88.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO MORONA NO autorizada",
+                    "frecuencia": 89.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA VOZ DE LA NAE",
+                    "frecuencia": 89.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO LA VOZ DEL UPANO",
+                    "frecuencia": 90.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA RADIO DE LA ASAMBLEA NACIONAL",
+                    "frecuencia": 90.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "BONITA FM",
+                    "frecuencia": 91.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO MIA FM (MAGNIFICA INTEGRACION AMAZÓNICA)",
+                    "frecuencia": 92.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "CANAL JUVENIL FM",
+                    "frecuencia": 94.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO INTEROCEANICA",
+                    "frecuencia": 96.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "SISTEMA RADIAL OLIMPICA",
+                    "frecuencia": 97.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "TU PANA",
+                    "frecuencia": 98.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO MARIA",
+                    "frecuencia": 98.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA RADIO FM DIGITAL 100.1",
+                    "frecuencia": 100.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO RELOJ",
+                    "frecuencia": 100.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO UNIVERSITARIA PRIMICIAS DE LA CULTURA",
+                    "frecuencia": 101.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO KIRUBA 102.5 FM(NO AUTORIZADA)",
+                    "frecuencia": 102.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO IKIAM NO AUTORIZADA",
+                    "frecuencia": 103.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "SHALOM",
+                    "frecuencia": 104.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "ESTELAR FM",
+                    "frecuencia": 106.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA VOZ DE ARUTAM (NO AUTORIZADA)",
+                    "frecuencia": 107.3,
+                    "tipo": "FM"
+                }
+            ],
+            "TV": [
+                {
+                    "nombre": "RED TELESISTEMA (R.T.S)",
+                    "frecuencia": 61.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "ECUADOR TV",
+                    "frecuencia": 175.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "CADENA ECUATORIANA DE TELEVISIO",
+                    "frecuencia": 181.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEVISION DEL PACIFICO",
+                    "frecuencia": 187.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEAMAZONAS",
+                    "frecuencia": 211.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "UCSG TELEVISION",
+                    "frecuencia": 519.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "SONOVISIÓN TV",
+                    "frecuencia": 543.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "DIGITAL TV",
+                    "frecuencia": 555.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TV LEGISLATIVA NO AUTORIZADA",
+                    "frecuencia": 567.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEATAHUALPA (RTU)",
+                    "frecuencia": 579.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "EL CIUDADANO TV NO AUTORIZADA",
+                    "frecuencia": 675.25,
+                    "tipo": "TV"
+                }
+            ]
+        },
+        "machala": {
+            "FM": [
+                {
+                    "nombre": "PUBLICA FM",
+                    "frecuencia": 88.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "DIBLU",
+                    "frecuencia": 88.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "OVACION INTERNACIONAL FM",
+                    "frecuencia": 89.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO SAMANTHA STEREO",
+                    "frecuencia": 89.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA OTRA FM",
+                    "frecuencia": 90.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "CANDELA 90.7 FM",
+                    "frecuencia": 90.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "VIVA FM",
+                    "frecuencia": 91.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO VIGIA FM",
+                    "frecuencia": 91.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO PÚBLICA JUBONES 91.9 FM",
+                    "frecuencia": 91.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "ARMONICA FM STEREO",
+                    "frecuencia": 92.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "SUPERIOR FM (NO AUTORIZADA)",
+                    "frecuencia": 92.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA RADIO DE LA ASAMBLEA NA",
+                    "frecuencia": 93.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "ESTELAR FM",
+                    "frecuencia": 93.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO UNO",
+                    "frecuencia": 94.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "HCJB LA VOZ Y VENTANA DE L",
+                    "frecuencia": 94.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "DORADA FM",
+                    "frecuencia": 95.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO MARIA",
+                    "frecuencia": 95.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "SUPER SOL FM",
+                    "frecuencia": 96.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "COSTA MAR",
+                    "frecuencia": 96.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA PROPIA",
+                    "frecuencia": 97.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "HITS & FLOW",
+                    "frecuencia": 97.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RTP 96.5",
+                    "frecuencia": 98.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "B.B.N. 99.5 FM",
+                    "frecuencia": 99.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "CATOLICA NACIONAL FM",
+                    "frecuencia": 99.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "BRISA AZUL",
+                    "frecuencia": 100.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "CANELA EL ORO",
+                    "frecuencia": 100.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO SONORAMA FM",
+                    "frecuencia": 101.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LIDER FM",
+                    "frecuencia": 101.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO LA VOZ DEL PUEBLO",
+                    "frecuencia": 102.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "MANANTIAL FM",
+                    "frecuencia": 102.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "J.C. RADIO (NO AUT)",
+                    "frecuencia": 103.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA MEGA ESTACION (SIS NO AUTORI",
+                    "frecuencia": 103.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA MEGA ESTACION (SIS NO AUTORI",
+                    "frecuencia": 103.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "ONDAS DEL PACIFICO *MAS CANDELA",
+                    "frecuencia": 103.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA VECINA FM",
+                    "frecuencia": 104.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "MACHALA FM",
+                    "frecuencia": 104.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "GAVIOTA FM STEREO",
+                    "frecuencia": 105.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO FIESTA F.M.",
+                    "frecuencia": 105.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO K1",
+                    "frecuencia": 105.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "LA COQUETA",
+                    "frecuencia": 106.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "RADIO PÚBLICA EL GUABO 106.7 FM",
+                    "frecuencia": 106.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "GENESIS FM STEREO",
+                    "frecuencia": 107.5,
+                    "tipo": "FM"
+                }
+            ],
+            "TV": [
+                {
+                    "nombre": "RED TELESISTEMA (R.T.S)",
+                    "frecuencia": 61.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELERAMA",
+                    "frecuencia": 83.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "ECUADOR TV",
+                    "frecuencia": 175.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "CORPORACIÓN ECUATORIANA",
+                    "frecuencia": 181.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEVISION DEL PACIFICO",
+                    "frecuencia": 187.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEAMAZONAS",
+                    "frecuencia": 199.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "CADENA ECUATORIANA DE TEL",
+                    "frecuencia": 211.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "OK TV-TEVECORP",
+                    "frecuencia": 549.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "CANAL UNO no",
+                    "frecuencia": 573.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEATAHUALPA (RTU)",
+                    "frecuencia": 585.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "TELEVICENTRO TVC",
+                    "frecuencia": 597.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "UCSG TELEVISION",
+                    "frecuencia": 621.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "OROMAR",
+                    "frecuencia": 633.25,
+                    "tipo": "TV"
+                }
+            ]
+        }
+    }
+}
