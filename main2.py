@@ -14,20 +14,26 @@ CONFIG_FILE = "config.json"
 
 def cargar_configuracion():
     """Cargar configuración desde archivo JSON"""
+    config_default = {
+        "fm_path": "MedicionesFmCSV",
+        "tv_path": "MedicionesTvCSV", 
+        "output_path": "ReportesOcupacion",
+        "emisoras_por_ciudad": {}
+    }
+    
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 config = json.load(f)
+                # Asegurar que exista la clave emisoras_por_ciudad
+                if "emisoras_por_ciudad" not in config:
+                    config["emisoras_por_ciudad"] = {}
                 return config
-        except:
-            pass
+        except Exception as e:
+            print(f"Error cargando configuración: {e}")
+            return config_default
     
-    # Valores por defecto si no hay archivo de configuración
-    return {
-        "fm_path": "MedicionesFmCSV",
-        "tv_path": "MedicionesTvCSV", 
-        "output_path": "ReportesOcupacion"
-    }
+    return config_default
 
 # Cargar configuración al inicio
 config = cargar_configuracion()
@@ -37,6 +43,38 @@ ruta_salida = config.get("output_path", "ReportesOcupacion")
 fecha_actual = datetime.now().strftime("%d/%m/%Y")
 
 # ------------------ FUNCIONES AUXILIARES ------------------
+
+def buscar_emisora_por_frecuencia(ciudad, frecuencia, tipo, tolerancia=0.1):
+    """
+    Busca una emisora por frecuencia en una ciudad específica
+    tolerancia: margen de error en MHz para coincidir frecuencias
+    """
+    config = cargar_configuracion()
+    emisoras_por_ciudad = config.get("emisoras_por_ciudad", {})
+    
+    if ciudad not in emisoras_por_ciudad:
+        return None
+    
+    emisoras = emisoras_por_ciudad[ciudad].get(tipo, [])
+    
+    for emisora in emisoras:
+        try:
+            freq_emisora = float(emisora.get("frecuencia", 0))
+            if abs(freq_emisora - frecuencia) <= tolerancia:
+                return emisora.get("nombre", "Desconocido")
+        except (ValueError, TypeError):
+            continue
+    
+    return None
+
+def obtener_emisoras_ciudad(ciudad):
+    """Obtiene todas las emisoras de una ciudad"""
+    config = cargar_configuracion()
+    return config.get("emisoras_por_ciudad", {}).get(ciudad, {"FM": [], "TV": []})
+
+
+
+
 
 def inicializar_directorios():
     """Crear los directorios necesarios si no existen"""
@@ -108,20 +146,20 @@ def reducir_archivo_csv(ruta_archivo, tipo):
         print(f"Error reduciendo archivo {ruta_archivo}: {e}")
         return False
 
-def formatear_hoja_ocupacion(ws, datos, tipo):
-    """Formatea una hoja de ocupación con bordes y estilos"""
+def formatear_hoja_ocupacion(ws, datos, tipo, ciudad):
+    """Formatea una hoja de ocupación con bordes y estilos, incluyendo columna Estación"""
     # Limpiar hoja existente
     ws.delete_rows(1, ws.max_row)
     
     # Agregar encabezado según el tipo
     if tipo == "FM":
         encabezados = [
-            "Frecuencia (MHz)", "FECHA DE SUSCRIPCION", "Ocupación (%)",
+            "Frecuencia (MHz)", "Estación", "FECHA DE SUSCRIPCION", "Ocupación (%)",
             "Level (dBµV/m)", "Bandwidth (Hz)", "Offset (Hz)", "FM (kHz)"
         ]
     else:  # TV
         encabezados = [
-            "Frecuencia (MHz)", "Banda", "Canal", "Ocupación (%)",
+            "Frecuencia (MHz)", "Estación", "Banda", "Canal", "Ocupación (%)",
             "Level (dBµV/m)", "Bandwidth (Hz)", "Offset (Hz)", "AM (%)"
         ]
     
@@ -132,32 +170,42 @@ def formatear_hoja_ocupacion(ws, datos, tipo):
         celda.font = Font(bold=True)
         celda.alignment = Alignment(horizontal="center", vertical="center")
     
-    # Escribir datos
+    # Escribir datos con columna Estación
     for fila_idx, (_, fila) in enumerate(datos.iterrows(), 2):
+        frecuencia = fila["Frecuencia (MHz)"]
+        
+        # Buscar emisora por frecuencia
+        nombre_emisora = buscar_emisora_por_frecuencia(ciudad, frecuencia, tipo)
+        
         if tipo == "FM":
-            ws.cell(row=fila_idx, column=1, value=fila["Frecuencia (MHz)"])
-            ws.cell(row=fila_idx, column=2, value=fila["FECHA DE SUSCRIPCION"])
-            ws.cell(row=fila_idx, column=3, value=fila["Ocupación (%)"])  # Valor original con decimales
-            ws.cell(row=fila_idx, column=4, value=fila["Level (dBµV/m)"])
-            ws.cell(row=fila_idx, column=5, value=fila["Bandwidth (Hz)"])
-            ws.cell(row=fila_idx, column=6, value=fila["Offset (Hz)"])
-            ws.cell(row=fila_idx, column=7, value=fila["FM (kHz)"])
-        else:  # TV
-            ws.cell(row=fila_idx, column=1, value=fila["Frecuencia (MHz)"])
-            ws.cell(row=fila_idx, column=2, value=fila["Banda"])
-            ws.cell(row=fila_idx, column=3, value=fila["Canal"])  # Valor original del canal
-            ws.cell(row=fila_idx, column=4, value=fila["Ocupación (%)"])  # Valor original con decimales
+            ws.cell(row=fila_idx, column=1, value=frecuencia)
+            ws.cell(row=fila_idx, column=2, value=nombre_emisora or " ")
+            ws.cell(row=fila_idx, column=3, value=fila["FECHA DE SUSCRIPCION"])
+            ws.cell(row=fila_idx, column=4, value=fila["Ocupación (%)"])
             ws.cell(row=fila_idx, column=5, value=fila["Level (dBµV/m)"])
             ws.cell(row=fila_idx, column=6, value=fila["Bandwidth (Hz)"])
             ws.cell(row=fila_idx, column=7, value=fila["Offset (Hz)"])
-            ws.cell(row=fila_idx, column=8, value=fila["AM (%)"])
+            ws.cell(row=fila_idx, column=8, value=fila["FM (kHz)"])
+        else:  # TV
+            ws.cell(row=fila_idx, column=1, value=frecuencia)
+            ws.cell(row=fila_idx, column=2, value=nombre_emisora or " ")
+            ws.cell(row=fila_idx, column=3, value=fila["Banda"])
+            ws.cell(row=fila_idx, column=4, value=fila["Canal"])
+            ws.cell(row=fila_idx, column=5, value=fila["Ocupación (%)"])
+            ws.cell(row=fila_idx, column=6, value=fila["Level (dBµV/m)"])
+            ws.cell(row=fila_idx, column=7, value=fila["Bandwidth (Hz)"])
+            ws.cell(row=fila_idx, column=8, value=fila["Offset (Hz)"])
+            ws.cell(row=fila_idx, column=9, value=fila["AM (%)"])
     
     # Aplicar bordes y formato
     thin = Side(border_style="thin")
     borde_grueso = Side(border_style="medium")
     
-    for row in range(1, len(datos) + 2):
-        for col in range(1, len(encabezados) + 1):
+    num_columnas = len(encabezados)
+    num_filas = len(datos) + 1
+    
+    for row in range(1, num_filas + 1):
+        for col in range(1, num_columnas + 1):
             cell = ws.cell(row=row, column=col)
             cell.border = Border(top=thin, bottom=thin, left=thin, right=thin)
             cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -165,18 +213,18 @@ def formatear_hoja_ocupacion(ws, datos, tipo):
             if row == 1:  # Encabezados
                 cell.border = Border(top=borde_grueso, bottom=thin,
                                    left=borde_grueso if col == 1 else thin,
-                                   right=borde_grueso if col == len(encabezados) else thin)
-            elif row == len(datos) + 1:  # Última fila
+                                   right=borde_grueso if col == num_columnas else thin)
+            elif row == num_filas:  # Última fila
                 cell.border = Border(top=thin, bottom=borde_grueso,
                                    left=borde_grueso if col == 1 else thin,
-                                   right=borde_grueso if col == len(encabezados) else thin)
+                                   right=borde_grueso if col == num_columnas else thin)
             elif col == 1:  # Primera columna
                 cell.border = Border(left=borde_grueso, top=thin, bottom=thin, right=thin)
-            elif col == len(encabezados):  # Última columna
+            elif col == num_columnas:  # Última columna
                 cell.border = Border(right=borde_grueso, top=thin, bottom=thin, left=thin)
     
     # Ajustar anchos de columnas
-    for col in range(1, len(encabezados) + 1):
+    for col in range(1, num_columnas + 1):
         col_letter = get_column_letter(col)
         max_length = 0
         for cell in ws[col_letter]:
@@ -185,7 +233,11 @@ def formatear_hoja_ocupacion(ws, datos, tipo):
                     max_length = max(max_length, len(str(cell.value)))
             except:
                 pass
-        ws.column_dimensions[col_letter].width = max_length + 2
+        # Ancho especial para la columna Estación
+        if col == 2:  # Columna Estación
+            ws.column_dimensions[col_letter].width = max(max_length + 2, 25)
+        else:
+            ws.column_dimensions[col_letter].width = max_length + 2
 
 def limpiar_valor_numerico(valor):
     """Limpia y convierte valores numéricos, manejando formatos con coma decimal"""
@@ -232,12 +284,12 @@ def obtener_banda_por_frecuencia(freq):
     else: 
         return "Otra banda"
 
-def procesar_archivo_fm(ruta_archivo):
+def procesar_archivo_fm(ruta_archivo, base):
     """Procesa archivo FM y extrae datos de ocupación en el rango desde 88.1 MHz"""
     try:
         # Primero reducir el archivo
         if not reducir_archivo_csv(ruta_archivo, "FM"):
-            return None
+            return None, None
             
         # Leer el archivo reducido
         df = pd.read_csv(ruta_archivo, encoding='latin-1', low_memory=False)
@@ -250,7 +302,7 @@ def procesar_archivo_fm(ruta_archivo):
         df_filtrado = df[(df["Frecuencia (MHz)"] >= 88.1)]
         
         if df_filtrado.empty:
-            return None
+            return None, None
         
         # Obtener mes de los datos - manejar diferentes formatos de fecha
         try:
@@ -346,20 +398,20 @@ def procesar_archivo_fm(ruta_archivo):
         
         resultado = pd.DataFrame(ocupacion_data)
         resultado["Mes"] = mes_objetivo
-        return resultado
+        return resultado, base
         
     except Exception as e:
         print(f"Error procesando archivo FM {ruta_archivo}: {e}")
         import traceback
         traceback.print_exc()
-        return None
+        return None, base
 
-def procesar_archivo_tv(ruta_archivo):
+def procesar_archivo_tv(ruta_archivo, base):
     """Procesa archivo TV y extrae datos de ocupación en el rango 55.25-693.25 MHz"""
     try:
         # Primero reducir el archivo
         if not reducir_archivo_csv(ruta_archivo, "TV"):
-            return None
+            return None, None
             
         # Leer el archivo reducido
         df = pd.read_csv(ruta_archivo, encoding='latin-1', low_memory=False)
@@ -372,7 +424,7 @@ def procesar_archivo_tv(ruta_archivo):
         df_filtrado = df[(df["Frecuencia (MHz)"] >= 55.25) & (df["Frecuencia (MHz)"] <= 693.25)]
         
         if df_filtrado.empty:
-            return None
+            return None, None
         
         # Obtener mes de los datos - manejar diferentes formatos de fecha
         try:
@@ -458,13 +510,13 @@ def procesar_archivo_tv(ruta_archivo):
         
         resultado = pd.DataFrame(ocupacion_data)
         resultado["Mes"] = mes_objetivo
-        return resultado
+        return resultado, base
         
     except Exception as e:
         print(f"Error procesando archivo TV {ruta_archivo}: {e}")
         import traceback
         traceback.print_exc()
-        return None
+        return None, base
 
 # ------------------ FUNCIÓN PRINCIPAL DE PROCESAMIENTO ------------------
 
@@ -516,9 +568,9 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
             callback_log(f"Procesando base: {base}")
         
         try:
-            # Procesar archivos FM y TV
-            datos_fm = procesar_archivo_fm(archivos_fm[base])
-            datos_tv = procesar_archivo_tv(archivos_tv[base])
+            # Procesar archivos FM y TV (ahora pasamos la base como parámetro)
+            datos_fm, base_fm = procesar_archivo_fm(archivos_fm[base], base)
+            datos_tv, base_tv = procesar_archivo_tv(archivos_tv[base], base)
             
             if datos_fm is None or datos_tv is None:
                 if callback_log:
@@ -547,12 +599,12 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
                 ws_fm = wb.create_sheet("Datos FM")
             
             if not datos_fm.empty:
-                formatear_hoja_ocupacion(ws_fm, datos_fm.drop(columns=["Mes"]), "FM")
+                formatear_hoja_ocupacion(ws_fm, datos_fm.drop(columns=["Mes"]), "FM", base)
             
             # Crear hoja para TV
             ws_tv = wb.create_sheet("Datos TV")
             if not datos_tv.empty:
-                formatear_hoja_ocupacion(ws_tv, datos_tv.drop(columns=["Mes"]), "TV")
+                formatear_hoja_ocupacion(ws_tv, datos_tv.drop(columns=["Mes"]), "TV", base)
             
             # Eliminar hoja por defecto si existe
             if "Sheet" in wb.sheetnames and wb.sheetnames[0] == "Sheet":
