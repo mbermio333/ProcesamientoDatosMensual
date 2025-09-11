@@ -7,6 +7,13 @@ from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, Border, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
+
+# Colores para el formato
+ROJO = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+VERDE = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
+AMARILLO = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+GRIS = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
 
 # ------------------ CONFIGURACIÓN GENERAL ------------------
 # Cargar configuración desde archivo
@@ -43,6 +50,144 @@ ruta_salida = config.get("output_path", "ReportesOcupacion")
 fecha_actual = datetime.now().strftime("%d/%m/%Y")
 
 # ------------------ FUNCIONES AUXILIARES ------------------
+
+def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
+    """
+    Crea la tabla de ocupación FM a partir de la columna J
+    """
+    # Obtener los datos de la hoja
+    fila_inicio = 2  # Asumiendo que la fila 1 son encabezados
+    
+    # Calcular estadísticas
+    total_frecuencias = len(datos)
+    
+    # Contar frecuencias operando mayor al umbral
+    frecuencias_mayor_umbral = 0
+    for fila in range(fila_inicio, ws.max_row + 1):
+        nivel_celda = ws.cell(row=fila, column=6)  # Columna F = Level (dBµV/m)
+        if nivel_celda.value and isinstance(nivel_celda.value, (int, float)):
+            if nivel_celda.value > umbral:
+                frecuencias_mayor_umbral += 1
+    
+    # Contar frecuencias autorizadas y no autorizadas
+    frecuencias_autorizadas = 0
+    frecuencias_no_autorizadas = 0
+    frecuencias_observacion = 0
+    frecuencias_libres = 0
+    
+    for fila in range(fila_inicio, ws.max_row + 1):
+        estacion_celda = ws.cell(row=fila, column=2)  # Columna B = Estación
+        ocupacion_celda = ws.cell(row=fila, column=4)  # Columna D = Ocupación (%)
+        
+        # Verificar si es frecuencia libre
+        if ocupacion_celda.value == 0 or ocupacion_celda.value == "0":
+            frecuencias_libres += 1
+            continue
+        
+        # Verificar autorización
+        if estacion_celda.value and estacion_celda.value != "No identificada":
+            estacion_str = str(estacion_celda.value).lower()
+            if "no autorizado" in estacion_str or "no autorizada" in estacion_str:
+                frecuencias_no_autorizadas += 1
+                # Pintar de rojo
+                ws.cell(row=fila, column=1).fill = ROJO  # Frecuencia
+                ws.cell(row=fila, column=2).fill = ROJO  # Estación
+                ws.cell(row=fila, column=4).fill = ROJO  # Ocupación
+            else:
+                frecuencias_autorizadas += 1
+                # Pintar de verde
+                ws.cell(row=fila, column=1).fill = VERDE  # Frecuencia
+                ws.cell(row=fila, column=2).fill = VERDE  # Estación
+                ws.cell(row=fila, column=4).fill = VERDE  # Ocupación
+        else:
+            # Frecuencia en observación (tiene ocupación pero no estación identificada)
+            if ocupacion_celda.value and ocupacion_celda.value != 0:
+                frecuencias_observacion += 1
+                # Pintar de amarillo
+                ws.cell(row=fila, column=1).fill = AMARILLO  # Frecuencia
+                ws.cell(row=fila, column=2).fill = AMARILLO  # Estación
+                ws.cell(row=fila, column=4).fill = AMARILLO  # Ocupación
+    
+    # Calcular porcentajes
+    porcentaje_ocupadas = (frecuencias_autorizadas + frecuencias_no_autorizadas + frecuencias_observacion) / total_frecuencias * 100
+    porcentaje_libres = frecuencias_libres / total_frecuencias * 100
+    porcentaje_autorizadas = frecuencias_autorizadas / total_frecuencias * 100 if total_frecuencias > 0 else 0
+    porcentaje_no_autorizadas = frecuencias_no_autorizadas / total_frecuencias * 100 if total_frecuencias > 0 else 0
+    porcentaje_observacion = frecuencias_observacion / total_frecuencias * 100 if total_frecuencias > 0 else 0
+    
+    # Crear la tabla a partir de la columna J (columna 10)
+    col_inicio = 10
+    fila_inicio_tabla = 1
+    
+    # Estilos
+    font_bold = Font(bold=True)
+    font_normal = Font()
+    alignment_center = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    
+    # Título
+    ws.cell(row=fila_inicio_tabla, column=col_inicio, value="OCUPACIÓN FM")
+    ws.merge_cells(start_row=fila_inicio_tabla, start_column=col_inicio, end_row=fila_inicio_tabla, end_column=col_inicio + 4)
+    titulo_cell = ws.cell(row=fila_inicio_tabla, column=col_inicio)
+    titulo_cell.font = Font(bold=True, size=14)
+    titulo_cell.alignment = alignment_center
+    titulo_cell.fill = GRIS
+    
+    # Encabezados de la tabla
+    encabezados = [
+        ["UMBRAL", umbral, "dBuV/m", "% FRECUENCIAS OCUPADAS", f"{porcentaje_ocupadas:.2f}%"],
+        ["TOTAL DE FRECUENCIAS MONITOREADAS", total_frecuencias, "", "% FRECUENCIAS LIBRES", f"{porcentaje_libres:.2f}%"],
+        ["FRECUENCIAS OPERANDO MAYOR AL UMBRAL", frecuencias_mayor_umbral, "", "% AUTORIZADAS", f"{porcentaje_autorizadas:.2f}%"],
+        ["FRECUENCIAS AUTORIZADAS", frecuencias_autorizadas, "", "% NO AUTORIZADAS", f"{porcentaje_no_autorizadas:.2f}%"],
+        ["FRECUENCIAS EN OBSERVACIÓN", frecuencias_observacion, "", "% INTERMODULACIÓN O RUIDO", f"{porcentaje_observacion:.2f}%"],
+        ["FRECUENCIAS NO AUTORIZADOS", frecuencias_no_autorizadas, "", "", ""],
+        ["FRECUENCIAS LIBRES", frecuencias_libres, "", "", ""]
+    ]
+    
+    # Escribir datos de la tabla
+    for i, fila_datos in enumerate(encabezados, start=fila_inicio_tabla + 1):
+        for j, valor in enumerate(fila_datos, start=col_inicio):
+            celda = ws.cell(row=i, column=j, value=valor)
+            celda.border = thin_border
+            celda.alignment = alignment_center
+            
+            # Formato especial para la primera columna (texto descriptivo)
+            if j == col_inicio:
+                celda.font = font_bold
+                celda.alignment = Alignment(horizontal="left", vertical="center")
+            # Formato para valores numéricos
+            elif j == col_inicio + 1 and isinstance(valor, (int, float)):
+                celda.font = font_bold
+            # Formato para porcentajes
+            elif j == col_inicio + 4 and "%" in str(valor):
+                celda.font = font_bold
+    
+    # Ajustar anchos de columnas
+    anchos_columnas = [35, 15, 10, 25, 15]
+    for i, ancho in enumerate(anchos_columnas, start=col_inicio):
+        ws.column_dimensions[get_column_letter(i)].width = ancho
+    
+    # Combinar celdas necesarias
+    ws.merge_cells(start_row=fila_inicio_tabla + 1, start_column=col_inicio + 2, end_row=fila_inicio_tabla + 1, end_column=col_inicio + 3)
+    ws.merge_cells(start_row=fila_inicio_tabla + 2, start_column=col_inicio + 2, end_row=fila_inicio_tabla + 2, end_column=col_inicio + 3)
+    ws.merge_cells(start_row=fila_inicio_tabla + 3, start_column=col_inicio + 2, end_row=fila_inicio_tabla + 3, end_column=col_inicio + 3)
+    ws.merge_cells(start_row=fila_inicio_tabla + 4, start_column=col_inicio + 2, end_row=fila_inicio_tabla + 4, end_column=col_inicio + 3)
+    
+    return {
+        "total_frecuencias": total_frecuencias,
+        "frecuencias_mayor_umbral": frecuencias_mayor_umbral,
+        "frecuencias_autorizadas": frecuencias_autorizadas,
+        "frecuencias_no_autorizadas": frecuencias_no_autorizadas,
+        "frecuencias_observacion": frecuencias_observacion,
+        "frecuencias_libres": frecuencias_libres,
+        "porcentajes": {
+            "ocupadas": porcentaje_ocupadas,
+            "libres": porcentaje_libres,
+            "autorizadas": porcentaje_autorizadas,
+            "no_autorizadas": porcentaje_no_autorizadas,
+            "observacion": porcentaje_observacion
+        }
+    }
 
 def buscar_emisora_por_frecuencia(ciudad, frecuencia, tipo, tolerancia=0.1):
     """
@@ -179,7 +324,7 @@ def formatear_hoja_ocupacion(ws, datos, tipo, ciudad):
         
         if tipo == "FM":
             ws.cell(row=fila_idx, column=1, value=frecuencia)
-            ws.cell(row=fila_idx, column=2, value=nombre_emisora or " ")
+            ws.cell(row=fila_idx, column=2, value=nombre_emisora or "No identificada")
             ws.cell(row=fila_idx, column=3, value=fila["FECHA DE SUSCRIPCION"])
             ws.cell(row=fila_idx, column=4, value=fila["Ocupación (%)"])
             ws.cell(row=fila_idx, column=5, value=fila["Level (dBµV/m)"])
@@ -188,7 +333,7 @@ def formatear_hoja_ocupacion(ws, datos, tipo, ciudad):
             ws.cell(row=fila_idx, column=8, value=fila["FM (kHz)"])
         else:  # TV
             ws.cell(row=fila_idx, column=1, value=frecuencia)
-            ws.cell(row=fila_idx, column=2, value=nombre_emisora or " ")
+            ws.cell(row=fila_idx, column=2, value=nombre_emisora or "No identificada")
             ws.cell(row=fila_idx, column=3, value=fila["Banda"])
             ws.cell(row=fila_idx, column=4, value=fila["Canal"])
             ws.cell(row=fila_idx, column=5, value=fila["Ocupación (%)"])
@@ -197,7 +342,7 @@ def formatear_hoja_ocupacion(ws, datos, tipo, ciudad):
             ws.cell(row=fila_idx, column=8, value=fila["Offset (Hz)"])
             ws.cell(row=fila_idx, column=9, value=fila["AM (%)"])
     
-    # Aplicar bordes y formato
+    # Aplicar bordes y formato a la tabla principal
     thin = Side(border_style="thin")
     borde_grueso = Side(border_style="medium")
     
@@ -223,7 +368,7 @@ def formatear_hoja_ocupacion(ws, datos, tipo, ciudad):
             elif col == num_columnas:  # Última columna
                 cell.border = Border(right=borde_grueso, top=thin, bottom=thin, left=thin)
     
-    # Ajustar anchos de columnas
+    # Ajustar anchos de columnas de la tabla principal
     for col in range(1, num_columnas + 1):
         col_letter = get_column_letter(col)
         max_length = 0
@@ -238,6 +383,10 @@ def formatear_hoja_ocupacion(ws, datos, tipo, ciudad):
             ws.column_dimensions[col_letter].width = max(max_length + 2, 25)
         else:
             ws.column_dimensions[col_letter].width = max_length + 2
+    
+    # Solo para FM, crear la tabla de ocupación
+    if tipo == "FM":
+        crear_tabla_ocupacion_fm(ws, datos)
 
 def limpiar_valor_numerico(valor):
     """Limpia y convierte valores numéricos, manejando formatos con coma decimal"""
@@ -568,48 +717,59 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
             callback_log(f"Procesando base: {base}")
         
         try:
-            # Procesar archivos FM y TV (ahora pasamos la base como parámetro)
+            # En la función procesar_ocupacion(), modifica esta parte:
+
+            # En la función procesar_ocupacion(), modifica esta parte:
+
+        # Procesar archivos FM y TV (ahora pasamos la base como parámetro)
             datos_fm, base_fm = procesar_archivo_fm(archivos_fm[base], base)
             datos_tv, base_tv = procesar_archivo_tv(archivos_tv[base], base)
-            
+
             if datos_fm is None or datos_tv is None:
                 if callback_log:
                     callback_log(f"❌ No se pudieron procesar los datos para {base}")
                 continue
-            
+
             # Verificar que ambos archivos sean del mismo mes
             mes_fm = datos_fm["Mes"].iloc[0] if not datos_fm.empty else None
             mes_tv = datos_tv["Mes"].iloc[0] if not datos_tv.empty else None
-            
+
             if mes_fm != mes_tv:
                 if callback_log:
                     callback_log(f"⚠️  Los archivos de {base} son de meses diferentes: FM={mes_fm}, TV={mes_tv}")
-            
+
             # Usar el mes de FM como referencia (or TV si FM no está disponible)
             mes_referencia = mes_fm if mes_fm is not None else mes_tv
-            
+
             # Crear libro de Excel
             wb = Workbook()
-            
+
             # Crear hoja para FM
             if "Sheet" in wb.sheetnames:
                 ws_fm = wb["Sheet"]
                 ws_fm.title = "Datos FM"
             else:
                 ws_fm = wb.create_sheet("Datos FM")
-            
+
+            # AQUÍ ESTÁ LA CORRECCIÓN - Solo llamar a formatear_hoja_ocupacion si hay datos
             if not datos_fm.empty:
                 formatear_hoja_ocupacion(ws_fm, datos_fm.drop(columns=["Mes"]), "FM", base)
-            
+            else:
+                if callback_log:
+                    callback_log(f"⚠️  No hay datos FM para {base}")
+
             # Crear hoja para TV
             ws_tv = wb.create_sheet("Datos TV")
             if not datos_tv.empty:
                 formatear_hoja_ocupacion(ws_tv, datos_tv.drop(columns=["Mes"]), "TV", base)
-            
+            else:
+                if callback_log:
+                    callback_log(f"⚠️  No hay datos TV para {base}")
+
             # Eliminar hoja por defecto si existe
             if "Sheet" in wb.sheetnames and wb.sheetnames[0] == "Sheet":
                 del wb["Sheet"]
-            
+                    
             # Generar nombre de archivo
             codigo_base = obtener_codigo_base(base)
             nombre_ciudad = "TAMBO" if base.lower() == "cañar" else base.upper()
