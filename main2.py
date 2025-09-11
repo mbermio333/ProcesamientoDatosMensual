@@ -53,23 +53,23 @@ fecha_actual = datetime.now().strftime("%d/%m/%Y")
 
 def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
     """
-    Crea la tabla de ocupación FM a partir de la columna J
+    Crea la tabla de ocupación FM a partir de la columna J con los criterios corregidos
     """
     # Obtener los datos de la hoja
     fila_inicio = 2  # Asumiendo que la fila 1 son encabezados
     
-    # Calcular estadísticas
+    # Calcular estadísticas con criterios corregidos
     total_frecuencias = len(datos)
     
-    # Contar frecuencias operando mayor al umbral
+    # Contar frecuencias operando mayor al umbral (SOLO las que tienen Level > umbral)
     frecuencias_mayor_umbral = 0
     for fila in range(fila_inicio, ws.max_row + 1):
-        nivel_celda = ws.cell(row=fila, column=6)  # Columna F = Level (dBµV/m)
+        nivel_celda = ws.cell(row=fila, column=5)  # Columna E = Level (dBµV/m)
         if nivel_celda.value and isinstance(nivel_celda.value, (int, float)):
             if nivel_celda.value > umbral:
                 frecuencias_mayor_umbral += 1
     
-    # Contar frecuencias autorizadas y no autorizadas
+    # Contar frecuencias con criterios corregidos
     frecuencias_autorizadas = 0
     frecuencias_no_autorizadas = 0
     frecuencias_observacion = 0
@@ -79,15 +79,21 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
         estacion_celda = ws.cell(row=fila, column=2)  # Columna B = Estación
         ocupacion_celda = ws.cell(row=fila, column=4)  # Columna D = Ocupación (%)
         
-        # Verificar si es frecuencia libre
-        if ocupacion_celda.value == 0 or ocupacion_celda.value == "0":
-            frecuencias_libres += 1
-            continue
+        # Convertir ocupación a número
+        ocupacion_valor = 0
+        if ocupacion_celda.value is not None:
+            try:
+                ocupacion_valor = float(ocupacion_celda.value)
+            except (ValueError, TypeError):
+                ocupacion_valor = 0
         
-        # Verificar autorización
-        if estacion_celda.value and estacion_celda.value != "No identificada":
+        # Verificar si tiene nombre en ESTACIÓN
+        tiene_nombre = estacion_celda.value and estacion_celda.value != "No identificada" and estacion_celda.value != ""
+        
+        if tiene_nombre:
+            # Tiene nombre -> Verificar si es autorizada o no autorizada
             estacion_str = str(estacion_celda.value).lower()
-            if "no autorizado" in estacion_str or "no autorizada" in estacion_str:
+            if "no autorizado" in estacion_str or "no autorizada" in estacion_str or "sis no autori" in estacion_str or "no aut" in estacion_str:
                 frecuencias_no_autorizadas += 1
                 # Pintar de rojo
                 ws.cell(row=fila, column=1).fill = ROJO  # Frecuencia
@@ -95,25 +101,34 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
                 ws.cell(row=fila, column=4).fill = ROJO  # Ocupación
             else:
                 frecuencias_autorizadas += 1
-                # Pintar de verde
+                # Pintar de verde (aunque tenga 0% de ocupación)
                 ws.cell(row=fila, column=1).fill = VERDE  # Frecuencia
                 ws.cell(row=fila, column=2).fill = VERDE  # Estación
                 ws.cell(row=fila, column=4).fill = VERDE  # Ocupación
         else:
-            # Frecuencia en observación (tiene ocupación pero no estación identificada)
-            if ocupacion_celda.value and ocupacion_celda.value != 0:
+            # No tiene nombre -> Verificar si es libre o en observación
+            if ocupacion_valor == 0:
+                frecuencias_libres += 1
+            else:
                 frecuencias_observacion += 1
-                # Pintar de amarillo
+                # Pintar de amarillo las de observación
                 ws.cell(row=fila, column=1).fill = AMARILLO  # Frecuencia
                 ws.cell(row=fila, column=2).fill = AMARILLO  # Estación
                 ws.cell(row=fila, column=4).fill = AMARILLO  # Ocupación
     
-    # Calcular porcentajes
-    porcentaje_ocupadas = (frecuencias_autorizadas + frecuencias_no_autorizadas + frecuencias_observacion) / total_frecuencias * 100
-    porcentaje_libres = frecuencias_libres / total_frecuencias * 100
-    porcentaje_autorizadas = frecuencias_autorizadas / total_frecuencias * 100 if total_frecuencias > 0 else 0
-    porcentaje_no_autorizadas = frecuencias_no_autorizadas / total_frecuencias * 100 if total_frecuencias > 0 else 0
-    porcentaje_observacion = frecuencias_observacion / total_frecuencias * 100 if total_frecuencias > 0 else 0
+    # VERIFICACIÓN: La suma debe coincidir con el total
+    suma_categorias = (frecuencias_autorizadas + frecuencias_no_autorizadas + 
+                       frecuencias_observacion + frecuencias_libres)
+    
+    if suma_categorias != total_frecuencias:
+        print(f"⚠️  Advertencia: Suma de categorías ({suma_categorias}) no coincide con total ({total_frecuencias})")
+    
+    # Calcular porcentajes CORREGIDOS según los nuevos criterios
+    porcentaje_ocupadas = (frecuencias_mayor_umbral / total_frecuencias * 100) if total_frecuencias > 0 else 0
+    porcentaje_libres = (frecuencias_libres / total_frecuencias * 100) if total_frecuencias > 0 else 0
+    porcentaje_autorizadas = (frecuencias_autorizadas / total_frecuencias * 100) if total_frecuencias > 0 else 0
+    porcentaje_no_autorizadas = (frecuencias_no_autorizadas / total_frecuencias * 100) if total_frecuencias > 0 else 0
+    porcentaje_observacion = (frecuencias_observacion / total_frecuencias * 100) if total_frecuencias > 0 else 0
     
     # Crear la tabla a partir de la columna J (columna 10)
     col_inicio = 10
@@ -123,55 +138,71 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
     font_bold = Font(bold=True)
     font_normal = Font()
     alignment_center = Alignment(horizontal="center", vertical="center")
+    alignment_left = Alignment(horizontal="left", vertical="center")
     thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
     
     # Título
     ws.cell(row=fila_inicio_tabla, column=col_inicio, value="OCUPACIÓN FM")
-    ws.merge_cells(start_row=fila_inicio_tabla, start_column=col_inicio, end_row=fila_inicio_tabla, end_column=col_inicio + 4)
+    ws.merge_cells(start_row=fila_inicio_tabla, start_column=col_inicio, end_row=fila_inicio_tabla, end_column=col_inicio + 3)
     titulo_cell = ws.cell(row=fila_inicio_tabla, column=col_inicio)
     titulo_cell.font = Font(bold=True, size=14)
     titulo_cell.alignment = alignment_center
     titulo_cell.fill = GRIS
     
     # Encabezados de la tabla
-    encabezados = [
-        ["UMBRAL", umbral, "dBuV/m", "% FRECUENCIAS OCUPADAS", f"{porcentaje_ocupadas:.2f}%"],
-        ["TOTAL DE FRECUENCIAS MONITOREADAS", total_frecuencias, "", "% FRECUENCIAS LIBRES", f"{porcentaje_libres:.2f}%"],
-        ["FRECUENCIAS OPERANDO MAYOR AL UMBRAL", frecuencias_mayor_umbral, "", "% AUTORIZADAS", f"{porcentaje_autorizadas:.2f}%"],
-        ["FRECUENCIAS AUTORIZADAS", frecuencias_autorizadas, "", "% NO AUTORIZADAS", f"{porcentaje_no_autorizadas:.2f}%"],
-        ["FRECUENCIAS EN OBSERVACIÓN", frecuencias_observacion, "", "% INTERMODULACIÓN O RUIDO", f"{porcentaje_observacion:.2f}%"],
-        ["FRECUENCIAS NO AUTORIZADOS", frecuencias_no_autorizadas, "", "", ""],
-        ["FRECUENCIAS LIBRES", frecuencias_libres, "", "", ""]
+    datos_tabla = [
+        ["UMBRAL", umbral, "% FRECUENCIAS OCUPADAS", f"{porcentaje_ocupadas:.2f}%"],
+        ["TOTAL DE FRECUENCIAS MONITOREADAS", total_frecuencias, "% FRECUENCIAS LIBRES", f"{porcentaje_libres:.2f}%"],
+        ["FRECUENCIAS OPERANDO MAYOR AL UMBRAL", frecuencias_mayor_umbral, "% AUTORIZADAS", f"{porcentaje_autorizadas:.2f}%"],
+        ["FRECUENCIAS AUTORIZADAS", frecuencias_autorizadas, "% NO AUTORIZADAS", f"{porcentaje_no_autorizadas:.2f}%"],
+        ["FRECUENCIAS EN OBSERVACIÓN", frecuencias_observacion, "% INTERMODULACIÓN O RUIDO", f"{porcentaje_observacion:.2f}%"],
+        ["FRECUENCIAS NO AUTORIZADOS", frecuencias_no_autorizadas, "", ""],
+        ["FRECUENCIAS LIBRES", frecuencias_libres, "", ""]
     ]
     
     # Escribir datos de la tabla
-    for i, fila_datos in enumerate(encabezados, start=fila_inicio_tabla + 1):
-        for j, valor in enumerate(fila_datos, start=col_inicio):
-            celda = ws.cell(row=i, column=j, value=valor)
-            celda.border = thin_border
-            celda.alignment = alignment_center
-            
-            # Formato especial para la primera columna (texto descriptivo)
-            if j == col_inicio:
-                celda.font = font_bold
-                celda.alignment = Alignment(horizontal="left", vertical="center")
-            # Formato para valores numéricos
-            elif j == col_inicio + 1 and isinstance(valor, (int, float)):
-                celda.font = font_bold
-            # Formato para porcentajes
-            elif j == col_inicio + 4 and "%" in str(valor):
-                celda.font = font_bold
+    for i, fila_datos in enumerate(datos_tabla, start=fila_inicio_tabla + 1):
+        # Columna J: Descripción
+        celda_j = ws.cell(row=i, column=col_inicio, value=fila_datos[0])
+        celda_j.font = font_bold
+        celda_j.alignment = alignment_left
+        celda_j.border = thin_border
+        
+        # Colorear solo las celdas de la columna J (encabezados)
+        if "FRECUENCIAS AUTORIZADAS" in fila_datos[0]:
+            celda_j.fill = VERDE
+        elif "FRECUENCIAS EN OBSERVACIÓN" in fila_datos[0]:
+            celda_j.fill = AMARILLO
+        elif "FRECUENCIAS NO AUTORIZADOS" in fila_datos[0]:
+            celda_j.fill = ROJO
+        elif "FRECUENCIAS LIBRES" in fila_datos[0]:
+            celda_j.fill = PatternFill(start_color="E0E0E0", end_color="E0E0E0", fill_type="solid")
+        
+        # Columna K: Valor numérico
+        if fila_datos[1] != "":
+            celda_k = ws.cell(row=i, column=col_inicio + 1, value=fila_datos[1])
+            celda_k.font = font_bold
+            celda_k.alignment = alignment_center
+            celda_k.border = thin_border
+        
+        # Columna L: Encabezado de porcentaje
+        if fila_datos[2] != "":
+            celda_l = ws.cell(row=i, column=col_inicio + 2, value=fila_datos[2])
+            celda_l.font = font_bold
+            celda_l.alignment = alignment_left
+            celda_l.border = thin_border
+        
+        # Columna M: Valor de porcentaje
+        if fila_datos[3] != "":
+            celda_m = ws.cell(row=i, column=col_inicio + 3, value=fila_datos[3])
+            celda_m.font = font_bold
+            celda_m.alignment = alignment_center
+            celda_m.border = thin_border
     
     # Ajustar anchos de columnas
-    anchos_columnas = [35, 15, 10, 25, 15]
+    anchos_columnas = [35, 15, 25, 15]  # J, K, L, M
     for i, ancho in enumerate(anchos_columnas, start=col_inicio):
         ws.column_dimensions[get_column_letter(i)].width = ancho
-    
-    # Combinar celdas necesarias
-    ws.merge_cells(start_row=fila_inicio_tabla + 1, start_column=col_inicio + 2, end_row=fila_inicio_tabla + 1, end_column=col_inicio + 3)
-    ws.merge_cells(start_row=fila_inicio_tabla + 2, start_column=col_inicio + 2, end_row=fila_inicio_tabla + 2, end_column=col_inicio + 3)
-    ws.merge_cells(start_row=fila_inicio_tabla + 3, start_column=col_inicio + 2, end_row=fila_inicio_tabla + 3, end_column=col_inicio + 3)
-    ws.merge_cells(start_row=fila_inicio_tabla + 4, start_column=col_inicio + 2, end_row=fila_inicio_tabla + 4, end_column=col_inicio + 3)
     
     return {
         "total_frecuencias": total_frecuencias,
@@ -189,6 +220,7 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
         }
     }
 
+
 def buscar_emisora_por_frecuencia(ciudad, frecuencia, tipo, tolerancia=0.1):
     """
     Busca una emisora por frecuencia en una ciudad específica
@@ -197,10 +229,43 @@ def buscar_emisora_por_frecuencia(ciudad, frecuencia, tipo, tolerancia=0.1):
     config = cargar_configuracion()
     emisoras_por_ciudad = config.get("emisoras_por_ciudad", {})
     
-    if ciudad not in emisoras_por_ciudad:
-        return None
+    # Normalizar nombre de ciudad (manejar diferentes representaciones de "cañar")
+    ciudad_normalizada = ciudad.lower().strip()
     
-    emisoras = emisoras_por_ciudad[ciudad].get(tipo, [])
+    # Buscar coincidencias para "cañar" en diferentes representaciones
+    posibles_nombres_canar = ["cañar", "cañar", "canar", "caÃ±ar"]
+    if any(nombre in ciudad_normalizada for nombre in posibles_nombres_canar):
+        # Buscar la clave exacta en el config.json
+        claves_config = list(emisoras_por_ciudad.keys())
+        clave_canar = None
+        for clave in claves_config:
+            clave_normalizada = clave.lower().strip()
+            if any(nombre in clave_normalizada for nombre in posibles_nombres_canar):
+                clave_canar = clave
+                break
+        
+        if clave_canar:
+            ciudad_normalizada = clave_canar
+        else:
+            ciudad_normalizada = "cañar"
+    
+    if ciudad_normalizada not in emisoras_por_ciudad:
+        print(f"⚠️  Ciudad '{ciudad}' no encontrada en config.json")
+        print(f"Ciudades disponibles: {list(emisoras_por_ciudad.keys())}")
+        # Intentar buscar por similitud
+        for clave_real in emisoras_por_ciudad.keys():
+            if ciudad.lower() in clave_real.lower() or clave_real.lower() in ciudad.lower():
+                ciudad_normalizada = clave_real
+                print(f"✅ Usando ciudad similar: {clave_real}")
+                break
+        else:
+            return None
+    
+    emisoras = emisoras_por_ciudad[ciudad_normalizada].get(tipo, [])
+    
+    if not emisoras:
+        print(f"⚠️  No hay emisoras de tipo {tipo} para la ciudad {ciudad_normalizada}")
+        return None
     
     for emisora in emisoras:
         try:
@@ -210,6 +275,7 @@ def buscar_emisora_por_frecuencia(ciudad, frecuencia, tipo, tolerancia=0.1):
         except (ValueError, TypeError):
             continue
     
+    print(f"⚠️  No se encontró emisora para frecuencia {frecuencia} MHz en {ciudad_normalizada} (tolerancia: {tolerancia} MHz)")
     return None
 
 def obtener_emisoras_ciudad(ciudad):
@@ -232,12 +298,24 @@ def obtener_codigo_base(base):
     correspondencia = {
         "zamora": "SCS-L01",
         "loja": "SCS-L02", 
-        "cañar": "SCS-L03",
+        "cañar": "SCS-L03",  # ñ normal
+        "cañar": "SCS-L03",  # ñ con tilde combinable (n + ˜)
         "macas": "SCS-L04",
         "machala": "SCC-L04",
         "cuenca": "SCS-L05"
     }
-    return correspondencia.get(base.lower(), f"SCS-{base.upper()}")
+    
+    # Normalizar el nombre de la base
+    base_normalizada = base.lower().strip()
+    
+    # Manejar diferentes representaciones de "cañar"
+    if (base_normalizada == "cañar" or 
+        base_normalizada == "cañar" or  # ñ con tilde combinable
+        base_normalizada == "canar" or   # sin tilde
+        base_normalizada == "caÃ±ar"):   # posible encoding issue
+        base_normalizada = "cañar"
+    
+    return correspondencia.get(base_normalizada, f"SCS-{base.upper()}")
 
 def obtener_nombre_mes_es(numero_mes):
     """Convierte el número de mes a nombre en español"""
@@ -249,6 +327,7 @@ def obtener_nombre_mes_es(numero_mes):
 
 def obtener_base(nombre_archivo):
     """Obtiene el nombre base del archivo"""
+    #print(nombre_archivo)
     return nombre_archivo.split("_")[0].lower().strip()
 
 def reducir_archivo_csv(ruta_archivo, tipo):
@@ -666,6 +745,49 @@ def procesar_archivo_tv(ruta_archivo, base):
         import traceback
         traceback.print_exc()
         return None, base
+    
+def debug_emisoras_config():
+    """Debug: mostrar el contenido completo de emisoras en config.json"""
+    config = cargar_configuracion()
+    emisoras_por_ciudad = config.get("emisoras_por_ciudad", {})
+    
+    print("=== DEBUG: CONTENIDO DE config.json ===")
+    print(f"Número de ciudades: {len(emisoras_por_ciudad)}")
+    
+    for ciudad, tipos in emisoras_por_ciudad.items():
+        print(f"\n--- CIUDAD: '{ciudad}' (tipo: {type(ciudad)}) ---")
+        # Mostrar representación raw de la cadena
+        print(f"Representación: {repr(ciudad)}")
+        
+        for tipo, emisoras in tipos.items():
+            print(f"  {tipo}: {len(emisoras)} emisoras")
+            for i, emisora in enumerate(emisoras[:5]):  # Mostrar solo las primeras 5
+                nombre = emisora.get('nombre', 'Sin nombre')
+                freq = emisora.get('frecuencia', 0)
+                print(f"    {i+1}. {nombre} - {freq} MHz")
+            if len(emisoras) > 5:
+                print(f"    ... y {len(emisoras) - 5} más")
+
+def verificar_encoding_config():
+    """Verifica el encoding del archivo config.json"""
+    try:
+        with open(CONFIG_FILE, 'rb') as f:
+            contenido = f.read()
+            print(f"Encoding detectado: {contenido.decode('utf-8', errors='replace')[:100]}...")
+            
+        # Intentar diferentes encodings
+        encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252']
+        for encoding in encodings:
+            try:
+                with open(CONFIG_FILE, 'r', encoding=encoding) as f:
+                    data = json.load(f)
+                    print(f"✅ Encoding {encoding} funciona")
+                    ciudades = list(data.get('emisoras_por_ciudad', {}).keys())
+                    print(f"Ciudades encontradas con {encoding}: {ciudades}")
+            except UnicodeDecodeError:
+                print(f"❌ Encoding {encoding} falla")
+    except Exception as e:
+        print(f"Error al verificar encoding: {e}")
 
 # ------------------ FUNCIÓN PRINCIPAL DE PROCESAMIENTO ------------------
 
@@ -769,10 +891,27 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
             # Eliminar hoja por defecto si existe
             if "Sheet" in wb.sheetnames and wb.sheetnames[0] == "Sheet":
                 del wb["Sheet"]
-                    
+            
             # Generar nombre de archivo
             codigo_base = obtener_codigo_base(base)
-            nombre_ciudad = "TAMBO" if base.lower() == "cañar" else base.upper()
+
+            # En la parte donde generas el nombre del archivo:
+            def normalizar_nombre_ciudad(base):
+                """Normaliza el nombre de la ciudad para el nombre del archivo"""
+                base_normalizada = base.lower().strip()
+                
+                # Manejar "cañar" y sus variantes
+                if (base_normalizada == "cañar" or 
+                    base_normalizada == "cañar" or 
+                    base_normalizada == "canar" or 
+                    base_normalizada == "caÃ±ar"):
+                    return "TAMBO"
+                else:
+                    return base.upper()
+
+            # Uso:
+            nombre_ciudad = normalizar_nombre_ciudad(base)
+
             nombre_mes_completo = obtener_nombre_mes_es(mes_referencia) if mes_referencia else "Desconocido"
             nombre_salida = f"{codigo_base}_Ocupacion{nombre_ciudad}_{nombre_mes_completo}2025.xlsx"
             
@@ -800,6 +939,12 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
 
 if __name__ == "__main__":
     # Si se ejecuta directamente, usar callbacks simples
+    verificar_encoding_config()
+    
+    # Luego debug del contenido
+    debug_emisoras_config()
+
+
     def mostrar_progreso(progreso):
         print(f"Progreso: {progreso}%")
     
