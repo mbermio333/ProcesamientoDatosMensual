@@ -666,12 +666,24 @@ def obtener_codigo_base(base):
     correspondencia = {
         "zamora": "SCS-L01",
         "loja": "SCS-L02", 
-        "cañar": "SCS-L03",
+        "cañar": "SCS-L03",  # ñ normal
+        "cañar": "SCS-L03",  # ñ con tilde combinable (n + ˜)
         "macas": "SCS-L04",
         "machala": "SCC-L04",
         "cuenca": "SCS-L05"
     }
-    return correspondencia.get(base.lower(), f"SCS-{base.upper()}")
+    
+    # Normalizar el nombre de la base
+    base_normalizada = base.lower().strip()
+    
+    # Manejar diferentes representaciones de "cañar"
+    if (base_normalizada == "cañar" or 
+        base_normalizada == "cañar" or  # ñ con tilde combinable
+        base_normalizada == "canar" or   # sin tilde
+        base_normalizada == "caÃ±ar"):   # posible encoding issue
+        base_normalizada = "cañar"
+    
+    return correspondencia.get(base_normalizada, f"SCS-{base.upper()}")
 
 # ------------------ FUNCIÓN PARA OBTENER EL NOMBRE DEL MES EN ESPAÑOL ------------------
 def obtener_nombre_mes_es(numero_mes):
@@ -869,7 +881,7 @@ def procesar_datos(callback_progreso=None, callback_log=None):
                     "COORDINACIÓN ZONAL 6",
                     "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
                     titulo,
-                    "CIUDAD:" + ("TAMBO" if base == "cañar" else base.upper()),
+                    "CIUDAD:" + ("TAMBO" if base == "cañar" or base == "cañar" or base == "canar" or base == "caÃ±ar"  or base == "cañar" else base.upper()),
                     f"PERIODO: {nombre_mes_es.upper()}",
                     f"FECHA PRESENTACIÓN: {fecha_actual}"
                 ] if tipo == "FM" else [
@@ -877,7 +889,7 @@ def procesar_datos(callback_progreso=None, callback_log=None):
                     "COORDINACIÓN ZONAL 6",
                     "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
                     titulo,
-                    "CIUDAD:" + ("TAMBO" if base == "cañar" else base.upper()),
+                    "CIUDAD:" + ("TAMBO" if base == "cañar" or base == "cañar" or base == "canar" or base == "caÃ±ar"  or base == "cañar" else base.upper()),
                     f"PERIODO: {nombre_mes_es.upper()}",
                     f"FECHA PRESENTACIÓN: {fecha_actual}"
                 ]
