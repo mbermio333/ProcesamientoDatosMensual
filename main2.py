@@ -225,10 +225,32 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
         }
     }
 
+def verificar_posicion_tablas(ws):
+    """Verifica qué hay en las posiciones donde deberían estar las tablas"""
+    print("=== VERIFICACIÓN DE POSICIONES ===")
+    
+    # Posiciones donde deberían estar las tablas
+    posiciones_verificar = [
+        (1, 11),  # K1 - Primera tabla
+        (1, 16),  # P1 - Segunda tabla  
+        (12, 11)  # K12 - Tercera tabla
+    ]
+    
+    for fila, col in posiciones_verificar:
+        celda = ws.cell(row=fila, column=col)
+        print(f"Celda {get_column_letter(col)}{fila}: '{celda.value}'")
+        
 def crear_tablas_ocupacion_tv(ws, datos):
     """
     Crea las tablas de ocupación TV por bandas a partir de la columna K
     """
+    
+    # Al inicio de la función
+    verificar_posicion_tablas(ws)
+    
+    # ... resto del código ...
+    debug_bandas_tv(ws)
+    
     # Definir umbrales por banda
     umbrales_por_banda = {
         "Bandas I-III (VHF)": UMBRAL_TV_BANDA_I_III,
@@ -236,24 +258,31 @@ def crear_tablas_ocupacion_tv(ws, datos):
         "Bandas IV-V (UHF)": UMBRAL_TV_BANDA_IV_V
     }
     
+  
     # Obtener los datos de la hoja
-    fila_inicio = 2  # Asumiendo que la fila 1 son encabezados
+    fila_inicio = 2
+    
+    # Separar datos por banda (con manejo de variaciones)
+    datos_por_banda = {banda: [] for banda in umbrales_por_banda.keys()}
     
     # Separar datos por banda
     datos_por_banda = {}
     for banda in umbrales_por_banda.keys():
         datos_por_banda[banda] = []
     
-    # Recorrer todas las filas y agrupar por banda
     for fila in range(fila_inicio, ws.max_row + 1):
         banda_celda = ws.cell(row=fila, column=3)  # Columna C = Banda
         if banda_celda.value in umbrales_por_banda:
             datos_por_banda[banda_celda.value].append(fila)
+        
     
     # Crear tabla para cada banda
     col_inicio = 11  # Columna K
     fila_actual = 1
     separacion_entre_tablas = 2
+    
+    # Ordenar bandas para consistencia
+    bandas_orden = ["Bandas I-III (VHF)", "Banda III (VHF)", "Bandas IV-V (UHF)"]
     
     for banda, filas_banda in datos_por_banda.items():
         if not filas_banda:
@@ -337,7 +366,7 @@ def crear_tablas_ocupacion_tv(ws, datos):
         ws.cell(row=fila_actual, column=col_inicio, value=titulo_banda)
         ws.merge_cells(start_row=fila_actual, start_column=col_inicio, end_row=fila_actual, end_column=col_inicio + 3)
         titulo_cell = ws.cell(row=fila_actual, column=col_inicio)
-        titulo_cell.font = Font(bold=True, size=14)
+        titulo_cell.font = Font(bold=True, size=12)
         titulo_cell.alignment = alignment_center
         titulo_cell.fill = GRIS
         
@@ -397,7 +426,8 @@ def crear_tablas_ocupacion_tv(ws, datos):
             ws.column_dimensions[get_column_letter(i)].width = ancho
         
         # Actualizar fila actual para la próxima tabla
-        fila_actual = i + separacion_entre_tablas + 1
+        fila_actual = fila_actual + len(datos_tabla) + separacion_entre_tablas + 1
+
         
         print(f"✅ Tabla creada para {banda}: {total_frecuencias} frecuencias")
     
@@ -685,19 +715,25 @@ def buscar_columna_por_patron(df, patrones):
     return None
 
 def obtener_banda_por_frecuencia(freq):
-    """Determina la banda según la frecuencia"""
-    # Bandas de TV según estándares internacionales
-    if 55.25 <= freq <= 88: 
-        return "Bandas I-III (VHF)"
-    elif 174 <= freq <= 216: 
-        return "Banda III (VHF)"
-    elif 470 <= freq <= 608: 
-        return "Bandas IV-V (UHF)"
-    elif 614 <= freq <= 698: 
-        return "Bandas IV-V (UHF)"
-    else: 
+    """Determina la banda según la frecuencia para TV"""
+    if freq is None:
         return "Otra banda"
-
+    
+    try:
+        freq = float(freq)
+    except (ValueError, TypeError):
+        return "Otra banda"
+    
+    # Bandas de TV según estándares
+    if (54 <= freq <= 72) or (76 <= freq <= 88):
+        return "Bandas I-III (VHF)"
+    elif 174 <= freq <= 216:
+        return "Banda III (VHF)"
+    elif (470 <= freq <= 488) or (512 <= freq <= 608) or (614 <= freq <= 698):
+        return "Bandas IV-V (UHF)"
+    else:
+        return "Otra banda"
+    
 def procesar_archivo_fm(ruta_archivo, base):
     """Procesa archivo FM y extrae datos de ocupación en el rango desde 88.1 MHz"""
     try:
@@ -869,6 +905,9 @@ def procesar_archivo_tv(ruta_archivo, base):
         if columna_ocupacion:
             # Usar los valores reales de ocupación del archivo
             for _, row in df_filtrado.iterrows():
+                frecuencia = row["Frecuencia (MHz)"]
+                # Determinar la banda según la frecuencia si no está definida
+                banda_val = obtener_banda_por_frecuencia(frecuencia)
                 try:
                     # Limpiar y convertir el valor de ocupación
                     ocupacion_val = limpiar_valor_numerico(row[columna_ocupacion])
@@ -974,6 +1013,50 @@ def verificar_encoding_config():
                 print(f"❌ Encoding {encoding} falla")
     except Exception as e:
         print(f"Error al verificar encoding: {e}")
+
+def debug_bandas_tv(ws):
+    """Debug: mostrar información sobre las bandas TV encontradas"""
+    print("=== DEBUG: BANDAS TV ENCONTRADAS ===")
+    
+    # Contar frecuencias por banda
+    bandas_count = {}
+    fila_inicio = 2
+    
+    for fila in range(fila_inicio, ws.max_row + 1):
+        banda_celda = ws.cell(row=fila, column=3)  # Columna C = Banda
+        if banda_celda.value:
+            banda = banda_celda.value
+            bandas_count[banda] = bandas_count.get(banda, 0) + 1
+    
+    print("Frecuencias por banda:")
+    for banda, count in bandas_count.items():
+        print(f"  {banda}: {count} frecuencias")
+    
+    # Verificar también las frecuencias específicas
+    print("\nFrecuencias en rango de Banda III (174-216 MHz):")
+    for fila in range(fila_inicio, ws.max_row + 1):
+        freq_celda = ws.cell(row=fila, column=1)  # Columna A = Frecuencia (MHz)
+        banda_celda = ws.cell(row=fila, column=3)  # Columna C = Banda
+        if freq_celda.value and isinstance(freq_celda.value, (int, float)):
+            if 174 <= freq_celda.value <= 216:
+                print(f"  Fila {fila}: {freq_celda.value} MHz - Banda: {banda_celda.value}")
+
+
+def verificar_posicion_tablas(ws):
+    """Verifica qué hay en las posiciones donde deberían estar las tablas"""
+    print("=== VERIFICACIÓN DE POSICIONES ===")
+    
+    # Posiciones donde deberían estar las tablas
+    posiciones_verificar = [
+        (1, 11),  # K1 - Primera tabla
+        (1, 16),  # P1 - Segunda tabla  
+        (12, 11)  # K12 - Tercera tabla
+    ]
+    
+    for fila, col in posiciones_verificar:
+        celda = ws.cell(row=fila, column=col)
+        print(f"Celda {get_column_letter(col)}{fila}: '{celda.value}'")
+
 
 # ------------------ FUNCIÓN PRINCIPAL DE PROCESAMIENTO ------------------
 
@@ -1120,6 +1203,7 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
         callback_log("Procesamiento de ocupación completado")
     
     return True
+
 
 # ------------------ EJECUCIÓN DIRECTA (para testing) ------------------
 
