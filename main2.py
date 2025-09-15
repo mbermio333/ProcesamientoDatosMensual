@@ -8,6 +8,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
+from openpyxl.chart import PieChart, Reference, Series
+from openpyxl.chart.label import DataLabelList
 
 # Colores para el formato
 ROJO = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
@@ -23,6 +25,43 @@ UMBRAL_TV_BANDA_IV_V = 60   # para Bandas IV-V (UHF)
 # ------------------ CONFIGURACIÓN GENERAL ------------------
 # Cargar configuración desde archivo
 CONFIG_FILE = "config.json"
+
+def crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, titulo, celda_destino):
+    # Crear datos para el gráfico en celdas ocultas
+    fila_inicio = 100  # fuera del rango visible
+    col_datos = 20
+
+    ws.cell(row=fila_inicio, column=col_datos, value="Ocupadas")
+    ws.cell(row=fila_inicio, column=col_datos + 1, value=porcentaje_ocupadas)
+
+    ws.cell(row=fila_inicio + 1, column=col_datos, value="Libres")
+    ws.cell(row=fila_inicio + 1, column=col_datos + 1, value=porcentaje_libres)
+
+    # Crear gráfico de pastel
+    chart = PieChart()
+    chart.title = titulo
+
+    # Referencias a datos y etiquetas
+    labels = Reference(ws, min_col=col_datos, min_row=fila_inicio, max_row=fila_inicio + 1)
+    data = Reference(ws, min_col=col_datos + 1, min_row=fila_inicio, max_row=fila_inicio + 1)
+
+    # Añadir datos y categorías correctamente
+    chart.add_data(data, titles_from_data=False)
+    chart.set_categories(labels)
+
+    # Configurar etiquetas de datos
+    chart.dataLabels = DataLabelList()
+    chart.dataLabels.showPercent = True
+    chart.dataLabels.showCategoryName = True
+    chart.dataLabels.showVal = False
+    chart.dataLabels.showSerName = False
+
+    # Añadir gráfico a la hoja
+    ws.add_chart(chart, celda_destino)
+
+    return chart
+
+
 
 def cargar_configuracion():
     """Cargar configuración desde archivo JSON"""
@@ -208,6 +247,12 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
     for i, ancho in enumerate(anchos_columnas, start=col_inicio):
         ws.column_dimensions[get_column_letter(i)].width = ancho
     
+    # Crear gráfico de pastel para FM usando openpyxl
+    try:
+        crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, "OCUPACIÓN FM", "O2")
+    except Exception as e:
+        print(f"Error al crear gráfico FM: {e}")
+    
     return {
         "total_frecuencias": total_frecuencias,
         "frecuencias_mayor_umbral": frecuencias_mayor_umbral,
@@ -284,7 +329,7 @@ def crear_tablas_ocupacion_tv(ws, datos):
     # Ordenar bandas para consistencia
     bandas_orden = ["Bandas I-III (VHF)", "Banda III (VHF)", "Bandas IV-V (UHF)"]
     
-
+    resultados_bandas = {}
     
     for banda, filas_banda in datos_por_banda.items():
         if not filas_banda:
@@ -358,6 +403,23 @@ def crear_tablas_ocupacion_tv(ws, datos):
         porcentaje_no_autorizadas = (frecuencias_no_autorizadas / total_frecuencias * 100) if total_frecuencias > 0 else 0
         porcentaje_observacion = (frecuencias_observacion / total_frecuencias * 100) if total_frecuencias > 0 else 0
         
+        # Guardar resultados para esta banda
+        resultados_bandas[banda] = {
+            "total_frecuencias": total_frecuencias,
+            "frecuencias_mayor_umbral": frecuencias_mayor_umbral,
+            "frecuencias_autorizadas": frecuencias_autorizadas,
+            "frecuencias_no_autorizadas": frecuencias_no_autorizadas,
+            "frecuencias_observacion": frecuencias_observacion,
+            "frecuencias_libres": frecuencias_libres,
+            "porcentajes": {
+                "ocupadas": porcentaje_ocupadas,
+                "libres": porcentaje_libres,
+                "autorizadas": porcentaje_autorizadas,
+                "no_autorizadas": porcentaje_no_autorizadas,
+                "observacion": porcentaje_observacion
+            }
+        }
+        
         # ... (resto de la función igual, creando la tabla) ...
         # Estilos
         font_bold = Font(bold=True)
@@ -429,13 +491,20 @@ def crear_tablas_ocupacion_tv(ws, datos):
         for i, ancho in enumerate(anchos_columnas, start=col_inicio):
             ws.column_dimensions[get_column_letter(i)].width = ancho
         
+        # Crear gráfico de pastel para esta banda de TV usando openpyxl
+        try:
+            celda_destino = f"O{fila_actual}"
+            crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, f"OCUPACIÓN {banda.upper()}", celda_destino)
+        except Exception as e:
+            print(f"Error al crear gráfico para {banda}: {e}")
+        
         # Actualizar fila actual para la próxima tabla
         fila_actual = fila_actual + len(datos_tabla) + separacion_entre_tablas + 1
 
         
         print(f"✅ Tabla creada para {banda}: {total_frecuencias} frecuencias")
     
-    return True
+    return resultados_bandas
 
 
 def buscar_emisora_por_frecuencia(ciudad, frecuencia, tipo, tolerancia=0.1):
