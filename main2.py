@@ -55,23 +55,22 @@ ruta_salida = config.get("output_path", "ReportesOcupacion")
 fecha_actual = datetime.now().strftime("%d/%m/%Y")
 
 # ------------------ FUNCIONES AUXILIARES ------------------
-
 def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
     """
-    Crea la tabla de ocupación FM a partir de la columna J con los criterios corregidos
+    Crea la tabla de ocupación FM a partir de la columna J
     """
     # Obtener los datos de la hoja
-    fila_inicio = 2  # Asumiendo que la fila 1 son encabezados
+    fila_inicio = 2
     
-    # Calcular estadísticas con criterios corregidos
+    # Calcular estadísticas
     total_frecuencias = len(datos)
     
-    # Contar frecuencias operando mayor al umbral (SOLO las que tienen Level > umbral)
+    # Contar frecuencias operando mayor al umbral (OCUPACIÓN > 0%)
     frecuencias_mayor_umbral = 0
     for fila in range(fila_inicio, ws.max_row + 1):
-        nivel_celda = ws.cell(row=fila, column=5)  # Columna E = Level (dBµV/m)
-        if nivel_celda.value and isinstance(nivel_celda.value, (int, float)):
-            if nivel_celda.value > umbral:
+        ocupacion_celda = ws.cell(row=fila, column=4)  # Columna D = Ocupación (%)
+        if ocupacion_celda.value and isinstance(ocupacion_celda.value, (int, float)):
+            if ocupacion_celda.value > 0:  # CAMBIO: Ocupación > 0% en lugar de Level > umbral
                 frecuencias_mayor_umbral += 1
     
     # Contar frecuencias con criterios corregidos
@@ -92,13 +91,18 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
             except (ValueError, TypeError):
                 ocupacion_valor = 0
         
-        # Verificar si tiene nombre en ESTACIÓN
+        # CRITERIO ACTUALIZADO: Frecuencias libres = ocupación = 0%
+        if ocupacion_valor == 0:
+            frecuencias_libres += 1
+            continue  # Las libres no se consideran para otras categorías
+        
+        # Verificar si tiene nombre en ESTACIÓN (solo para frecuencias con ocupación > 0)
         tiene_nombre = estacion_celda.value and estacion_celda.value != "No identificada" and estacion_celda.value != ""
         
         if tiene_nombre:
             # Tiene nombre -> Verificar si es autorizada o no autorizada
             estacion_str = str(estacion_celda.value).lower()
-            if "no autorizado" in estacion_str or "no autorizada" in estacion_str or "sis no autori" in estacion_str or "no aut" in estacion_str:
+            if "no autorizado" in estacion_str or "no autorizada" in estacion_str or "no aut" in estacion_str:
                 frecuencias_no_autorizadas += 1
                 # Pintar de rojo
                 ws.cell(row=fila, column=1).fill = ROJO  # Frecuencia
@@ -106,20 +110,17 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
                 ws.cell(row=fila, column=4).fill = ROJO  # Ocupación
             else:
                 frecuencias_autorizadas += 1
-                # Pintar de verde (aunque tenga 0% de ocupación)
+                # Pintar de verde
                 ws.cell(row=fila, column=1).fill = VERDE  # Frecuencia
                 ws.cell(row=fila, column=2).fill = VERDE  # Estación
                 ws.cell(row=fila, column=4).fill = VERDE  # Ocupación
         else:
-            # No tiene nombre -> Verificar si es libre o en observación
-            if ocupacion_valor == 0:
-                frecuencias_libres += 1
-            else:
-                frecuencias_observacion += 1
-                # Pintar de amarillo las de observación
-                ws.cell(row=fila, column=1).fill = AMARILLO  # Frecuencia
-                ws.cell(row=fila, column=2).fill = AMARILLO  # Estación
-                ws.cell(row=fila, column=4).fill = AMARILLO  # Ocupación
+            # No tiene nombre -> Frecuencia en observación (ocupación > 0 pero sin nombre)
+            frecuencias_observacion += 1
+            # Pintar de amarillo
+            ws.cell(row=fila, column=1).fill = AMARILLO  # Frecuencia
+            ws.cell(row=fila, column=2).fill = AMARILLO  # Estación
+            ws.cell(row=fila, column=4).fill = AMARILLO  # Ocupación
     
     # VERIFICACIÓN: La suma debe coincidir con el total
     suma_categorias = (frecuencias_autorizadas + frecuencias_no_autorizadas + 
@@ -128,13 +129,16 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
     if suma_categorias != total_frecuencias:
         print(f"⚠️  Advertencia: Suma de categorías ({suma_categorias}) no coincide con total ({total_frecuencias})")
     
-    # Calcular porcentajes CORREGIDOS según los nuevos criterios
-    porcentaje_ocupadas = (frecuencias_mayor_umbral / total_frecuencias * 100) if total_frecuencias > 0 else 0
+    # Calcular porcentajes (FRECUENCIAS OPERANDO = todas las que no son libres)
+    total_operando = total_frecuencias - frecuencias_libres
+    porcentaje_ocupadas = (total_operando / total_frecuencias * 100) if total_frecuencias > 0 else 0
     porcentaje_libres = (frecuencias_libres / total_frecuencias * 100) if total_frecuencias > 0 else 0
     porcentaje_autorizadas = (frecuencias_autorizadas / total_frecuencias * 100) if total_frecuencias > 0 else 0
     porcentaje_no_autorizadas = (frecuencias_no_autorizadas / total_frecuencias * 100) if total_frecuencias > 0 else 0
     porcentaje_observacion = (frecuencias_observacion / total_frecuencias * 100) if total_frecuencias > 0 else 0
     
+    # ... (resto de la función igual, creando la tabla) ...
+
     # Crear la tabla a partir de la columna J (columna 10)
     col_inicio = 10
     fila_inicio_tabla = 1
@@ -240,6 +244,7 @@ def verificar_posicion_tablas(ws):
         celda = ws.cell(row=fila, column=col)
         print(f"Celda {get_column_letter(col)}{fila}: '{celda.value}'")
         
+
 def crear_tablas_ocupacion_tv(ws, datos):
     """
     Crea las tablas de ocupación TV por bandas a partir de la columna K
@@ -284,6 +289,8 @@ def crear_tablas_ocupacion_tv(ws, datos):
     # Ordenar bandas para consistencia
     bandas_orden = ["Bandas I-III (VHF)", "Banda III (VHF)", "Bandas IV-V (UHF)"]
     
+
+    
     for banda, filas_banda in datos_por_banda.items():
         if not filas_banda:
             continue  # Saltar bandas sin datos
@@ -296,9 +303,9 @@ def crear_tablas_ocupacion_tv(ws, datos):
         # Contar frecuencias operando mayor al umbral
         frecuencias_mayor_umbral = 0
         for fila in filas_banda:
-            nivel_celda = ws.cell(row=fila, column=6)  # Columna F = Level (dBµV/m)
-            if nivel_celda.value and isinstance(nivel_celda.value, (int, float)):
-                if nivel_celda.value > umbral:
+            ocupacion_celda = ws.cell(row=fila, column=5)  # Columna E = Ocupación (%) para TV
+            if ocupacion_celda.value and isinstance(ocupacion_celda.value, (int, float)):
+                if ocupacion_celda.value > 0:  # CAMBIO: Ocupación > 0%
                     frecuencias_mayor_umbral += 1
         
         # Contar frecuencias con criterios específicos
@@ -319,7 +326,12 @@ def crear_tablas_ocupacion_tv(ws, datos):
                 except (ValueError, TypeError):
                     ocupacion_valor = 0
             
-            # Verificar si tiene nombre en ESTACIÓN
+            # CRITERIO ACTUALIZADO: Frecuencias libres = ocupación = 0%
+            if ocupacion_valor == 0:
+                frecuencias_libres += 1
+                continue  # Las libres no se consideran para otras categorías
+            
+            # Verificar si tiene nombre en ESTACIÓN (solo para frecuencias con ocupación > 0)
             tiene_nombre = estacion_celda.value and estacion_celda.value != "No identificada" and estacion_celda.value != ""
             
             if tiene_nombre:
@@ -338,23 +350,22 @@ def crear_tablas_ocupacion_tv(ws, datos):
                     ws.cell(row=fila, column=2).fill = VERDE  # Estación
                     ws.cell(row=fila, column=5).fill = VERDE  # Ocupación
             else:
-                # No tiene nombre -> Verificar si es libre o en observación
-                if ocupacion_valor == 0:
-                    frecuencias_libres += 1
-                else:
-                    frecuencias_observacion += 1
-                    # Pintar de amarillo
-                    ws.cell(row=fila, column=1).fill = AMARILLO  # Frecuencia
-                    ws.cell(row=fila, column=2).fill = AMARILLO  # Estación
-                    ws.cell(row=fila, column=5).fill = AMARILLO  # Ocupación
+                # No tiene nombre -> Frecuencia en observación
+                frecuencias_observacion += 1
+                # Pintar de amarillo
+                ws.cell(row=fila, column=1).fill = AMARILLO  # Frecuencia
+                ws.cell(row=fila, column=2).fill = AMARILLO  # Estación
+                ws.cell(row=fila, column=5).fill = AMARILLO  # Ocupación
         
         # Calcular porcentajes
-        porcentaje_ocupadas = (frecuencias_mayor_umbral / total_frecuencias * 100) if total_frecuencias > 0 else 0
+        total_operando = total_frecuencias - frecuencias_libres
+        porcentaje_ocupadas = (total_operando / total_frecuencias * 100) if total_frecuencias > 0 else 0
         porcentaje_libres = (frecuencias_libres / total_frecuencias * 100) if total_frecuencias > 0 else 0
         porcentaje_autorizadas = (frecuencias_autorizadas / total_frecuencias * 100) if total_frecuencias > 0 else 0
         porcentaje_no_autorizadas = (frecuencias_no_autorizadas / total_frecuencias * 100) if total_frecuencias > 0 else 0
         porcentaje_observacion = (frecuencias_observacion / total_frecuencias * 100) if total_frecuencias > 0 else 0
         
+        # ... (resto de la función igual, creando la tabla) ...
         # Estilos
         font_bold = Font(bold=True)
         alignment_center = Alignment(horizontal="center", vertical="center")
