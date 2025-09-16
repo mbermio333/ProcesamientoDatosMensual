@@ -26,10 +26,18 @@ UMBRAL_TV_BANDA_IV_V = 60   # para Bandas IV-V (UHF)
 # Cargar configuración desde archivo
 CONFIG_FILE = "config.json"
 
-def crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, titulo, celda_destino):
-    # Crear datos para el gráfico en celdas ocultas
-    fila_inicio = 100  # fuera del rango visible
+def crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, titulo, celda_destino, identificador_unico):
+    """
+    Crea un gráfico de pastel directamente con openpyxl
+    """
+    # Crear datos para el gráfico en celdas ocultas con posición única
+    fila_inicio = 100 + (identificador_unico * 10)  # Espacio suficiente entre gráficos
     col_datos = 20
+
+    # Limpiar celdas previas (por si acaso)
+    for i in range(4):  # Limpiar 4 filas
+        ws.cell(row=fila_inicio + i, column=col_datos, value="")
+        ws.cell(row=fila_inicio + i, column=col_datos + 1, value="")
 
     ws.cell(row=fila_inicio, column=col_datos, value="Ocupadas")
     ws.cell(row=fila_inicio, column=col_datos + 1, value=porcentaje_ocupadas)
@@ -247,9 +255,10 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
     for i, ancho in enumerate(anchos_columnas, start=col_inicio):
         ws.column_dimensions[get_column_letter(i)].width = ancho
     
-    # Crear gráfico de pastel para FM usando openpyxl
+     # Crear gráfico de pastel para FM usando openpyxl
+    # En crear_tabla_ocupacion_fm, modificar la llamada al gráfico:
     try:
-        crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, "OCUPACIÓN FM", "O2")
+        crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, "OCUPACIÓN FM", "P2", 999)  # ID único para FM
     except Exception as e:
         print(f"Error al crear gráfico FM: {e}")
     
@@ -330,6 +339,13 @@ def crear_tablas_ocupacion_tv(ws, datos):
     bandas_orden = ["Bandas I-III (VHF)", "Banda III (VHF)", "Bandas IV-V (UHF)"]
     
     resultados_bandas = {}
+
+    # Filas fijas para cada gráfico
+    filas_graficos = {
+        "Bandas I-III (VHF)": 1,    # Primera gráfica en fila 1
+        "Banda III (VHF)": 16,      # Segunda gráfica en fila 16  
+        "Bandas IV-V (UHF)": 31     # Tercera gráfica en fila 31
+    }
     
     for banda, filas_banda in datos_por_banda.items():
         if not filas_banda:
@@ -493,15 +509,21 @@ def crear_tablas_ocupacion_tv(ws, datos):
         
         # Crear gráfico de pastel para esta banda de TV usando openpyxl
         try:
-            celda_destino = f"O{fila_actual}"
-            crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, f"OCUPACIÓN {banda.upper()}", celda_destino)
+            # Usar fila fija según la banda
+            fila_grafico = filas_graficos.get(banda, fila_actual)
+            celda_destino = f"P{fila_grafico}"
+            
+            # Usar un identificador único para cada gráfico basado en el nombre de la banda
+            identificador_unico = hash(banda) % 100  # Hash único para cada banda
+            
+            crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, 
+                                        f"OCUPACIÓN {banda.upper()}", celda_destino, identificador_unico)
         except Exception as e:
             print(f"Error al crear gráfico para {banda}: {e}")
         
         # Actualizar fila actual para la próxima tabla
         fila_actual = fila_actual + len(datos_tabla) + separacion_entre_tablas + 1
 
-        
         print(f"✅ Tabla creada para {banda}: {total_frecuencias} frecuencias")
     
     return resultados_bandas
