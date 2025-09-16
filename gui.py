@@ -201,6 +201,8 @@ class OcupacionTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
+        self.tv_umbral_general = None
+        self.tv_umbrales_bandas = {}
         self.initUI()
         
     def initUI(self):
@@ -303,10 +305,10 @@ class OcupacionTab(QWidget):
         umbrales_layout.addSpacing(10)
         
         # Contenedor para campos dinámicos de TV
-        self.tv_campos_container = QWidget()
-        self.tv_campos_layout = QVBoxLayout(self.tv_campos_container)
-        self.tv_campos_layout.setSpacing(5)  # Espacio entre elementos
-        umbrales_layout.addWidget(self.tv_campos_container)
+        self.tv_campos_widget = QWidget()
+        self.tv_campos_layout = QVBoxLayout(self.tv_campos_widget)
+        self.tv_campos_layout.setSpacing(5)
+        umbrales_layout.addWidget(self.tv_campos_widget)
         
         umbrales_group.setLayout(umbrales_layout)
         right_column.addWidget(umbrales_group)
@@ -372,11 +374,23 @@ class OcupacionTab(QWidget):
     
     def actualizar_campos_tv(self):
         """Actualiza los campos de TV según la selección del tipo de umbral"""
-        # Limpiar layout actual
-        while self.tv_campos_layout.count():
-            child = self.tv_campos_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+        # Limpiar layout actual de forma segura
+        for i in reversed(range(self.tv_campos_layout.count())):
+            item = self.tv_campos_layout.itemAt(i)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                # Limpiar layout hijo
+                for j in reversed(range(item.layout().count())):
+                    child_item = item.layout().itemAt(j)
+                    if child_item.widget():
+                        child_item.widget().deleteLater()
+                # Eliminar el layout
+                self.tv_campos_layout.removeItem(item)
+        
+        # Limpiar referencias
+        self.tv_umbral_general = None
+        self.tv_umbrales_bandas = {}
         
         tipo_seleccionado = self.tv_tipo_umbral.currentText()
         
@@ -397,7 +411,6 @@ class OcupacionTab(QWidget):
         else:
             # Umbral por bandas
             bandas = ["Banda I", "Banda II", "Banda III"]
-            self.tv_umbrales_bandas = {}
             
             for banda in bandas:
                 banda_layout = QHBoxLayout()
@@ -422,9 +435,6 @@ class OcupacionTab(QWidget):
                 banda_layout.addWidget(QLabel("dBµV/m"))
                 banda_layout.addStretch(1)
                 self.tv_campos_layout.addLayout(banda_layout)
-        
-        # Ajustar el tamaño del contenedor
-        self.tv_campos_container.adjustSize()
     
     def obtener_umbrales(self):
         """Obtiene los valores de umbrales configurados"""
@@ -435,15 +445,26 @@ class OcupacionTab(QWidget):
         
         if self.tv_tipo_umbral.currentText() == "Umbral General":
             umbrales["TV"]["tipo"] = "general"
-            umbrales["TV"]["valor"] = float(self.tv_umbral_general.text()) if self.tv_umbral_general.text() else 45.0
+            if self.tv_umbral_general:
+                umbrales["TV"]["valor"] = float(self.tv_umbral_general.text()) if self.tv_umbral_general.text() else 45.0
+            else:
+                umbrales["TV"]["valor"] = 45.0
         else:
             umbrales["TV"]["tipo"] = "bandas"
             umbrales["TV"]["valores"] = {}
             for banda, edit in self.tv_umbrales_bandas.items():
-                umbrales["TV"]["valores"][banda] = float(edit.text()) if edit.text() else 0.0
+                if edit:
+                    umbrales["TV"]["valores"][banda] = float(edit.text()) if edit.text() else 0.0
+                else:
+                    # Valores por defecto si no hay edit
+                    if banda == "Banda I":
+                        umbrales["TV"]["valores"][banda] = 47.0
+                    elif banda == "Banda II":
+                        umbrales["TV"]["valores"][banda] = 56.0
+                    else:
+                        umbrales["TV"]["valores"][banda] = 64.0
         
         return umbrales
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
