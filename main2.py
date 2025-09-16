@@ -57,6 +57,7 @@ def crear_hoja_datos_manual(wb):
     fuente_subtitulo = Font(bold=True, size=12)
     fuente_encabezado = Font(bold=True, color="FFFFFF")
     fuente_normal = Font(size=11)
+    fuente_resumen = Font(bold=True, size=11)
     
     borde_fino = Border(
         left=Side(style='thin'),
@@ -91,30 +92,6 @@ def crear_hoja_datos_manual(wb):
     celda_tv.fill = color_subtitulo
     celda_tv.font = fuente_subtitulo
     celda_tv.alignment = alineacion_centro
-    
-    # Encabezados FM
-    ws_manual['A3'] = "TIPO"
-    ws_manual['B3'] = "Frecuencia (MHz)"
-    ws_manual['C3'] = "ESTACION"
-    
-    for col in ['A', 'B', 'C']:
-        celda = ws_manual[f'{col}3']
-        celda.fill = color_encabezado
-        celda.font = fuente_encabezado
-        celda.alignment = alineacion_centro
-        celda.border = borde_fino
-    
-    # Encabezados TV
-    ws_manual['F3'] = "TIPO"
-    ws_manual['G3'] = "Frecuencia (MHz)"
-    ws_manual['H3'] = "ESTACION"
-    
-    for col in ['F', 'G', 'H']:
-        celda = ws_manual[f'{col}3']
-        celda.fill = color_encabezado
-        celda.font = fuente_encabezado
-        celda.alignment = alineacion_centro
-        celda.border = borde_fino
     
     # Obtener datos de FM
     ws_fm = wb["Datos FM"]
@@ -158,8 +135,116 @@ def crear_hoja_datos_manual(wb):
             elif color_celda.start_color.index == AMARILLO.start_color.index:
                 datos_tv_observacion.append((frecuencia, estacion))
     
+    # Crear tabla resumen para FM
+    fila_resumen_fm = 3
+    
+    # Encabezados tabla resumen FM
+    ws_manual[f'A{fila_resumen_fm}'] = "FRECUENCIAS AUTORIZADAS"
+    ws_manual[f'B{fila_resumen_fm}'] = len(datos_fm_autorizadas)
+    ws_manual[f'A{fila_resumen_fm}'].fill = color_autorizada
+    ws_manual[f'B{fila_resumen_fm}'].fill = color_autorizada
+    ws_manual[f'A{fila_resumen_fm}'].font = fuente_resumen
+    ws_manual[f'B{fila_resumen_fm}'].font = fuente_resumen
+    ws_manual[f'A{fila_resumen_fm}'].alignment = alineacion_izquierda
+    ws_manual[f'B{fila_resumen_fm}'].alignment = alineacion_centro
+    ws_manual[f'A{fila_resumen_fm}'].border = borde_fino
+    ws_manual[f'B{fila_resumen_fm}'].border = borde_fino
+    
+    fila_resumen_fm += 1
+    
+    ws_manual[f'A{fila_resumen_fm}'] = "FRECUENCIAS NO AUTORIZADAS"
+    ws_manual[f'B{fila_resumen_fm}'] = len(datos_fm_no_autorizadas)
+    ws_manual[f'A{fila_resumen_fm}'].fill = color_no_autorizada
+    ws_manual[f'B{fila_resumen_fm}'].fill = color_no_autorizada
+    ws_manual[f'A{fila_resumen_fm}'].font = fuente_resumen
+    ws_manual[f'B{fila_resumen_fm}'].font = fuente_resumen
+    ws_manual[f'A{fila_resumen_fm}'].alignment = alineacion_izquierda
+    ws_manual[f'B{fila_resumen_fm}'].alignment = alineacion_centro
+    ws_manual[f'A{fila_resumen_fm}'].border = borde_fino
+    ws_manual[f'B{fila_resumen_fm}'].border = borde_fino
+    
+    fila_resumen_fm += 1
+    
+    ws_manual[f'A{fila_resumen_fm}'] = "EN OBSERVACIÓN"
+    ws_manual[f'B{fila_resumen_fm}'] = len(datos_fm_observacion)
+    ws_manual[f'A{fila_resumen_fm}'].fill = color_observacion
+    ws_manual[f'B{fila_resumen_fm}'].fill = color_observacion
+    ws_manual[f'A{fila_resumen_fm}'].font = fuente_resumen
+    ws_manual[f'B{fila_resumen_fm}'].font = fuente_resumen
+    ws_manual[f'A{fila_resumen_fm}'].alignment = alineacion_izquierda
+    ws_manual[f'B{fila_resumen_fm}'].alignment = alineacion_centro
+    ws_manual[f'A{fila_resumen_fm}'].border = borde_fino
+    ws_manual[f'B{fila_resumen_fm}'].border = borde_fino
+    
+    # Crear tabla resumen para TV (suma de todas las bandas)
+    fila_resumen_tv = 3
+    
+    # Encabezados tabla resumen TV
+    ws_manual[f'F{fila_resumen_tv}'] = "FRECUENCIAS AUTORIZADAS"
+    ws_manual[f'G{fila_resumen_tv}'] = len(datos_tv_autorizadas)
+    ws_manual[f'F{fila_resumen_tv}'].fill = color_autorizada
+    ws_manual[f'G{fila_resumen_tv}'].fill = color_autorizada
+    ws_manual[f'F{fila_resumen_tv}'].font = fuente_resumen
+    ws_manual[f'G{fila_resumen_tv}'].font = fuente_resumen
+    ws_manual[f'F{fila_resumen_tv}'].alignment = alineacion_izquierda
+    ws_manual[f'G{fila_resumen_tv}'].alignment = alineacion_centro
+    ws_manual[f'F{fila_resumen_tv}'].border = borde_fino
+    ws_manual[f'G{fila_resumen_tv}'].border = borde_fino
+    
+    fila_resumen_tv += 1
+    
+    ws_manual[f'F{fila_resumen_tv}'] = "FRECUENCIAS NO AUTORIZADAS"
+    ws_manual[f'G{fila_resumen_tv}'] = len(datos_tv_no_autorizadas)
+    ws_manual[f'F{fila_resumen_tv}'].fill = color_no_autorizada
+    ws_manual[f'G{fila_resumen_tv}'].fill = color_no_autorizada
+    ws_manual[f'F{fila_resumen_tv}'].font = fuente_resumen
+    ws_manual[f'G{fila_resumen_tv}'].font = fuente_resumen
+    ws_manual[f'F{fila_resumen_tv}'].alignment = alineacion_izquierda
+    ws_manual[f'G{fila_resumen_tv}'].alignment = alineacion_centro
+    ws_manual[f'F{fila_resumen_tv}'].border = borde_fino
+    ws_manual[f'G{fila_resumen_tv}'].border = borde_fino
+    
+    fila_resumen_tv += 1
+    
+    ws_manual[f'F{fila_resumen_tv}'] = "EN OBSERVACIÓN"
+    ws_manual[f'G{fila_resumen_tv}'] = len(datos_tv_observacion)
+    ws_manual[f'F{fila_resumen_tv}'].fill = color_observacion
+    ws_manual[f'G{fila_resumen_tv}'].fill = color_observacion
+    ws_manual[f'F{fila_resumen_tv}'].font = fuente_resumen
+    ws_manual[f'G{fila_resumen_tv}'].font = fuente_resumen
+    ws_manual[f'F{fila_resumen_tv}'].alignment = alineacion_izquierda
+    ws_manual[f'G{fila_resumen_tv}'].alignment = alineacion_centro
+    ws_manual[f'F{fila_resumen_tv}'].border = borde_fino
+    ws_manual[f'G{fila_resumen_tv}'].border = borde_fino
+    
+    # Encabezados tabla detalle FM (después del resumen)
+    fila_detalle_fm = fila_resumen_fm + 2
+    ws_manual[f'A{fila_detalle_fm}'] = "TIPO"
+    ws_manual[f'B{fila_detalle_fm}'] = "Frecuencia (MHz)"
+    ws_manual[f'C{fila_detalle_fm}'] = "ESTACION"
+    
+    for col in ['A', 'B', 'C']:
+        celda = ws_manual[f'{col}{fila_detalle_fm}']
+        celda.fill = color_encabezado
+        celda.font = fuente_encabezado
+        celda.alignment = alineacion_centro
+        celda.border = borde_fino
+    
+    # Encabezados tabla detalle TV (después del resumen)
+    fila_detalle_tv = fila_resumen_tv + 2
+    ws_manual[f'F{fila_detalle_tv}'] = "TIPO"
+    ws_manual[f'G{fila_detalle_tv}'] = "Frecuencia (MHz)"
+    ws_manual[f'H{fila_detalle_tv}'] = "ESTACION"
+    
+    for col in ['F', 'G', 'H']:
+        celda = ws_manual[f'{col}{fila_detalle_tv}']
+        celda.fill = color_encabezado
+        celda.font = fuente_encabezado
+        celda.alignment = alineacion_centro
+        celda.border = borde_fino
+    
     # Insertar datos FM - Autorizadas
-    fila_actual_fm = 4
+    fila_actual_fm = fila_detalle_fm + 1
     for frecuencia, estacion in datos_fm_autorizadas:
         ws_manual[f'A{fila_actual_fm}'] = "AUTORIZADA"
         ws_manual[f'B{fila_actual_fm}'] = frecuencia
@@ -195,9 +280,9 @@ def crear_hoja_datos_manual(wb):
         
         fila_actual_fm += 1
     
-    # Insertar datos FM - Observación (Espurias/Intermodulación)
+    # Insertar datos FM - Observación
     for frecuencia, estacion in datos_fm_observacion:
-        ws_manual[f'A{fila_actual_fm}'] = "ESPURIAS/INTERMOD"
+        ws_manual[f'A{fila_actual_fm}'] = "EN OBSERVACIÓN"
         ws_manual[f'B{fila_actual_fm}'] = frecuencia
         ws_manual[f'C{fila_actual_fm}'] = estacion
         
@@ -214,7 +299,7 @@ def crear_hoja_datos_manual(wb):
         fila_actual_fm += 1
     
     # Insertar datos TV - Autorizadas
-    fila_actual_tv = 4
+    fila_actual_tv = fila_detalle_tv + 1
     for frecuencia, estacion in datos_tv_autorizadas:
         ws_manual[f'F{fila_actual_tv}'] = "AUTORIZADA"
         ws_manual[f'G{fila_actual_tv}'] = frecuencia
@@ -250,9 +335,9 @@ def crear_hoja_datos_manual(wb):
         
         fila_actual_tv += 1
     
-    # Insertar datos TV - Observación (Espurias/Intermodulación)
+    # Insertar datos TV - Observación
     for frecuencia, estacion in datos_tv_observacion:
-        ws_manual[f'F{fila_actual_tv}'] = "ESPURIAS/INTERMOD"
+        ws_manual[f'F{fila_actual_tv}'] = "EN OBSERVACIÓN"
         ws_manual[f'G{fila_actual_tv}'] = frecuencia
         ws_manual[f'H{fila_actual_tv}'] = estacion
         
