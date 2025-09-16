@@ -7,16 +7,9 @@ import platform
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QPushButton, QLabel, QTextEdit, 
                              QFileDialog, QProgressBar, QMessageBox, QGroupBox,
-                             QTabWidget)
+                             QTabWidget, QFrame, QComboBox, QLineEdit, QGridLayout)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QFont
-from PyQt5.QtGui import QDoubleValidator, QFont
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
-from PyQt5.QtWidgets import QHBoxLayout, QLabel, QPushButton, QTabWidget
-from PyQt5.QtWidgets import QFileDialog, QMessageBox, QComboBox, QTextEdit
-from PyQt5.QtWidgets import QLineEdit, QGroupBox, QGridLayout
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QDoubleValidator, QFont
+from PyQt5.QtGui import QFont, QDoubleValidator
 
 # Añadir constantes para el archivo de configuración
 CONFIG_FILE = "config.json"
@@ -26,6 +19,121 @@ DEFAULT_PATHS = {
     "output_path": "ReportesUnificados",
     "ocupacion_output_path": "ReportesOcupacion"  # Nueva ruta para ocupación
 }
+
+# Estilos globales para mantener consistencia
+GROUP_BOX_STYLE = """
+    QGroupBox { 
+        font-weight: bold; 
+        border: 1px solid #cccccc;
+        border-radius: 4px;
+        margin-top: 10px;
+        padding-top: 15px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 5px 0 5px;
+    }
+"""
+
+BUTTON_STYLE = """
+    QPushButton { 
+        background-color: #4CAF50; 
+        color: white; 
+        font-weight: bold; 
+        padding: 8px;
+        border: none;
+        border-radius: 4px;
+        min-width: 120px;
+    }
+    QPushButton:hover {
+        background-color: #45a049;
+    }
+    QPushButton:disabled {
+        background-color: #cccccc;
+    }
+"""
+
+STOP_BUTTON_STYLE = """
+    QPushButton { 
+        background-color: #f44336; 
+        color: white; 
+        font-weight: bold; 
+        padding: 8px;
+        border: none;
+        border-radius: 4px;
+        min-width: 120px;
+    }
+    QPushButton:hover {
+        background-color: #d32f2f;
+    }
+    QPushButton:disabled {
+        background-color: #cccccc;
+    }
+"""
+
+OPEN_BUTTON_STYLE = """
+    QPushButton { 
+        background-color: #2196F3; 
+        color: white; 
+        font-weight: bold; 
+        padding: 8px;
+        border: none;
+        border-radius: 4px;
+        min-width: 120px;
+    }
+    QPushButton:hover {
+        background-color: #0b7dda;
+    }
+"""
+
+CHANGE_BUTTON_STYLE = """
+    QPushButton { 
+        font-weight: bold; 
+        background-color: #e0e0e0;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+    }
+    QPushButton:hover {
+        background-color: #d0d0d0;
+    }
+"""
+
+PROGRESS_BAR_STYLE = """
+    QProgressBar {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        text-align: center;
+        height: 20px;
+    }
+    QProgressBar::chunk {
+        background-color: #4CAF50;
+        width: 10px;
+    }
+"""
+
+LOG_TEXT_STYLE = """
+    font-family: 'Consolas', 'Monospace', monospace; 
+    font-size: 10pt;
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+"""
+
+STATUS_LABEL_STYLE = """
+    background-color: #f0f0f0; 
+    padding: 8px; 
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-weight: bold;
+"""
+
+PATH_LABEL_STYLE = """
+    background-color: #f8f8f8; 
+    padding: 5px; 
+    border: 1px solid #ddd;
+    border-radius: 3px;
+"""
 
 class WorkerThread(QThread):
     """Hilo para ejecutar el procesamiento en segundo plano"""
@@ -99,11 +207,13 @@ class ProcesamientoTab(QWidget):
         
     def initUI(self):
         layout = QVBoxLayout(self)
+        layout.setSpacing(10)
         
         # Grupo de configuración
         config_group = QGroupBox("Configuración de Directorios - Procesamiento")
-        config_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        config_group.setStyleSheet(GROUP_BOX_STYLE)
         config_layout = QVBoxLayout()
+        config_layout.setSpacing(8)
         
         # Rutas de entrada con mejor formato - usar valores de configuración
         paths = [
@@ -114,14 +224,16 @@ class ProcesamientoTab(QWidget):
         
         for label_text, default_path, attr_name in paths:
             path_layout = QHBoxLayout()
+            path_layout.setSpacing(5)
             
             # Crear etiqueta para el texto descriptivo
             label_desc = QLabel(label_text)
             label_desc.setMinimumWidth(80)
+            label_desc.setStyleSheet("font-weight: bold;")
             
             # Crear etiqueta para la ruta (con texto truncado)
             label_ruta = QLabel(self.parent.truncar_texto(default_path))
-            label_ruta.setStyleSheet("background-color: #e8e8e8; padding: 5px; border: 1px solid #ccc;")
+            label_ruta.setStyleSheet(PATH_LABEL_STYLE)
             label_ruta.setMinimumWidth(300)
             label_ruta.setToolTip(default_path)
             setattr(self, attr_name, label_ruta)
@@ -129,7 +241,7 @@ class ProcesamientoTab(QWidget):
             # Crear botón "..." para cambiar ruta
             btn_change = QPushButton("...")
             btn_change.setFixedSize(30, 30)
-            btn_change.setStyleSheet("QPushButton { font-weight: bold; }")
+            btn_change.setStyleSheet(CHANGE_BUTTON_STYLE)
             
             # Conectar señal según el tipo de ruta
             if "fm" in attr_name:
@@ -150,16 +262,18 @@ class ProcesamientoTab(QWidget):
         
         # Botones de acción
         action_layout = QHBoxLayout()
+        action_layout.setSpacing(10)
+        
         self.start_btn = QPushButton("Iniciar Procesamiento")
-        self.start_btn.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; padding: 10px; }")
+        self.start_btn.setStyleSheet(BUTTON_STYLE)
         
         self.stop_btn = QPushButton("Detener")
-        self.stop_btn.setStyleSheet("QPushButton { background-color: #f44336; color: white; font-weight: bold; padding: 10px; }")
+        self.stop_btn.setStyleSheet(STOP_BUTTON_STYLE)
         self.stop_btn.setEnabled(False)
         
         # Nuevo botón para abrir carpeta de salida
         self.open_output_btn = QPushButton("Abrir Carpeta de Salida")
-        self.open_output_btn.setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 10px; }")
+        self.open_output_btn.setStyleSheet(OPEN_BUTTON_STYLE)
         self.open_output_btn.clicked.connect(lambda: self.parent.open_output_folder("procesamiento"))
         
         self.start_btn.clicked.connect(lambda: self.parent.start_processing("procesamiento"))
@@ -172,23 +286,23 @@ class ProcesamientoTab(QWidget):
         
         # Barra de progreso
         self.progress_bar = QProgressBar()
-        self.progress_bar.setStyleSheet("QProgressBar { height: 20px; }")
+        self.progress_bar.setStyleSheet(PROGRESS_BAR_STYLE)
         layout.addWidget(self.progress_bar)
         
         # Área de log
         log_group = QGroupBox("Log de Actividad - Procesamiento")
-        log_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        log_group.setStyleSheet(GROUP_BOX_STYLE)
         log_layout = QVBoxLayout()
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.log_text.setStyleSheet("font-family: monospace; font-size: 10pt;")
+        self.log_text.setStyleSheet(LOG_TEXT_STYLE)
         log_layout.addWidget(self.log_text)
         log_group.setLayout(log_layout)
         layout.addWidget(log_group)
         
         # Estado
         self.status_label = QLabel("Listo para iniciar")
-        self.status_label.setStyleSheet("background-color: #e0e0e0; padding: 5px; border: 1px solid #ccc;")
+        self.status_label.setStyleSheet(STATUS_LABEL_STYLE)
         layout.addWidget(self.status_label)
         
         # Mensaje inicial
@@ -207,17 +321,21 @@ class OcupacionTab(QWidget):
         
     def initUI(self):
         layout = QVBoxLayout(self)
+        layout.setSpacing(10)
         
         # Contenedor principal con dos columnas
         main_container = QHBoxLayout()
+        main_container.setSpacing(15)
         
         # Columna izquierda - Configuración de directorios (60% del ancho)
         left_column = QVBoxLayout()
+        left_column.setSpacing(10)
         
         # Grupo de configuración
         config_group = QGroupBox("Configuración de Directorios - Ocupación")
-        config_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        config_group.setStyleSheet(GROUP_BOX_STYLE)
         config_layout = QVBoxLayout()
+        config_layout.setSpacing(8)
         
         # Rutas de entrada con mejor formato - usar valores de configuración
         paths = [
@@ -228,14 +346,16 @@ class OcupacionTab(QWidget):
         
         for label_text, default_path, attr_name in paths:
             path_layout = QHBoxLayout()
+            path_layout.setSpacing(5)
             
             # Crear etiqueta para el texto descriptivo
             label_desc = QLabel(label_text)
             label_desc.setMinimumWidth(80)
+            label_desc.setStyleSheet("font-weight: bold;")
             
             # Crear etiqueta para la ruta (con texto truncado)
             label_ruta = QLabel(self.parent.truncar_texto(default_path))
-            label_ruta.setStyleSheet("background-color: #e8e8e8; padding: 5px; border: 1px solid #ccc;")
+            label_ruta.setStyleSheet(PATH_LABEL_STYLE)
             label_ruta.setMinimumWidth(200)
             label_ruta.setToolTip(default_path)
             setattr(self, attr_name, label_ruta)
@@ -243,7 +363,7 @@ class OcupacionTab(QWidget):
             # Crear botón "..." para cambiar ruta
             btn_change = QPushButton("...")
             btn_change.setFixedSize(30, 30)
-            btn_change.setStyleSheet("QPushButton { font-weight: bold; }")
+            btn_change.setStyleSheet(CHANGE_BUTTON_STYLE)
             
             # Conectar señal según el tipo de ruta
             if "fm" in attr_name:
@@ -265,49 +385,59 @@ class OcupacionTab(QWidget):
         
         # Columna derecha - Umbrales (40% del ancho)
         right_column = QVBoxLayout()
+        right_column.setSpacing(10)
         
         # Grupo de umbrales
         umbrales_group = QGroupBox("Umbrales")
-        umbrales_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        umbrales_group.setStyleSheet(GROUP_BOX_STYLE)
         umbrales_layout = QVBoxLayout()
+        umbrales_layout.setSpacing(8)
         
         # Campo para FM
         fm_layout = QHBoxLayout()
+        fm_layout.setSpacing(5)
         fm_label = QLabel("FM:")
-        fm_label.setMinimumWidth(60)
+        fm_label.setMinimumWidth(40)
+        fm_label.setStyleSheet("font-weight: bold;")
         self.fm_umbral = QLineEdit()
         self.fm_umbral.setValidator(QDoubleValidator(0, 1000, 2))
         self.fm_umbral.setText("60")
         self.fm_umbral.setMaximumWidth(60)
+        self.fm_umbral.setStyleSheet("padding: 3px;")
         fm_layout.addWidget(fm_label)
         fm_layout.addWidget(self.fm_umbral)
         fm_layout.addWidget(QLabel("dBµV/m"))
         fm_layout.addStretch(1)
         umbrales_layout.addLayout(fm_layout)
         
-        # Espaciado
-        umbrales_layout.addSpacing(10)
+        # Separador
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        separator.setStyleSheet("color: #e0e0e0;")
+        umbrales_layout.addWidget(separator)
         
         # Campo para TV
         tv_layout = QHBoxLayout()
+        tv_layout.setSpacing(5)
         tv_label = QLabel("TV:")
-        tv_label.setMinimumWidth(60)
+        tv_label.setMinimumWidth(40)
+        tv_label.setStyleSheet("font-weight: bold;")
         self.tv_tipo_umbral = QComboBox()
         self.tv_tipo_umbral.addItems(["Umbral General", "Umbral por bandas"])
         self.tv_tipo_umbral.currentIndexChanged.connect(self.actualizar_campos_tv)
         self.tv_tipo_umbral.setMaximumWidth(150)
+        self.tv_tipo_umbral.setStyleSheet("padding: 3px;")
         tv_layout.addWidget(tv_label)
         tv_layout.addWidget(self.tv_tipo_umbral)
         tv_layout.addStretch(1)
         umbrales_layout.addLayout(tv_layout)
         
-        # Espaciado
-        umbrales_layout.addSpacing(10)
-        
         # Contenedor para campos dinámicos de TV
         self.tv_campos_widget = QWidget()
         self.tv_campos_layout = QVBoxLayout(self.tv_campos_widget)
         self.tv_campos_layout.setSpacing(5)
+        self.tv_campos_layout.setContentsMargins(0, 5, 0, 0)
         umbrales_layout.addWidget(self.tv_campos_widget)
         
         umbrales_group.setLayout(umbrales_layout)
@@ -315,8 +445,8 @@ class OcupacionTab(QWidget):
         right_column.addStretch(1)
         
         # Agregar columnas al contenedor principal
-        main_container.addLayout(left_column, 3)  # 60% del espacio
-        main_container.addLayout(right_column, 2)  # 40% del espacio
+        main_container.addLayout(left_column, 3)
+        main_container.addLayout(right_column, 2)
         
         layout.addLayout(main_container)
         
@@ -325,16 +455,18 @@ class OcupacionTab(QWidget):
         
         # Botones de acción
         action_layout = QHBoxLayout()
+        action_layout.setSpacing(10)
+        
         self.start_btn = QPushButton("Iniciar Análisis de Ocupación")
-        self.start_btn.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; padding: 10px; }")
+        self.start_btn.setStyleSheet(BUTTON_STYLE)
         
         self.stop_btn = QPushButton("Detener")
-        self.stop_btn.setStyleSheet("QPushButton { background-color: #f44336; color: white; font-weight: bold; padding: 10px; }")
+        self.stop_btn.setStyleSheet(STOP_BUTTON_STYLE)
         self.stop_btn.setEnabled(False)
         
         # Nuevo botón para abrir carpeta de salida
         self.open_output_btn = QPushButton("Abrir Carpeta de Salida")
-        self.open_output_btn.setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 10px; }")
+        self.open_output_btn.setStyleSheet(OPEN_BUTTON_STYLE)
         self.open_output_btn.clicked.connect(lambda: self.parent.open_output_folder("ocupacion"))
         
         self.start_btn.clicked.connect(lambda: self.parent.start_processing("ocupacion"))
@@ -347,23 +479,23 @@ class OcupacionTab(QWidget):
         
         # Barra de progreso
         self.progress_bar = QProgressBar()
-        self.progress_bar.setStyleSheet("QProgressBar { height: 20px; }")
+        self.progress_bar.setStyleSheet(PROGRESS_BAR_STYLE)
         layout.addWidget(self.progress_bar)
         
         # Área de log
         log_group = QGroupBox("Log de Actividad - Ocupación")
-        log_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        log_group.setStyleSheet(GROUP_BOX_STYLE)
         log_layout = QVBoxLayout()
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.log_text.setStyleSheet("font-family: monospace; font-size: 10pt;")
+        self.log_text.setStyleSheet(LOG_TEXT_STYLE)
         log_layout.addWidget(self.log_text)
         log_group.setLayout(log_layout)
         layout.addWidget(log_group)
         
         # Estado
         self.status_label = QLabel("Listo para iniciar")
-        self.status_label.setStyleSheet("background-color: #e0e0e0; padding: 5px; border: 1px solid #ccc;")
+        self.status_label.setStyleSheet(STATUS_LABEL_STYLE)
         layout.addWidget(self.status_label)
         
         # Mensaje inicial
@@ -397,12 +529,15 @@ class OcupacionTab(QWidget):
         if tipo_seleccionado == "Umbral General":
             # Campo único para umbral general
             general_layout = QHBoxLayout()
+            general_layout.setSpacing(5)
             general_label = QLabel("Umbral General:")
             general_label.setMinimumWidth(100)
+            general_label.setStyleSheet("font-weight: bold;")
             self.tv_umbral_general = QLineEdit()
             self.tv_umbral_general.setValidator(QDoubleValidator(0, 1000, 2))
             self.tv_umbral_general.setText("45")
             self.tv_umbral_general.setMaximumWidth(60)
+            self.tv_umbral_general.setStyleSheet("padding: 3px;")
             general_layout.addWidget(general_label)
             general_layout.addWidget(self.tv_umbral_general)
             general_layout.addWidget(QLabel("dBµV/m"))
@@ -414,11 +549,14 @@ class OcupacionTab(QWidget):
             
             for banda in bandas:
                 banda_layout = QHBoxLayout()
+                banda_layout.setSpacing(5)
                 banda_label = QLabel(f"{banda}:")
                 banda_label.setMinimumWidth(80)
+                banda_label.setStyleSheet("font-weight: bold;")
                 umbral_edit = QLineEdit()
                 umbral_edit.setValidator(QDoubleValidator(0, 1000, 2))
                 umbral_edit.setMaximumWidth(60)
+                umbral_edit.setStyleSheet("padding: 3px;")
                 
                 # Valores por defecto según banda
                 if banda == "Banda I":
@@ -435,6 +573,8 @@ class OcupacionTab(QWidget):
                 banda_layout.addWidget(QLabel("dBµV/m"))
                 banda_layout.addStretch(1)
                 self.tv_campos_layout.addLayout(banda_layout)
+
+# ... (el resto del código MainWindow y main() permanece igual)
     
     def obtener_umbrales(self):
         """Obtiene los valores de umbrales configurados"""
