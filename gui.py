@@ -10,6 +10,13 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QTabWidget)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QDoubleValidator, QFont
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QHBoxLayout, QLabel, QPushButton, QTabWidget
+from PyQt5.QtWidgets import QFileDialog, QMessageBox, QComboBox, QTextEdit
+from PyQt5.QtWidgets import QLineEdit, QGroupBox, QGridLayout
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QDoubleValidator, QFont
 
 # Añadir constantes para el archivo de configuración
 CONFIG_FILE = "config.json"
@@ -199,6 +206,12 @@ class OcupacionTab(QWidget):
     def initUI(self):
         layout = QVBoxLayout(self)
         
+        # Contenedor principal con dos columnas
+        main_container = QHBoxLayout()
+        
+        # Columna izquierda - Configuración de directorios (60% del ancho)
+        left_column = QVBoxLayout()
+        
         # Grupo de configuración
         config_group = QGroupBox("Configuración de Directorios - Ocupación")
         config_group.setStyleSheet("QGroupBox { font-weight: bold; }")
@@ -221,7 +234,7 @@ class OcupacionTab(QWidget):
             # Crear etiqueta para la ruta (con texto truncado)
             label_ruta = QLabel(self.parent.truncar_texto(default_path))
             label_ruta.setStyleSheet("background-color: #e8e8e8; padding: 5px; border: 1px solid #ccc;")
-            label_ruta.setMinimumWidth(300)
+            label_ruta.setMinimumWidth(200)
             label_ruta.setToolTip(default_path)
             setattr(self, attr_name, label_ruta)
             
@@ -245,7 +258,68 @@ class OcupacionTab(QWidget):
             config_layout.addLayout(path_layout)
         
         config_group.setLayout(config_layout)
-        layout.addWidget(config_group)
+        left_column.addWidget(config_group)
+        left_column.addStretch(1)
+        
+        # Columna derecha - Umbrales (40% del ancho)
+        right_column = QVBoxLayout()
+        
+        # Grupo de umbrales
+        umbrales_group = QGroupBox("Umbrales")
+        umbrales_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        umbrales_layout = QVBoxLayout()
+        
+        # Campo para FM
+        fm_layout = QHBoxLayout()
+        fm_label = QLabel("FM:")
+        fm_label.setMinimumWidth(60)
+        self.fm_umbral = QLineEdit()
+        self.fm_umbral.setValidator(QDoubleValidator(0, 1000, 2))
+        self.fm_umbral.setText("60")
+        self.fm_umbral.setMaximumWidth(60)
+        fm_layout.addWidget(fm_label)
+        fm_layout.addWidget(self.fm_umbral)
+        fm_layout.addWidget(QLabel("dBµV/m"))
+        fm_layout.addStretch(1)
+        umbrales_layout.addLayout(fm_layout)
+        
+        # Espaciado
+        umbrales_layout.addSpacing(10)
+        
+        # Campo para TV
+        tv_layout = QHBoxLayout()
+        tv_label = QLabel("TV:")
+        tv_label.setMinimumWidth(60)
+        self.tv_tipo_umbral = QComboBox()
+        self.tv_tipo_umbral.addItems(["Umbral General", "Umbral por bandas"])
+        self.tv_tipo_umbral.currentIndexChanged.connect(self.actualizar_campos_tv)
+        self.tv_tipo_umbral.setMaximumWidth(150)
+        tv_layout.addWidget(tv_label)
+        tv_layout.addWidget(self.tv_tipo_umbral)
+        tv_layout.addStretch(1)
+        umbrales_layout.addLayout(tv_layout)
+        
+        # Espaciado
+        umbrales_layout.addSpacing(10)
+        
+        # Contenedor para campos dinámicos de TV
+        self.tv_campos_container = QWidget()
+        self.tv_campos_layout = QVBoxLayout(self.tv_campos_container)
+        self.tv_campos_layout.setSpacing(5)  # Espacio entre elementos
+        umbrales_layout.addWidget(self.tv_campos_container)
+        
+        umbrales_group.setLayout(umbrales_layout)
+        right_column.addWidget(umbrales_group)
+        right_column.addStretch(1)
+        
+        # Agregar columnas al contenedor principal
+        main_container.addLayout(left_column, 3)  # 60% del espacio
+        main_container.addLayout(right_column, 2)  # 40% del espacio
+        
+        layout.addLayout(main_container)
+        
+        # Inicializar campos de TV
+        self.actualizar_campos_tv()
         
         # Botones de acción
         action_layout = QHBoxLayout()
@@ -293,7 +367,82 @@ class OcupacionTab(QWidget):
         # Mensaje inicial
         self.log_text.append("Aplicación iniciada correctamente")
         self.log_text.append("1. Verifique las rutas de los directorios")
-        self.log_text.append("2. Presione 'Iniciar Análisis de Ocupación' para comenzar")
+        self.log_text.append("2. Configure los umbrales si es necesario")
+        self.log_text.append("3. Presione 'Iniciar Análisis de Ocupación' para comenzar")
+    
+    def actualizar_campos_tv(self):
+        """Actualiza los campos de TV según la selección del tipo de umbral"""
+        # Limpiar layout actual
+        while self.tv_campos_layout.count():
+            child = self.tv_campos_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        
+        tipo_seleccionado = self.tv_tipo_umbral.currentText()
+        
+        if tipo_seleccionado == "Umbral General":
+            # Campo único para umbral general
+            general_layout = QHBoxLayout()
+            general_label = QLabel("Umbral General:")
+            general_label.setMinimumWidth(100)
+            self.tv_umbral_general = QLineEdit()
+            self.tv_umbral_general.setValidator(QDoubleValidator(0, 1000, 2))
+            self.tv_umbral_general.setText("45")
+            self.tv_umbral_general.setMaximumWidth(60)
+            general_layout.addWidget(general_label)
+            general_layout.addWidget(self.tv_umbral_general)
+            general_layout.addWidget(QLabel("dBµV/m"))
+            general_layout.addStretch(1)
+            self.tv_campos_layout.addLayout(general_layout)
+        else:
+            # Umbral por bandas
+            bandas = ["Banda I", "Banda II", "Banda III"]
+            self.tv_umbrales_bandas = {}
+            
+            for banda in bandas:
+                banda_layout = QHBoxLayout()
+                banda_label = QLabel(f"{banda}:")
+                banda_label.setMinimumWidth(80)
+                umbral_edit = QLineEdit()
+                umbral_edit.setValidator(QDoubleValidator(0, 1000, 2))
+                umbral_edit.setMaximumWidth(60)
+                
+                # Valores por defecto según banda
+                if banda == "Banda I":
+                    umbral_edit.setText("47")
+                elif banda == "Banda II":
+                    umbral_edit.setText("56")
+                else:  # Banda III
+                    umbral_edit.setText("64")
+                
+                self.tv_umbrales_bandas[banda] = umbral_edit
+                
+                banda_layout.addWidget(banda_label)
+                banda_layout.addWidget(umbral_edit)
+                banda_layout.addWidget(QLabel("dBµV/m"))
+                banda_layout.addStretch(1)
+                self.tv_campos_layout.addLayout(banda_layout)
+        
+        # Ajustar el tamaño del contenedor
+        self.tv_campos_container.adjustSize()
+    
+    def obtener_umbrales(self):
+        """Obtiene los valores de umbrales configurados"""
+        umbrales = {
+            "FM": float(self.fm_umbral.text()) if self.fm_umbral.text() else 60.0,
+            "TV": {}
+        }
+        
+        if self.tv_tipo_umbral.currentText() == "Umbral General":
+            umbrales["TV"]["tipo"] = "general"
+            umbrales["TV"]["valor"] = float(self.tv_umbral_general.text()) if self.tv_umbral_general.text() else 45.0
+        else:
+            umbrales["TV"]["tipo"] = "bandas"
+            umbrales["TV"]["valores"] = {}
+            for banda, edit in self.tv_umbrales_bandas.items():
+                umbrales["TV"]["valores"][banda] = float(edit.text()) if edit.text() else 0.0
+        
+        return umbrales
 
 class MainWindow(QMainWindow):
     def __init__(self):
