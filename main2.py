@@ -26,6 +26,258 @@ UMBRAL_TV_BANDA_IV_V = 60   # para Bandas IV-V (UHF)
 # Cargar configuración desde archivo
 CONFIG_FILE = "config.json"
 
+def crear_hoja_datos_manual(wb):
+    """
+    Crea la hoja 'DATOS Manual' con resumen de frecuencias autorizadas, no autorizadas
+    y en observación para FM y TV, extrayendo datos de las hojas existentes.
+    """
+    # Verificar si las hojas de datos existen
+    if "Datos FM" not in wb.sheetnames or "Datos TV" not in wb.sheetnames:
+        print("⚠️  No se encontraron las hojas 'Datos FM' y/o 'Datos TV'")
+        return wb
+    
+    # Crear o limpiar hoja existente
+    if "DATOS Manual" in wb.sheetnames:
+        ws_manual = wb["DATOS Manual"]
+        # Limpiar la hoja existente
+        ws_manual.delete_rows(1, ws_manual.max_row)
+        ws_manual.delete_cols(1, ws_manual.max_column)
+    else:
+        ws_manual = wb.create_sheet("DATOS Manual")
+    
+    # Definir estilos y colores
+    color_titulo_principal = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
+    color_subtitulo = PatternFill(start_color="BFBFBF", end_color="BFBFBF", fill_type="solid")
+    color_encabezado = PatternFill(start_color="95B3D7", end_color="95B3D7", fill_type="solid")
+    color_autorizada = PatternFill(start_color="C4D79B", end_color="C4D79B", fill_type="solid")
+    color_no_autorizada = PatternFill(start_color="FCD5B5", end_color="FCD5B5", fill_type="solid")
+    color_observacion = PatternFill(start_color="FFC000", end_color="FFC000", fill_type="solid")
+    
+    fuente_titulo = Font(bold=True, size=14)
+    fuente_subtitulo = Font(bold=True, size=12)
+    fuente_encabezado = Font(bold=True, color="FFFFFF")
+    fuente_normal = Font(size=11)
+    
+    borde_fino = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    alineacion_centro = Alignment(horizontal='center', vertical='center')
+    alineacion_izquierda = Alignment(horizontal='left', vertical='center')
+    
+    # Título principal
+    ws_manual.merge_cells('A1:H1')
+    celda_titulo = ws_manual['A1']
+    celda_titulo.value = "DATOS DEL MONITOREO MANUAL"
+    celda_titulo.fill = color_titulo_principal
+    celda_titulo.font = fuente_titulo
+    celda_titulo.alignment = alineacion_centro
+    
+    # Subtítulo FM
+    ws_manual.merge_cells('A2:C2')
+    celda_fm = ws_manual['A2']
+    celda_fm.value = "FRECUENCIA MODULADA"
+    celda_fm.fill = color_subtitulo
+    celda_fm.font = fuente_subtitulo
+    celda_fm.alignment = alineacion_centro
+    
+    # Subtítulo TV
+    ws_manual.merge_cells('F2:H2')
+    celda_tv = ws_manual['F2']
+    celda_tv.value = "TELEVISION ABIERTA"
+    celda_tv.fill = color_subtitulo
+    celda_tv.font = fuente_subtitulo
+    celda_tv.alignment = alineacion_centro
+    
+    # Encabezados FM
+    ws_manual['A3'] = "TIPO"
+    ws_manual['B3'] = "Frecuencia (MHz)"
+    ws_manual['C3'] = "ESTACION"
+    
+    for col in ['A', 'B', 'C']:
+        celda = ws_manual[f'{col}3']
+        celda.fill = color_encabezado
+        celda.font = fuente_encabezado
+        celda.alignment = alineacion_centro
+        celda.border = borde_fino
+    
+    # Encabezados TV
+    ws_manual['F3'] = "TIPO"
+    ws_manual['G3'] = "Frecuencia (MHz)"
+    ws_manual['H3'] = "ESTACION"
+    
+    for col in ['F', 'G', 'H']:
+        celda = ws_manual[f'{col}3']
+        celda.fill = color_encabezado
+        celda.font = fuente_encabezado
+        celda.alignment = alineacion_centro
+        celda.border = borde_fino
+    
+    # Obtener datos de FM
+    ws_fm = wb["Datos FM"]
+    datos_fm_autorizadas = []
+    datos_fm_no_autorizadas = []
+    datos_fm_observacion = []
+    
+    # Recorrer filas de FM (fila 2 en adelante)
+    for fila in range(2, ws_fm.max_row + 1):
+        estacion = ws_fm.cell(row=fila, column=2).value  # Columna B = Estación
+        frecuencia = ws_fm.cell(row=fila, column=1).value  # Columna A = Frecuencia (MHz)
+        color_celda = ws_fm.cell(row=fila, column=2).fill  # Color de la celda de estación
+        
+        if estacion and frecuencia:
+            # Determinar tipo por color
+            if color_celda.start_color.index == VERDE.start_color.index:
+                datos_fm_autorizadas.append((frecuencia, estacion))
+            elif color_celda.start_color.index == ROJO.start_color.index:
+                datos_fm_no_autorizadas.append((frecuencia, estacion))
+            elif color_celda.start_color.index == AMARILLO.start_color.index:
+                datos_fm_observacion.append((frecuencia, estacion))
+    
+    # Obtener datos de TV
+    ws_tv = wb["Datos TV"]
+    datos_tv_autorizadas = []
+    datos_tv_no_autorizadas = []
+    datos_tv_observacion = []
+    
+    # Recorrer filas de TV (fila 2 en adelante)
+    for fila in range(2, ws_tv.max_row + 1):
+        estacion = ws_tv.cell(row=fila, column=2).value  # Columna B = Estación
+        frecuencia = ws_tv.cell(row=fila, column=1).value  # Columna A = Frecuencia (MHz)
+        color_celda = ws_tv.cell(row=fila, column=2).fill  # Color de la celda de estación
+        
+        if estacion and frecuencia:
+            # Determinar tipo por color
+            if color_celda.start_color.index == VERDE.start_color.index:
+                datos_tv_autorizadas.append((frecuencia, estacion))
+            elif color_celda.start_color.index == ROJO.start_color.index:
+                datos_tv_no_autorizadas.append((frecuencia, estacion))
+            elif color_celda.start_color.index == AMARILLO.start_color.index:
+                datos_tv_observacion.append((frecuencia, estacion))
+    
+    # Insertar datos FM - Autorizadas
+    fila_actual_fm = 4
+    for frecuencia, estacion in datos_fm_autorizadas:
+        ws_manual[f'A{fila_actual_fm}'] = "AUTORIZADA"
+        ws_manual[f'B{fila_actual_fm}'] = frecuencia
+        ws_manual[f'C{fila_actual_fm}'] = estacion
+        
+        for col in ['A', 'B', 'C']:
+            celda = ws_manual[f'{col}{fila_actual_fm}']
+            celda.fill = color_autorizada
+            celda.font = fuente_normal
+            celda.border = borde_fino
+            if col in ['A', 'C']:
+                celda.alignment = alineacion_izquierda
+            else:
+                celda.alignment = alineacion_centro
+        
+        fila_actual_fm += 1
+    
+    # Insertar datos FM - No Autorizadas
+    for frecuencia, estacion in datos_fm_no_autorizadas:
+        ws_manual[f'A{fila_actual_fm}'] = "NO AUTORIZADA"
+        ws_manual[f'B{fila_actual_fm}'] = frecuencia
+        ws_manual[f'C{fila_actual_fm}'] = estacion
+        
+        for col in ['A', 'B', 'C']:
+            celda = ws_manual[f'{col}{fila_actual_fm}']
+            celda.fill = color_no_autorizada
+            celda.font = fuente_normal
+            celda.border = borde_fino
+            if col in ['A', 'C']:
+                celda.alignment = alineacion_izquierda
+            else:
+                celda.alignment = alineacion_centro
+        
+        fila_actual_fm += 1
+    
+    # Insertar datos FM - Observación (Espurias/Intermodulación)
+    for frecuencia, estacion in datos_fm_observacion:
+        ws_manual[f'A{fila_actual_fm}'] = "ESPURIAS/INTERMOD"
+        ws_manual[f'B{fila_actual_fm}'] = frecuencia
+        ws_manual[f'C{fila_actual_fm}'] = estacion
+        
+        for col in ['A', 'B', 'C']:
+            celda = ws_manual[f'{col}{fila_actual_fm}']
+            celda.fill = color_observacion
+            celda.font = fuente_normal
+            celda.border = borde_fino
+            if col in ['A', 'C']:
+                celda.alignment = alineacion_izquierda
+            else:
+                celda.alignment = alineacion_centro
+        
+        fila_actual_fm += 1
+    
+    # Insertar datos TV - Autorizadas
+    fila_actual_tv = 4
+    for frecuencia, estacion in datos_tv_autorizadas:
+        ws_manual[f'F{fila_actual_tv}'] = "AUTORIZADA"
+        ws_manual[f'G{fila_actual_tv}'] = frecuencia
+        ws_manual[f'H{fila_actual_tv}'] = estacion
+        
+        for col in ['F', 'G', 'H']:
+            celda = ws_manual[f'{col}{fila_actual_tv}']
+            celda.fill = color_autorizada
+            celda.font = fuente_normal
+            celda.border = borde_fino
+            if col in ['F', 'H']:
+                celda.alignment = alineacion_izquierda
+            else:
+                celda.alignment = alineacion_centro
+        
+        fila_actual_tv += 1
+    
+    # Insertar datos TV - No Autorizadas
+    for frecuencia, estacion in datos_tv_no_autorizadas:
+        ws_manual[f'F{fila_actual_tv}'] = "NO AUTORIZADA"
+        ws_manual[f'G{fila_actual_tv}'] = frecuencia
+        ws_manual[f'H{fila_actual_tv}'] = estacion
+        
+        for col in ['F', 'G', 'H']:
+            celda = ws_manual[f'{col}{fila_actual_tv}']
+            celda.fill = color_no_autorizada
+            celda.font = fuente_normal
+            celda.border = borde_fino
+            if col in ['F', 'H']:
+                celda.alignment = alineacion_izquierda
+            else:
+                celda.alignment = alineacion_centro
+        
+        fila_actual_tv += 1
+    
+    # Insertar datos TV - Observación (Espurias/Intermodulación)
+    for frecuencia, estacion in datos_tv_observacion:
+        ws_manual[f'F{fila_actual_tv}'] = "ESPURIAS/INTERMOD"
+        ws_manual[f'G{fila_actual_tv}'] = frecuencia
+        ws_manual[f'H{fila_actual_tv}'] = estacion
+        
+        for col in ['F', 'G', 'H']:
+            celda = ws_manual[f'{col}{fila_actual_tv}']
+            celda.fill = color_observacion
+            celda.font = fuente_normal
+            celda.border = borde_fino
+            if col in ['F', 'H']:
+                celda.alignment = alineacion_izquierda
+            else:
+                celda.alignment = alineacion_centro
+        
+        fila_actual_tv += 1
+    
+    # Ajustar el ancho de las columnas
+    ws_manual.column_dimensions['A'].width = 20
+    ws_manual.column_dimensions['B'].width = 15
+    ws_manual.column_dimensions['C'].width = 25
+    ws_manual.column_dimensions['F'].width = 20
+    ws_manual.column_dimensions['G'].width = 15
+    ws_manual.column_dimensions['H'].width = 25
+    
+    return wb
+
 def crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, titulo, celda_destino, identificador_unico):
     """
     Crea un gráfico de pastel directamente con openpyxl
@@ -1153,6 +1405,16 @@ def verificar_posicion_tablas(ws):
         print(f"Celda {get_column_letter(col)}{fila}: '{celda.value}'")
 
 
+
+
+
+
+
+
+
+
+
+
 # ------------------ FUNCIÓN PRINCIPAL DE PROCESAMIENTO ------------------
 
 def procesar_ocupacion(callback_progreso=None, callback_log=None):
@@ -1252,6 +1514,9 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
                 if callback_log:
                     callback_log(f"⚠️  No hay datos TV para {base}")
 
+            # AÑADIR ESTA LÍNEA PARA CREAR LA HOJA "DATOS Manual"
+            wb = crear_hoja_datos_manual(wb)
+            
             # Eliminar hoja por defecto si existe
             if "Sheet" in wb.sheetnames and wb.sheetnames[0] == "Sheet":
                 del wb["Sheet"]
