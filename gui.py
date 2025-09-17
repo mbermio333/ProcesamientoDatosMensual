@@ -545,7 +545,7 @@ class OcupacionTab(QWidget):
             self.tv_campos_layout.addLayout(general_layout)
         else:
             # Umbral por bandas
-            bandas = ["Banda I", "Banda II", "Banda III"]
+            bandas = ["Banda I-III", "Banda III", "Banda IV-V"]
             
             for banda in bandas:
                 banda_layout = QHBoxLayout()
