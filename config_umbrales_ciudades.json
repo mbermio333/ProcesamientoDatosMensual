@@ -1,0 +1,86 @@
+{
+    "global": {
+        "FM": 60.0,
+        "TV": {
+            "tipo": "general",
+            "valor": 45.0,
+            "valores": {
+                "Banda I-III": 47.0,
+                "Banda III": 56.0,
+                "Banda IV-V": 64.0
+            }
+        }
+    },
+    "": {
+        "FM": 60.0,
+        "TV": {
+            "tipo": "general",
+            "valor": 45.0,
+            "valores": {
+                "Banda I-III": 47.0,
+                "Banda III": 56.0,
+                "Banda IV-V": 64.0
+            }
+        }
+    },
+    "TAMBO": {
+        "FM": 60.0,
+        "TV": {
+            "tipo": "general",
+            "valor": 45.0,
+            "valores": {
+                "Banda I-III": 47.0,
+                "Banda III": 56.0,
+                "Banda IV-V": 64.0
+            }
+        }
+    },
+    "ZAMORA": {
+        "FM": 60.0,
+        "TV": {
+            "tipo": "general",
+            "valor": 45.0,
+            "valores": {
+                "Banda I-III": 47.0,
+                "Banda III": 56.0,
+                "Banda IV-V": 64.0
+            }
+        }
+    },
+    "LOJA": {
+        "FM": 60.0,
+        "TV": {
+            "tipo": "general",
+            "valor": 45.0,
+            "valores": {
+                "Banda I-III": 47.0,
+                "Banda III": 56.0,
+                "Banda IV-V": 64.0
+            }
+        }
+    },
+    "MACHALA": {
+        "FM": 60.0,
+        "TV": {
+            "tipo": "bandas",
+            "valor": 45.0,
+            "valores": {
+                "Banda I-III": 47.0,
+                "Banda III": 56.0,
+                "Banda IV-V": 64.0
+            }
+        }
+    },
+    "MACAS": {
+        "FM": 60.0,
+        "TV": {
+            "tipo": "general",
+            "valor": 45.0,
+            "valores": {
+                "Banda I-III": 47.0,
+                "Banda III": 56.0,
+                "Banda IV-V": 64.0
+            }
+        }
+    }
+}

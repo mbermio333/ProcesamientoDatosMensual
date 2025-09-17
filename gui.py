@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 import sys
+import io
+
+# Forzar UTF-8 en stdout (evita errores de consola con ñ, tildes, etc.)
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 import os
 import json
 import subprocess
@@ -7,13 +11,15 @@ import platform
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QPushButton, QLabel, QTextEdit, 
                              QFileDialog, QProgressBar, QMessageBox, QGroupBox,
-                             QTabWidget, QFrame, QComboBox, QLineEdit, QGridLayout)
+                             QTabWidget, QFrame, QComboBox, QLineEdit, QGridLayout,
+                             QScrollArea, QSizePolicy)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QDoubleValidator
 
 # Constantes para archivos de configuración separados
 CONFIG_PROCESAMIENTO_FILE = "config_procesamiento.json"
 CONFIG_OCUPACION_FILE = "config_ocupacion.json"
+CIUDADES_UMBRALES_FILE = "config_umbrales_ciudades.json"
 
 # Configuraciones por defecto para cada pestaña
 DEFAULT_PATHS_PROCESAMIENTO = {
@@ -26,6 +32,22 @@ DEFAULT_PATHS_OCUPACION = {
     "fm_path": "MedicionesFmCSV",
     "tv_path": "MedicionesTvCSV", 
     "ocupacion_output_path": "ReportesOcupacion"
+}
+
+# Umbrales por defecto para ciudades
+DEFAULT_UMBRALES_CIUDADES = {
+    "global": {
+        "FM": 60.0,
+        "TV": {
+            "tipo": "general",
+            "valor": 45.0,
+            "valores": {
+                "Banda I-III": 47.0,
+                "Banda III": 56.0,
+                "Banda IV-V": 64.0
+            }
+        }
+    }
 }
 
 # Estilos globales para mantener consistencia (sin cambios)
@@ -148,6 +170,7 @@ class WorkerThread(QThread):
     progress_signal = pyqtSignal(int)
     log_signal = pyqtSignal(str)
     finished_signal = pyqtSignal(bool)
+    ciudades_signal = pyqtSignal(list)  # Nueva señal para enviar lista de ciudades
     
     def __init__(self, fm_path, tv_path, output_path, mode="procesamiento"):
         super().__init__()
@@ -172,10 +195,16 @@ class WorkerThread(QThread):
                 main.ruta_salida = self.output_path
                 
                 # Llamar a la función principal con nuestros callbacks
-                resultado = main.procesar_datos(
+                resultado, ciudades = main.procesar_datos(
                     callback_progreso=self.progress_signal.emit,
-                    callback_log=self.log_signal.emit
+                    callback_log=self.log_signal.emit,
+                    obtener_ciudades=True  # Nueva bandera para obtener ciudades
                 )
+                
+                # Emitir la lista de ciudades encontradas
+                if ciudades:
+                    self.ciudades_signal.emit(ciudades)
+                
             else:
                 # Importar y configurar el módulo principal de ocupación
                 import main2
@@ -188,10 +217,14 @@ class WorkerThread(QThread):
                 main2.ruta_tv = self.tv_path
                 main2.ruta_salida = self.output_path
                 
+                # Obtener umbrales de la interfaz
+                umbrales = self.parent().ocupacion_tab.obtener_umbrales_todos()
+                
                 # Llamar a la función de ocupación con nuestros callbacks
                 resultado = main2.procesar_ocupacion(
                     callback_progreso=self.progress_signal.emit,
-                    callback_log=self.log_signal.emit
+                    callback_log=self.log_signal.emit,
+                    umbrales=umbrales  # Pasar umbrales por ciudad
                 )
                 
             self.finished_signal.emit(resultado)
@@ -324,6 +357,9 @@ class OcupacionTab(QWidget):
         super().__init__(parent)
         self.parent = parent
         self.config = self.parent.load_config("ocupacion")  # Cargar configuración específica
+        self.umbrales_ciudades = self.parent.load_umbrales_ciudades()
+        self.ciudades = []
+        self.ciudad_actual = "global"
         self.tv_umbral_general = None
         self.tv_umbrales_bandas = {}
         self.initUI()
@@ -332,11 +368,11 @@ class OcupacionTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
         
-        # Contenedor principal con two columnas
+        # Contenedor principal con dos columnas
         main_container = QHBoxLayout()
         main_container.setSpacing(15)
         
-        # Columna izquierda - Configuración de directorios (60% del ancho)
+        # Columna izquierda - Configuración de directorios (50% del ancho)
         left_column = QVBoxLayout()
         left_column.setSpacing(10)
         
@@ -392,9 +428,40 @@ class OcupacionTab(QWidget):
         left_column.addWidget(config_group)
         left_column.addStretch(1)
         
-        # Columna derecha - Umbrales (40% del ancho)
+        # Columna derecha - Selección de ciudad y umbrales (50% del ancho)
         right_column = QVBoxLayout()
         right_column.setSpacing(10)
+        
+        # Grupo de selección de ciudad
+        ciudad_group = QGroupBox("Selección de Ciudad")
+        ciudad_group.setStyleSheet(GROUP_BOX_STYLE)
+        ciudad_layout = QVBoxLayout()
+        ciudad_layout.setSpacing(8)
+        
+        # Dropdown para seleccionar ciudad
+        ciudad_selector_layout = QHBoxLayout()
+        ciudad_label = QLabel("Ciudad:")
+        ciudad_label.setMinimumWidth(40)
+        ciudad_label.setStyleSheet("font-weight: bold;")
+        
+        self.ciudad_combo = QComboBox()
+        self.ciudad_combo.setMaximumWidth(200)
+        self.ciudad_combo.setStyleSheet("padding: 3px;")
+        self.ciudad_combo.currentTextChanged.connect(self.cambiar_ciudad)
+        
+        # Botón para actualizar lista de ciudades
+        self.actualizar_ciudades_btn = QPushButton("Actualizar Ciudades")
+        self.actualizar_ciudades_btn.setStyleSheet(CHANGE_BUTTON_STYLE)
+        self.actualizar_ciudades_btn.clicked.connect(self.actualizar_lista_ciudades)
+        
+        ciudad_selector_layout.addWidget(ciudad_label)
+        ciudad_selector_layout.addWidget(self.ciudad_combo)
+        ciudad_selector_layout.addWidget(self.actualizar_ciudades_btn)
+        ciudad_selector_layout.addStretch(1)
+        ciudad_layout.addLayout(ciudad_selector_layout)
+        
+        ciudad_group.setLayout(ciudad_layout)
+        right_column.addWidget(ciudad_group)
         
         # Grupo de umbrales
         umbrales_group = QGroupBox("Umbrales")
@@ -413,6 +480,7 @@ class OcupacionTab(QWidget):
         self.fm_umbral.setText("60")
         self.fm_umbral.setMaximumWidth(60)
         self.fm_umbral.setStyleSheet("padding: 3px;")
+        self.fm_umbral.textChanged.connect(self.guardar_umbral_actual)
         fm_layout.addWidget(fm_label)
         fm_layout.addWidget(self.fm_umbral)
         fm_layout.addWidget(QLabel("dBµV/m"))
@@ -437,6 +505,7 @@ class OcupacionTab(QWidget):
         self.tv_tipo_umbral.currentIndexChanged.connect(self.actualizar_campos_tv)
         self.tv_tipo_umbral.setMaximumWidth(150)
         self.tv_tipo_umbral.setStyleSheet("padding: 3px;")
+        self.tv_tipo_umbral.currentTextChanged.connect(self.guardar_umbral_actual)
         tv_layout.addWidget(tv_label)
         tv_layout.addWidget(self.tv_tipo_umbral)
         tv_layout.addStretch(1)
@@ -454,13 +523,14 @@ class OcupacionTab(QWidget):
         right_column.addStretch(1)
         
         # Agregar columnas al contenedor principal
-        main_container.addLayout(left_column, 3)
-        main_container.addLayout(right_column, 2)
+        main_container.addLayout(left_column, 1)
+        main_container.addLayout(right_column, 1)
         
         layout.addLayout(main_container)
         
-        # Inicializar campos de TV
+        # Inicializar campos de TV y cargar ciudades
         self.actualizar_campos_tv()
+        self.cargar_ciudades()
         
         # Botones de acción
         action_layout = QHBoxLayout()
@@ -510,8 +580,148 @@ class OcupacionTab(QWidget):
         # Mensaje inicial
         self.log_text.append("Aplicación iniciada correctamente")
         self.log_text.append("1. Verifique las rutas de los directorios")
-        self.log_text.append("2. Configure los umbrales si es necesario")
+        self.log_text.append("2. Configure los umbrales para cada ciudad")
         self.log_text.append("3. Presione 'Iniciar Análisis de Ocupación' para comenzar")
+    
+    def cargar_ciudades(self):
+        """Cargar la lista de ciudades desde el procesamiento anterior"""
+        # Primero cargar "global" como opción por defecto
+        self.ciudad_combo.clear()
+        self.ciudad_combo.addItem("global")
+        
+        # Agregar ciudades desde la configuración
+        for ciudad in self.umbrales_ciudades.keys():
+            if ciudad != "global":
+                self.ciudad_combo.addItem(ciudad)
+        
+        # Cargar configuración de la ciudad actual
+        self.cargar_configuracion_ciudad()
+    
+    def actualizar_lista_ciudades(self):
+        """Actualizar la lista de ciudades desde los archivos de salida del procesamiento"""
+        try:
+            output_path = self.output_path_label_ocup.toolTip() or self.output_path_label_ocup.text().replace("...", "")
+            if not os.path.exists(output_path):
+                self.parent.log_message("La carpeta de salida no existe para buscar ciudades", "ocupacion")
+                return
+            
+            # Buscar archivos CSV en la carpeta de salida
+            archivos = [f for f in os.listdir(output_path) if f.endswith('.csv')]
+            ciudades_encontradas = set()
+            
+            for archivo in archivos:
+                # Extraer nombre de ciudad del archivo (ej: "Quito_FM.csv" -> "Quito")
+                nombre_base = os.path.splitext(archivo)[0]
+                if '_' in nombre_base:
+                    ciudad = nombre_base.split('_')[0]
+                    ciudades_encontradas.add(ciudad)
+            
+            # Actualizar combo box
+            self.ciudad_combo.clear()
+            self.ciudad_combo.addItem("global")
+            
+            for ciudad in sorted(ciudades_encontradas):
+                self.ciudad_combo.addItem(ciudad)
+                if ciudad not in self.umbrales_ciudades:
+                    # Crear entrada por defecto para nueva ciudad
+                    self.umbrales_ciudades[ciudad] = {
+                        "FM": 60.0,
+                        "TV": {
+                            "tipo": "general",
+                            "valor": 45.0,
+                            "valores": {
+                                "Banda I-III": 47.0,
+                                "Banda III": 56.0,
+                                "Banda IV-V": 64.0
+                            }
+                        }
+                    }
+            
+            self.parent.guardar_umbrales_ciudades(self.umbrales_ciudades)
+            self.parent.log_message(f"Lista de ciudades actualizada: {len(ciudades_encontradas)} ciudades encontradas", "ocupacion")
+            
+        except Exception as e:
+            self.parent.log_message(f"Error al actualizar lista de ciudades: {str(e)}", "ocupacion")
+    
+    def cambiar_ciudad(self, ciudad):
+        """Cambiar la ciudad actual y cargar su configuración"""
+        if ciudad != self.ciudad_actual:
+            # Guardar configuración actual antes de cambiar
+            self.guardar_umbral_actual()
+            
+            # Cambiar a nueva ciudad
+            self.ciudad_actual = ciudad
+            self.cargar_configuracion_ciudad()
+            
+            self.parent.log_message(f"Ciudad cambiada a: {ciudad}", "ocupacion")
+    
+    def cargar_configuracion_ciudad(self):
+        """Cargar la configuración de umbrales para la ciudad actual"""
+        if self.ciudad_actual not in self.umbrales_ciudades:
+            # Crear configuración por defecto si no existe
+            self.umbrales_ciudades[self.ciudad_actual] = {
+                "FM": 60.0,
+                "TV": {
+                    "tipo": "general",
+                    "valor": 45.0,
+                    "valores": {
+                        "Banda I-III": 47.0,
+                        "Banda III": 56.0,
+                        "Banda IV-V": 64.0
+                    }
+                }
+            }
+        
+        config = self.umbrales_ciudades[self.ciudad_actual]
+        
+        # Cargar FM
+        self.fm_umbral.setText(str(config["FM"]))
+        
+        # Cargar TV
+        tv_config = config["TV"]
+        if tv_config["tipo"] == "general":
+            self.tv_tipo_umbral.setCurrentText("Umbral General")
+            if self.tv_umbral_general:
+                self.tv_umbral_general.setText(str(tv_config["valor"]))
+        else:
+            self.tv_tipo_umbral.setCurrentText("Umbral por bandas")
+            for banda, edit in self.tv_umbrales_bandas.items():
+                if edit and banda in tv_config["valores"]:
+                    edit.setText(str(tv_config["valores"][banda]))
+    
+    def guardar_umbral_actual(self):
+        """Guardar la configuración actual de umbrales para la ciudad actual"""
+        if not self.ciudad_actual:
+            return
+        
+        # Obtener valores actuales
+        fm_valor = float(self.fm_umbral.text()) if self.fm_umbral.text() else 60.0
+        
+        tv_config = {
+            "tipo": "general" if self.tv_tipo_umbral.currentText() == "Umbral General" else "bandas",
+            "valor": 45.0,
+            "valores": {
+                "Banda I-III": 47.0,
+                "Banda III": 56.0,
+                "Banda IV-V": 64.0
+            }
+        }
+        
+        if tv_config["tipo"] == "general" and self.tv_umbral_general:
+            tv_config["valor"] = float(self.tv_umbral_general.text()) if self.tv_umbral_general.text() else 45.0
+        elif tv_config["tipo"] == "bandas":
+            for banda, edit in self.tv_umbrales_bandas.items():
+                if edit:
+                    tv_config["valores"][banda] = float(edit.text()) if edit.text() else 0.0
+        
+        # Guardar en diccionario
+        self.umbrales_ciudades[self.ciudad_actual] = {
+            "FM": fm_valor,
+            "TV": tv_config
+        }
+        
+        # Guardar en archivo
+        self.parent.guardar_umbrales_ciudades(self.umbrales_ciudades)
     
     def actualizar_campos_tv(self):
         """Actualiza los campos de TV según la selección del tipo de umbral"""
@@ -547,6 +757,7 @@ class OcupacionTab(QWidget):
             self.tv_umbral_general.setText("45")
             self.tv_umbral_general.setMaximumWidth(60)
             self.tv_umbral_general.setStyleSheet("padding: 3px;")
+            self.tv_umbral_general.textChanged.connect(self.guardar_umbral_actual)
             general_layout.addWidget(general_label)
             general_layout.addWidget(self.tv_umbral_general)
             general_layout.addWidget(QLabel("dBµV/m"))
@@ -566,6 +777,7 @@ class OcupacionTab(QWidget):
                 umbral_edit.setValidator(QDoubleValidator(0, 1000, 2))
                 umbral_edit.setMaximumWidth(60)
                 umbral_edit.setStyleSheet("padding: 3px;")
+                umbral_edit.textChanged.connect(self.guardar_umbral_actual)
                 
                 # Valores por defecto según banda
                 if banda == "Banda I-III":
@@ -582,44 +794,39 @@ class OcupacionTab(QWidget):
                 banda_layout.addWidget(QLabel("dBµV/m"))
                 banda_layout.addStretch(1)
                 self.tv_campos_layout.addLayout(banda_layout)
-
-# ... (el resto del código MainWindow y main() permanece igual)
-    
-    def obtener_umbrales(self):
-        """Obtiene los valores de umbrales configurados"""
-        umbrales = {
-            "FM": float(self.fm_umbral.text()) if self.fm_umbral.text() else 60.0,
-            "TV": {}
-        }
         
-        if self.tv_tipo_umbral.currentText() == "Umbral General":
-            umbrales["TV"]["tipo"] = "general"
-            if self.tv_umbral_general:
-                umbrales["TV"]["valor"] = float(self.tv_umbral_general.text()) if self.tv_umbral_general.text() else 45.0
-            else:
-                umbrales["TV"]["valor"] = 45.0
+        # Cargar valores actuales después de crear los campos
+        self.cargar_configuracion_ciudad()
+    
+    def obtener_umbrales_todos(self):
+        """Obtener todos los umbrales configurados por ciudad"""
+        return self.umbrales_ciudades
+    
+    def obtener_umbrales_ciudad(self, ciudad):
+        """Obtener umbrales para una ciudad específica"""
+        if ciudad in self.umbrales_ciudades:
+            return self.umbrales_ciudades[ciudad]
         else:
-            umbrales["TV"]["tipo"] = "bandas"
-            umbrales["TV"]["valores"] = {}
-            for banda, edit in self.tv_umbrales_bandas.items():
-                if edit:
-                    umbrales["TV"]["valores"][banda] = float(edit.text()) if edit.text() else 0.0
-                else:
-                    # Valores por defecto si no hay edit
-                    if banda == "Banda I-III":
-                        umbrales["TV"]["valores"][banda] = 47.0
-                    elif banda == "Banda III":
-                        umbrales["TV"]["valores"][banda] = 56.0
-                    else:
-                        umbrales["TV"]["valores"][banda] = 64.0
-        
-        return umbrales
-    
+            # Devolver umbrales globales por defecto
+            return self.umbrales_ciudades.get("global", {
+                "FM": 60.0,
+                "TV": {
+                    "tipo": "general",
+                    "valor": 45.0,
+                    "valores": {
+                        "Banda I-III": 47.0,
+                        "Banda III": 56.0,
+                        "Banda IV-V": 64.0
+                    }
+                }
+            })
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.worker = None
         self.current_tab = None
+        self.umbrales_ciudades = {}
         self.initUI()
         
     def load_config(self, mode):
@@ -635,302 +842,296 @@ class MainWindow(QMainWindow):
                 return default_paths.copy()
         return default_paths.copy()
     
-    def save_config(self, mode):
+    def load_umbrales_ciudades(self):
+        """Cargar umbrales por ciudad desde archivo"""
+        if os.path.exists(CIUDADES_UMBRALES_FILE):
+            try:
+                with open(CIUDADES_UMBRALES_FILE, 'r') as f:
+                    return json.load(f)
+            except:
+                return DEFAULT_UMBRALES_CIUDADES.copy()
+        return DEFAULT_UMBRALES_CIUDADES.copy()
+    
+    def guardar_umbrales_ciudades(self, umbrales):
+        """Guardar umbrales por ciudad en archivo"""
+        try:
+            with open(CIUDADES_UMBRALES_FILE, 'w') as f:
+                json.dump(umbrales, f, indent=4)
+        except Exception as e:
+            self.log_message(f"Error al guardar umbrales: {str(e)}", "ocupacion")
+    
+    def save_config(self, config, mode):
         """Guardar configuración en archivo JSON específico"""
         config_file = CONFIG_PROCESAMIENTO_FILE if mode == "procesamiento" else CONFIG_OCUPACION_FILE
-        
-        # Obtener la configuración actual de la pestaña correspondiente
-        if mode == "procesamiento":
-            config_data = {
-                "fm_path": self.procesamiento_tab.fm_path_label.toolTip() or self.procesamiento_tab.fm_path_label.text().replace("...", ""),
-                "tv_path": self.procesamiento_tab.tv_path_label.toolTip() or self.procesamiento_tab.tv_path_label.text().replace("...", ""),
-                "output_path": self.procesamiento_tab.output_path_label.toolTip() or self.procesamiento_tab.output_path_label.text().replace("...", "")
-            }
-        else:
-            config_data = {
-                "fm_path": self.ocupacion_tab.fm_path_label_ocup.toolTip() or self.ocupacion_tab.fm_path_label_ocup.text().replace("...", ""),
-                "tv_path": self.ocupacion_tab.tv_path_label_ocup.toolTip() or self.ocupacion_tab.tv_path_label_ocup.text().replace("...", ""),
-                "ocupacion_output_path": self.ocupacion_tab.output_path_label_ocup.toolTip() or self.ocupacion_tab.output_path_label_ocup.text().replace("...", "")
-            }
-        
         try:
             with open(config_file, 'w') as f:
-                json.dump(config_data, f)
+                json.dump(config, f, indent=4)
         except Exception as e:
-            self.log_message(f"Error guardando configuración: {str(e)}", mode)
-    
-    def truncar_texto(self, texto, max_caracteres=30):
-        """Truncar texto largo para mostrar con puntos suspensivos"""
-        if len(texto) > max_caracteres:
-            return "..." + texto[-max_caracteres:]
-        return texto
+            self.log_message(f"Error al guardar configuración: {str(e)}", mode)
     
     def initUI(self):
-        self.setWindowTitle("Sistema de Reportes Unificados - ARCOTEL")
-        self.setGeometry(100, 100, 900, 700)
+        self.setWindowTitle("Sistema de Procesamiento de Mediciones")
+        self.setGeometry(100, 100, 1200, 800)
         
-        # Widget central
+        # Widget central y layout principal
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        
-        # Layout principal
-        layout = QVBoxLayout(central_widget)
-        
-        # Título
-        title_label = QLabel("Sistema de Generación de Reportes Unificados")
-        title_label.setFont(QFont("Arial", 16, QFont.Bold))
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("padding: 10px; background-color: #f0f0f0;")
-        layout.addWidget(title_label)
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(15, 15, 15, 15)
         
         # Crear pestañas
         self.tabs = QTabWidget()
+        self.tabs.setStyleSheet("""
+            QTabWidget::pane { border: 1px solid #cccccc; }
+            QTabBar::tab { 
+                background: #f0f0f0; 
+                padding: 8px 12px; 
+                border: 1px solid #cccccc; 
+                border-bottom: none; 
+                border-top-left-radius: 4px; 
+                border-top-right-radius: 4px;
+            }
+            QTabBar::tab:selected { 
+                background: #ffffff; 
+                font-weight: bold;
+            }
+        """)
         
-        # Pestaña de procesamiento
+        # Crear las pestañas
         self.procesamiento_tab = ProcesamientoTab(self)
-        self.tabs.addTab(self.procesamiento_tab, "Procesamiento")
-        
-        # Pestaña de ocupación
         self.ocupacion_tab = OcupacionTab(self)
+        
+        # Agregar pestañas
+        self.tabs.addTab(self.procesamiento_tab, "Procesamiento")
         self.tabs.addTab(self.ocupacion_tab, "Ocupación")
         
         # Conectar señal de cambio de pestaña
-        self.tabs.currentChanged.connect(self.tab_changed)
+        self.tabs.currentChanged.connect(self.cambiar_pestana)
         
-        layout.addWidget(self.tabs)
+        main_layout.addWidget(self.tabs)
         
-        # Mensaje inicial
-        self.log_message("Aplicación iniciada correctamente", "procesamiento")
-        self.log_message("1. Verifique las rutas de los directorios", "procesamiento")
-        self.log_message("2. Presione 'Iniciar Procesamiento' para comenzar", "procesamiento")
+        # Estado inicial
+        self.current_tab = "procesamiento"
         
-        self.log_message("Aplicación iniciada correctamente", "ocupacion")
-        self.log_message("1. Verifique las rutas de los directorios", "ocupacion")
-        self.log_message("2. Presione 'Iniciar Análisis de Ocupación' para comenzar", "ocupacion")
+    def cambiar_pestana(self, index):
+        """Manejar el cambio de pestaña"""
+        if index == 0:
+            self.current_tab = "procesamiento"
+        else:
+            self.current_tab = "ocupacion"
     
-    def tab_changed(self, index):
-        """Manejar cambio de pestaña"""
-        self.current_tab = self.tabs.widget(index)
+    def truncar_texto(self, texto, max_length=50):
+        """Truncar texto largo para mostrar en la interfaz"""
+        if len(texto) > max_length:
+            return "..." + texto[-max_length:]
+        return texto
     
-    def showEvent(self, event):
-        """Se ejecuta cuando la ventana se muestra"""
-        super().showEvent(event)
-        self.log_message("Ventana principal visible", "procesamiento")
-        self.log_message("Ventana principal visible", "ocupacion")
-    
-    def change_path(self, path_type, tab, mode):
-        """Cambiar las rutas de los directorios"""
-        dialog = QFileDialog()
-        dialog.setFileMode(QFileDialog.Directory)
+    def change_path(self, path_type, tab_widget, mode):
+        """Cambiar ruta de directorio"""
+        current_path = ""
+        if path_type == "fm":
+            current_path = getattr(tab_widget, "fm_path_label" if mode == "procesamiento" else "fm_path_label_ocup").toolTip()
+        elif path_type == "tv":
+            current_path = getattr(tab_widget, "tv_path_label" if mode == "procesamiento" else "tv_path_label_ocup").toolTip()
+        elif path_type == "output":
+            current_path = getattr(tab_widget, "output_path_label" if mode == "procesamiento" else "output_path_label_ocup").toolTip()
+        elif path_type == "ocupacion_output":
+            current_path = getattr(tab_widget, "output_path_label_ocup").toolTip()
         
-        # Obtener la ruta actual según el tipo y modo
-        if mode == "procesamiento":
+        # Diálogo para seleccionar directorio
+        new_path = QFileDialog.getExistingDirectory(self, f"Seleccionar directorio {path_type.upper()}", current_path)
+        
+        if new_path:
+            # Actualizar etiqueta y tooltip
             if path_type == "fm":
-                current_path = tab.fm_path_label.text().replace("...", "")
+                label = getattr(tab_widget, "fm_path_label" if mode == "procesamiento" else "fm_path_label_ocup")
             elif path_type == "tv":
-                current_path = tab.tv_path_label.text().replace("...", "")
+                label = getattr(tab_widget, "tv_path_label" if mode == "procesamiento" else "tv_path_label_ocup")
             elif path_type == "output":
-                current_path = tab.output_path_label.text().replace("...", "")
-        else:  # ocupacion
-            if path_type == "fm":
-                current_path = tab.fm_path_label_ocup.text().replace("...", "")
-            elif path_type == "tv":
-                current_path = tab.tv_path_label_ocup.text().replace("...", "")
+                label = getattr(tab_widget, "output_path_label" if mode == "procesamiento" else "output_path_label_ocup")
             elif path_type == "ocupacion_output":
-                current_path = tab.output_path_label_ocup.text().replace("...", "")
-        
-        new_path = dialog.getExistingDirectory(self, f"Seleccionar directorio {path_type.upper()}", current_path)
-        if not new_path:
-            return
+                label = getattr(tab_widget, "output_path_label_ocup")
             
-        truncated_text = self.truncar_texto(new_path)
-        
-        if mode == "procesamiento":
+            label.setText(self.truncar_texto(new_path))
+            label.setToolTip(new_path)
+            
+            # Guardar configuración
+            config = self.load_config(mode)
             if path_type == "fm":
-                tab.fm_path_label.setText(truncated_text)
-                tab.fm_path_label.setToolTip(new_path)
+                config["fm_path"] = new_path
             elif path_type == "tv":
-                tab.tv_path_label.setText(truncated_text)
-                tab.tv_path_label.setToolTip(new_path)
+                config["tv_path"] = new_path
             elif path_type == "output":
-                tab.output_path_label.setText(truncated_text)
-                tab.output_path_label.setToolTip(new_path)
-        else:  # ocupacion
-            if path_type == "fm":
-                tab.fm_path_label_ocup.setText(truncated_text)
-                tab.fm_path_label_ocup.setToolTip(new_path)
-            elif path_type == "tv":
-                tab.tv_path_label_ocup.setText(truncated_text)
-                tab.tv_path_label_ocup.setToolTip(new_path)
+                config["output_path"] = new_path
             elif path_type == "ocupacion_output":
-                tab.output_path_label_ocup.setText(truncated_text)
-                tab.output_path_label_ocup.setToolTip(new_path)
-        
-        # Guardar la configuración específica para esta pestaña
-        self.save_config(mode)
-        self.log_message(f"Ruta {path_type} cambiada a: {new_path}", mode)
-    
+                config["ocupacion_output_path"] = new_path
+            
+            self.save_config(config, mode)
+            
+            self.log_message(f"Ruta {path_type.upper()} actualizada: {new_path}", mode)
     
     def open_output_folder(self, mode):
         """Abrir la carpeta de salida en el explorador de archivos"""
         if mode == "procesamiento":
-            output_path = self.procesamiento_tab.output_path_label.toolTip() or self.procesamiento_tab.output_path_label.text().replace("...", "")
-        else:  # ocupacion
-            output_path = self.ocupacion_tab.output_path_label_ocup.toolTip() or self.ocupacion_tab.output_path_label_ocup.text().replace("...", "")
+            output_path = self.procesamiento_tab.output_path_label.toolTip()
+        else:
+            output_path = self.ocupacion_tab.output_path_label_ocup.toolTip()
         
-        if not os.path.exists(output_path):
-            self.log_message(f"La carpeta de salida no existe: {output_path}", mode)
-            QMessageBox.warning(self, "Carpeta no encontrada", f"La carpeta de salida no existe:\n{output_path}")
-            return
-        
-        try:
-            # Abrir la carpeta según el sistema operativo
-            if platform.system() == "Windows":
-                os.startfile(output_path)
-            elif platform.system() == "Darwin":  # macOS
-                subprocess.Popen(["open", output_path])
-            else:  # Linux
-                subprocess.Popen(["xdg-open", output_path])
-                
-            self.log_message(f"Carpeta de salida abierta: {output_path}", mode)
-        except Exception as e:
-            error_msg = f"No se pudo abrir la carpeta: {str(e)}"
-            self.log_message(error_msg, mode)
-            QMessageBox.critical(self, "Error", error_msg)
+        if os.path.exists(output_path):
+            try:
+                if platform.system() == "Windows":
+                    os.startfile(output_path)
+                elif platform.system() == "Darwin":  # macOS
+                    subprocess.run(["open", output_path])
+                else:  # Linux
+                    subprocess.run(["xdg-open", output_path])
+                self.log_message(f"Carpeta de salida abierta: {output_path}", mode)
+            except Exception as e:
+                self.log_message(f"Error al abrir carpeta: {str(e)}", mode)
+        else:
+            self.log_message("La carpeta de salida no existe", mode)
     
     def start_processing(self, mode):
         """Iniciar el procesamiento"""
+        if self.worker and self.worker.isRunning():
+            self.log_message("Ya hay un proceso en ejecución", mode)
+            return
+        
+        # Obtener rutas según el modo
         if mode == "procesamiento":
-            # Obtener rutas desde la pestaña de procesamiento
-            fm_path = self.procesamiento_tab.fm_path_label.toolTip() or self.procesamiento_tab.fm_path_label.text().replace("...", "")
-            tv_path = self.procesamiento_tab.tv_path_label.toolTip() or self.procesamiento_tab.tv_path_label.text().replace("...", "")
-            output_path = self.procesamiento_tab.output_path_label.toolTip() or self.procesamiento_tab.output_path_label.text().replace("...", "")
-        else:  # ocupacion
-            # Obtener rutas desde la pestaña de ocupación
-            fm_path = self.ocupacion_tab.fm_path_label_ocup.toolTip() or self.ocupacion_tab.fm_path_label_ocup.text().replace("...", "")
-            tv_path = self.ocupacion_tab.tv_path_label_ocup.toolTip() or self.ocupacion_tab.tv_path_label_ocup.text().replace("...", "")
-            output_path = self.ocupacion_tab.output_path_label_ocup.toolTip() or self.ocupacion_tab.output_path_label_ocup.text().replace("...", "")
+            fm_path = self.procesamiento_tab.fm_path_label.toolTip()
+            tv_path = self.procesamiento_tab.tv_path_label.toolTip()
+            output_path = self.procesamiento_tab.output_path_label.toolTip()
+            tab = self.procesamiento_tab
+        else:
+            fm_path = self.ocupacion_tab.fm_path_label_ocup.toolTip()
+            tv_path = self.ocupacion_tab.tv_path_label_ocup.toolTip()
+            output_path = self.ocupacion_tab.output_path_label_ocup.toolTip()
+            tab = self.ocupacion_tab
         
         # Verificar que las rutas existan
         if not os.path.exists(fm_path):
-            self.log_message(f"ERROR: La ruta FM no existe: {fm_path}", mode)
+            self.log_message(f"ERROR: La ruta FM '{fm_path}' no existe", mode)
             return
-            
         if not os.path.exists(tv_path):
-            self.log_message(f"ERROR: La ruta TV no existe: {tv_path}", mode)
+            self.log_message(f"ERROR: La ruta TV '{tv_path}' no existe", mode)
             return
         
-        # Crear el hilo de trabajo con las rutas configuradas
+        # Crear directorio de salida si no existe
+        if not os.path.exists(output_path):
+            try:
+                os.makedirs(output_path)
+                self.log_message(f"Directorio de salida creado: {output_path}", mode)
+            except Exception as e:
+                self.log_message(f"ERROR: No se pudo crear el directorio de salida: {str(e)}", mode)
+                return
+        
+        # Configurar interfaz
+        tab.start_btn.setEnabled(False)
+        tab.stop_btn.setEnabled(True)
+        tab.progress_bar.setValue(0)
+        tab.status_label.setText("Procesando...")
+        
+        # Crear y configurar worker
         self.worker = WorkerThread(fm_path, tv_path, output_path, mode)
+        self.worker.progress_signal.connect(lambda value: tab.progress_bar.setValue(value))
+        self.worker.log_signal.connect(lambda msg: self.log_message(msg, mode))
+        self.worker.finished_signal.connect(lambda success: self.processing_finished(success, mode))
         
-        # Conectar señales según la pestaña activa
+        # Conectar señal de ciudades para la pestaña de ocupación
         if mode == "procesamiento":
-            self.worker.progress_signal.connect(self.procesamiento_tab.progress_bar.setValue)
-            self.worker.progress_signal.connect(lambda value: self.procesamiento_tab.status_label.setText(f"Procesando... {value}%"))
-            self.worker.log_signal.connect(lambda msg: self.log_message(msg, "procesamiento"))
-            self.worker.finished_signal.connect(lambda success: self.processing_finished(success, "procesamiento"))
-            
-            self.procesamiento_tab.start_btn.setEnabled(False)
-            self.procesamiento_tab.stop_btn.setEnabled(True)
-        else:
-            self.worker.progress_signal.connect(self.ocupacion_tab.progress_bar.setValue)
-            self.worker.progress_signal.connect(lambda value: self.ocupacion_tab.status_label.setText(f"Procesando... {value}%"))
-            self.worker.log_signal.connect(lambda msg: self.log_message(msg, "ocupacion"))
-            self.worker.finished_signal.connect(lambda success: self.processing_finished(success, "ocupacion"))
-            
-            self.ocupacion_tab.start_btn.setEnabled(False)
-            self.ocupacion_tab.stop_btn.setEnabled(True)
+            self.worker.ciudades_signal.connect(self.actualizar_ciudades_desde_procesamiento)
         
+        # Iniciar worker
         self.worker.start()
-        
-        self.log_message(f"Procesamiento de {mode} iniciado...", mode)
+        self.log_message("Procesamiento iniciado", mode)
+    
+    def actualizar_ciudades_desde_procesamiento(self, ciudades):
+        """Actualizar la lista de ciudades en la pestaña de ocupación con las ciudades encontradas"""
+        if ciudades:
+            # Actualizar el diccionario de umbrales con las nuevas ciudades
+            for ciudad in ciudades:
+                if ciudad not in self.ocupacion_tab.umbrales_ciudades:
+                    self.ocupacion_tab.umbrales_ciudades[ciudad] = {
+                        "FM": 60.0,
+                        "TV": {
+                            "tipo": "general",
+                            "valor": 45.0,
+                            "valores": {
+                                "Banda I-III": 47.0,
+                                "Banda III": 56.0,
+                                "Banda IV-V": 64.0
+                            }
+                        }
+                    }
+            
+            # Guardar umbrales actualizados
+            self.guardar_umbrales_ciudades(self.ocupacion_tab.umbrales_ciudades)
+            
+            # Actualizar combo box en la pestaña de ocupación
+            self.ocupacion_tab.ciudad_combo.clear()
+            self.ocupacion_tab.ciudad_combo.addItem("global")
+            for ciudad in sorted(self.ocupacion_tab.umbrales_ciudades.keys()):
+                if ciudad != "global":
+                    self.ocupacion_tab.ciudad_combo.addItem(ciudad)
+            
+            self.log_message(f"Lista de ciudades actualizada desde procesamiento: {len(ciudades)} ciudades encontradas", "ocupacion")
     
     def stop_processing(self):
         """Detener el procesamiento"""
         if self.worker and self.worker.isRunning():
             self.worker.stop()
+            self.worker.terminate()
             self.worker.wait()
+            self.log_message("Procesamiento detenido por el usuario", self.current_tab)
             
-            # Determinar qué pestaña está activa
-            current_tab_index = self.tabs.currentIndex()
-            mode = "procesamiento" if current_tab_index == 0 else "ocupacion"
-            
-            self.log_message("Procesamiento detenido por el usuario", mode)
-        
-        # Reactivar botones en ambas pestañas
-        self.procesamiento_tab.start_btn.setEnabled(True)
-        self.procesamiento_tab.stop_btn.setEnabled(False)
-        self.ocupacion_tab.start_btn.setEnabled(True)
-        self.ocupacion_tab.stop_btn.setEnabled(False)
-    
-    def log_message(self, message, mode="procesamiento"):
-        """Añadir mensaje al log de la pestaña especificada"""
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        
-        if mode == "procesamiento":
-            self.procesamiento_tab.log_text.append(f"[{timestamp}] {message}")
-            # Auto-scroll to bottom
-            scrollbar = self.procesamiento_tab.log_text.verticalScrollBar()
-            scrollbar.setValue(scrollbar.maximum())
-        else:
-            self.ocupacion_tab.log_text.append(f"[{timestamp}] {message}")
-            # Auto-scroll to bottom
-            scrollbar = self.ocupacion_tab.log_text.verticalScrollBar()
-            scrollbar.setValue(scrollbar.maximum())
+            # Restablecer interfaz
+            if self.current_tab == "procesamiento":
+                self.procesamiento_tab.start_btn.setEnabled(True)
+                self.procesamiento_tab.stop_btn.setEnabled(False)
+                self.procesamiento_tab.status_label.setText("Procesamiento detenido")
+            else:
+                self.ocupacion_tab.start_btn.setEnabled(True)
+                self.ocupacion_tab.stop_btn.setEnabled(False)
+                self.ocupacion_tab.status_label.setText("Procesamiento detenido")
     
     def processing_finished(self, success, mode):
-        """Procesamiento completado"""
+        """Manejar la finalización del procesamiento"""
         if mode == "procesamiento":
-            self.procesamiento_tab.start_btn.setEnabled(True)
-            self.procesamiento_tab.stop_btn.setEnabled(False)
-            
-            if success:
-                self.log_message("Procesamiento completado con éxito!", mode)
-                self.procesamiento_tab.status_label.setText("Completado con éxito")
-                QMessageBox.information(self, "Éxito", "El procesamiento se completó correctamente.")
-            else:
-                self.log_message("Error en el procesamiento.", mode)
-                self.procesamiento_tab.status_label.setText("Error en el procesamiento")
-                QMessageBox.warning(self, "Error", "Ocurrió un error durante el procesamiento.")
+            tab = self.procesamiento_tab
         else:
-            self.ocupacion_tab.start_btn.setEnabled(True)
-            self.ocupacion_tab.stop_btn.setEnabled(False)
-            
-            if success:
-                self.log_message("Análisis de ocupación completado con éxito!", mode)
-                self.ocupacion_tab.status_label.setText("Completado con éxito")
-                QMessageBox.information(self, "Éxito", "El análisis de ocupación se completó correctamente.")
-            else:
-                self.log_message("Error en el análisis de ocupación.", mode)
-                self.ocupacion_tab.status_label.setText("Error en el procesamiento")
-                QMessageBox.warning(self, "Error", "Ocurrió un error durante el análisis de ocupación.")
+            tab = self.ocupacion_tab
+        
+        tab.start_btn.setEnabled(True)
+        tab.stop_btn.setEnabled(False)
+        
+        if success:
+            tab.status_label.setText("Procesamiento completado con éxito")
+            self.log_message("Procesamiento completado exitosamente", mode)
+        else:
+            tab.status_label.setText("Procesamiento falló")
+            self.log_message("Procesamiento falló", mode)
     
-    def closeEvent(self, event):
-        """Se ejecuta cuando la ventana se cierra"""
-        self.save_config()
-        super().closeEvent(event)
+    def log_message(self, message, mode):
+        """Agregar mensaje al log de la pestaña correspondiente"""
+        if mode == "procesamiento":
+            self.procesamiento_tab.log_text.append(message)
+            self.procesamiento_tab.log_text.ensureCursorVisible()
+        else:
+            self.ocupacion_tab.log_text.append(message)
+            self.ocupacion_tab.log_text.ensureCursorVisible()
 
 def main():
-    # Configurar la aplicación
     app = QApplication(sys.argv)
     
-    # Establecer estilo visual
+    # Configurar estilo de la aplicación
     app.setStyle('Fusion')
     
-    # Crear y mostrar la ventana
     window = MainWindow()
     window.show()
     
-    # Forzar el enfoque en la ventana
-    window.activateWindow()
-    window.raise_()
-    
-    print("Interfaz gráfica iniciada - Verifica tu pantalla")
-    
-    # Ejecutar la aplicación
     sys.exit(app.exec_())
 
-if __name__ == "__main__":
-    print("Iniciando Sistema de Reportes Unificados...")
+if __name__ == '__main__':
     main()

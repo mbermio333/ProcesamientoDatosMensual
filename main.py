@@ -718,12 +718,15 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
 
 # ------------------ FUNCIÓN PRINCIPAL DE PROCESAMIENTO ------------------
 
-def procesar_datos(callback_progreso=None, callback_log=None):
+def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=False):
     """
     Función principal que procesa todos los datos
     """
     # Inicializar directorios
     inicializar_directorios()
+    
+    # Inicializar lista de ciudades
+    ciudades_encontradas = []
     
     # Cargar configuración actual
     config = cargar_configuracion()
@@ -782,15 +785,25 @@ def procesar_datos(callback_progreso=None, callback_log=None):
         if callback_log:
             callback_log("Error al guardar nombres de emisoras en config.json")
     
-    # Resto del código de procesamiento...
-    
-
-
     nombres_bases = set(archivos_fm.keys()).union(archivos_tv.keys())
     total_bases = len(nombres_bases)
     
+    # Agregar ciudades a la lista
+    if obtener_ciudades:
+        ciudades_encontradas = list(nombres_bases)
+        # Normalizar nombres de ciudades (especialmente para "cañar")
+        ciudades_normalizadas = []
+        for ciudad in ciudades_encontradas:
+            if ciudad.lower() in ["cañar", "cañar", "canar", "caã±ar"]:
+                ciudades_normalizadas.append("TAMBO")
+            else:
+                ciudades_normalizadas.append(ciudad.upper())
+        ciudades_encontradas = ciudades_normalizadas
+    
     if callback_log:
         callback_log(f"Procesando {total_bases} bases de datos")
+        if obtener_ciudades:
+            callback_log(f"Ciudades encontradas: {', '.join(ciudades_encontradas)}")
     
     # Procesar cada base
     for i, base in enumerate(nombres_bases):
@@ -1001,7 +1014,11 @@ def procesar_datos(callback_progreso=None, callback_log=None):
     if callback_log:
         callback_log("Procesamiento completado")
     
-    return True
+    # Devolver resultado y lista de ciudades si se solicitó
+    if obtener_ciudades:
+        return True, ciudades_encontradas
+    else:
+        return True
 
 # ------------------ EJECUCIÓN DIRECTA (para testing) ------------------
 
@@ -1014,11 +1031,11 @@ if __name__ == "__main__":
         print(mensaje)
     
     # Procesar datos
-    resultado = procesar_datos(mostrar_progreso, mostrar_log)
+    resultado, ciudades = procesar_datos(mostrar_progreso, mostrar_log, obtener_ciudades=True)
     
     if resultado:
         print("Procesamiento completado con éxito")
+        print(f"Ciudades encontradas: {ciudades}")
     else:
         print("Ocurrieron errores durante el procesamiento")
-
 
