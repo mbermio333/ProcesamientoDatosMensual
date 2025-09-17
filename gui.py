@@ -11,16 +11,24 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QDoubleValidator
 
-# Añadir constantes para el archivo de configuración
-CONFIG_FILE = "config.json"
-DEFAULT_PATHS = {
+# Constantes para archivos de configuración separados
+CONFIG_PROCESAMIENTO_FILE = "config_procesamiento.json"
+CONFIG_OCUPACION_FILE = "config_ocupacion.json"
+
+# Configuraciones por defecto para cada pestaña
+DEFAULT_PATHS_PROCESAMIENTO = {
     "fm_path": "MedicionesFmCSV",
     "tv_path": "MedicionesTvCSV", 
-    "output_path": "ReportesUnificados",
-    "ocupacion_output_path": "ReportesOcupacion"  # Nueva ruta para ocupación
+    "output_path": "ReportesUnificados"
 }
 
-# Estilos globales para mantener consistencia
+DEFAULT_PATHS_OCUPACION = {
+    "fm_path": "MedicionesFmCSV",
+    "tv_path": "MedicionesTvCSV", 
+    "ocupacion_output_path": "ReportesOcupacion"
+}
+
+# Estilos globales para mantener consistencia (sin cambios)
 GROUP_BOX_STYLE = """
     QGroupBox { 
         font-weight: bold; 
@@ -203,6 +211,7 @@ class ProcesamientoTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
+        self.config = self.parent.load_config("procesamiento")  # Cargar configuración específica
         self.initUI()
         
     def initUI(self):
@@ -215,11 +224,11 @@ class ProcesamientoTab(QWidget):
         config_layout = QVBoxLayout()
         config_layout.setSpacing(8)
         
-        # Rutas de entrada con mejor formato - usar valores de configuración
+        # Rutas de entrada con mejor formato - usar valores de configuración específica
         paths = [
-            ("Ruta FM:", self.parent.config.get("fm_path", "MedicionesFmCSV"), "fm_path_label"),
-            ("Ruta TV:", self.parent.config.get("tv_path", "MedicionesTvCSV"), "tv_path_label"), 
-            ("Ruta Salida:", self.parent.config.get("output_path", "ReportesUnificados"), "output_path_label")
+            ("Ruta FM:", self.config.get("fm_path", "MedicionesFmCSV"), "fm_path_label"),
+            ("Ruta TV:", self.config.get("tv_path", "MedicionesTvCSV"), "tv_path_label"), 
+            ("Ruta Salida:", self.config.get("output_path", "ReportesUnificados"), "output_path_label")
         ]
         
         for label_text, default_path, attr_name in paths:
@@ -259,7 +268,6 @@ class ProcesamientoTab(QWidget):
         
         config_group.setLayout(config_layout)
         layout.addWidget(config_group)
-        
         # Botones de acción
         action_layout = QHBoxLayout()
         action_layout.setSpacing(10)
@@ -315,6 +323,7 @@ class OcupacionTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
+        self.config = self.parent.load_config("ocupacion")  # Cargar configuración específica
         self.tv_umbral_general = None
         self.tv_umbrales_bandas = {}
         self.initUI()
@@ -323,7 +332,7 @@ class OcupacionTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
         
-        # Contenedor principal con dos columnas
+        # Contenedor principal con two columnas
         main_container = QHBoxLayout()
         main_container.setSpacing(15)
         
@@ -337,11 +346,11 @@ class OcupacionTab(QWidget):
         config_layout = QVBoxLayout()
         config_layout.setSpacing(8)
         
-        # Rutas de entrada con mejor formato - usar valores de configuración
+        # Rutas de entrada con mejor formato - usar valores de configuración específica
         paths = [
-            ("Ruta FM:", self.parent.config.get("fm_path", "MedicionesFmCSV"), "fm_path_label_ocup"),
-            ("Ruta TV:", self.parent.config.get("tv_path", "MedicionesTvCSV"), "tv_path_label_ocup"), 
-            ("Ruta Salida:", self.parent.config.get("ocupacion_output_path", "ReportesOcupacion"), "output_path_label_ocup")
+            ("Ruta FM:", self.config.get("fm_path", "MedicionesFmCSV"), "fm_path_label_ocup"),
+            ("Ruta TV:", self.config.get("tv_path", "MedicionesTvCSV"), "tv_path_label_ocup"), 
+            ("Ruta Salida:", self.config.get("ocupacion_output_path", "ReportesOcupacion"), "output_path_label_ocup")
         ]
         
         for label_text, default_path, attr_name in paths:
@@ -559,11 +568,11 @@ class OcupacionTab(QWidget):
                 umbral_edit.setStyleSheet("padding: 3px;")
                 
                 # Valores por defecto según banda
-                if banda == "Banda I":
+                if banda == "Banda I-III":
                     umbral_edit.setText("47")
-                elif banda == "Banda II":
+                elif banda == "Banda III":
                     umbral_edit.setText("56")
-                else:  # Banda III
+                else:  # Banda IV-V
                     umbral_edit.setText("64")
                 
                 self.tv_umbrales_bandas[banda] = umbral_edit
@@ -597,39 +606,58 @@ class OcupacionTab(QWidget):
                     umbrales["TV"]["valores"][banda] = float(edit.text()) if edit.text() else 0.0
                 else:
                     # Valores por defecto si no hay edit
-                    if banda == "Banda I":
+                    if banda == "Banda I-III":
                         umbrales["TV"]["valores"][banda] = 47.0
-                    elif banda == "Banda II":
+                    elif banda == "Banda III":
                         umbrales["TV"]["valores"][banda] = 56.0
                     else:
                         umbrales["TV"]["valores"][banda] = 64.0
         
         return umbrales
+    
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.worker = None
-        self.config = self.load_config()
         self.current_tab = None
         self.initUI()
         
-    def load_config(self):
-        """Cargar configuración desde archivo JSON"""
-        if os.path.exists(CONFIG_FILE):
+    def load_config(self, mode):
+        """Cargar configuración desde archivo JSON específico"""
+        config_file = CONFIG_PROCESAMIENTO_FILE if mode == "procesamiento" else CONFIG_OCUPACION_FILE
+        default_paths = DEFAULT_PATHS_PROCESAMIENTO if mode == "procesamiento" else DEFAULT_PATHS_OCUPACION
+        
+        if os.path.exists(config_file):
             try:
-                with open(CONFIG_FILE, 'r') as f:
+                with open(config_file, 'r') as f:
                     return json.load(f)
             except:
-                return DEFAULT_PATHS.copy()
-        return DEFAULT_PATHS.copy()
+                return default_paths.copy()
+        return default_paths.copy()
     
-    def save_config(self):
-        """Guardar configuración en archivo JSON"""
+    def save_config(self, mode):
+        """Guardar configuración en archivo JSON específico"""
+        config_file = CONFIG_PROCESAMIENTO_FILE if mode == "procesamiento" else CONFIG_OCUPACION_FILE
+        
+        # Obtener la configuración actual de la pestaña correspondiente
+        if mode == "procesamiento":
+            config_data = {
+                "fm_path": self.procesamiento_tab.fm_path_label.toolTip() or self.procesamiento_tab.fm_path_label.text().replace("...", ""),
+                "tv_path": self.procesamiento_tab.tv_path_label.toolTip() or self.procesamiento_tab.tv_path_label.text().replace("...", ""),
+                "output_path": self.procesamiento_tab.output_path_label.toolTip() or self.procesamiento_tab.output_path_label.text().replace("...", "")
+            }
+        else:
+            config_data = {
+                "fm_path": self.ocupacion_tab.fm_path_label_ocup.toolTip() or self.ocupacion_tab.fm_path_label_ocup.text().replace("...", ""),
+                "tv_path": self.ocupacion_tab.tv_path_label_ocup.toolTip() or self.ocupacion_tab.tv_path_label_ocup.text().replace("...", ""),
+                "ocupacion_output_path": self.ocupacion_tab.output_path_label_ocup.toolTip() or self.ocupacion_tab.output_path_label_ocup.text().replace("...", "")
+            }
+        
         try:
-            with open(CONFIG_FILE, 'w') as f:
-                json.dump(self.config, f)
+            with open(config_file, 'w') as f:
+                json.dump(config_data, f)
         except Exception as e:
-            self.log_message(f"Error guardando configuración: {str(e)}", "procesamiento")
+            self.log_message(f"Error guardando configuración: {str(e)}", mode)
     
     def truncar_texto(self, texto, max_caracteres=30):
         """Truncar texto largo para mostrar con puntos suspensivos"""
@@ -721,31 +749,27 @@ class MainWindow(QMainWindow):
             if path_type == "fm":
                 tab.fm_path_label.setText(truncated_text)
                 tab.fm_path_label.setToolTip(new_path)
-                self.config["fm_path"] = new_path
             elif path_type == "tv":
                 tab.tv_path_label.setText(truncated_text)
                 tab.tv_path_label.setToolTip(new_path)
-                self.config["tv_path"] = new_path
             elif path_type == "output":
                 tab.output_path_label.setText(truncated_text)
                 tab.output_path_label.setToolTip(new_path)
-                self.config["output_path"] = new_path
         else:  # ocupacion
             if path_type == "fm":
                 tab.fm_path_label_ocup.setText(truncated_text)
                 tab.fm_path_label_ocup.setToolTip(new_path)
-                self.config["fm_path"] = new_path
             elif path_type == "tv":
                 tab.tv_path_label_ocup.setText(truncated_text)
                 tab.tv_path_label_ocup.setToolTip(new_path)
-                self.config["tv_path"] = new_path
             elif path_type == "ocupacion_output":
                 tab.output_path_label_ocup.setText(truncated_text)
                 tab.output_path_label_ocup.setToolTip(new_path)
-                self.config["ocupacion_output_path"] = new_path
         
-        self.save_config()
+        # Guardar la configuración específica para esta pestaña
+        self.save_config(mode)
         self.log_message(f"Ruta {path_type} cambiada a: {new_path}", mode)
+    
     
     def open_output_folder(self, mode):
         """Abrir la carpeta de salida en el explorador de archivos"""
