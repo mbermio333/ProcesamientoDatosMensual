@@ -351,6 +351,8 @@ class ProcesamientoTab(QWidget):
         self.log_text.append("1. Verifique las rutas de los directorios")
         self.log_text.append("2. Presione 'Iniciar Procesamiento' para comenzar")
 
+# ... (código anterior sin cambios)
+
 class OcupacionTab(QWidget):
     """Pestaña de ocupación"""
     def __init__(self, parent=None):
@@ -428,18 +430,18 @@ class OcupacionTab(QWidget):
         left_column.addWidget(config_group)
         left_column.addStretch(1)
         
-        # Columna derecha - Selección de ciudad y umbrales (50% del ancho)
+        # Columna derecha - Umbrales (50% del ancho)
         right_column = QVBoxLayout()
         right_column.setSpacing(10)
         
-        # Grupo de selección de ciudad
-        ciudad_group = QGroupBox("Selección de Ciudad")
-        ciudad_group.setStyleSheet(GROUP_BOX_STYLE)
-        ciudad_layout = QVBoxLayout()
-        ciudad_layout.setSpacing(8)
+        # Grupo de umbrales (ahora incluye selección de ciudad)
+        umbrales_group = QGroupBox("Umbrales")
+        umbrales_group.setStyleSheet(GROUP_BOX_STYLE)
+        umbrales_layout = QVBoxLayout()
+        umbrales_layout.setSpacing(8)
         
-        # Dropdown para seleccionar ciudad
-        ciudad_selector_layout = QHBoxLayout()
+        # Selección de ciudad dentro del grupo de umbrales
+        ciudad_layout = QHBoxLayout()
         ciudad_label = QLabel("Ciudad:")
         ciudad_label.setMinimumWidth(40)
         ciudad_label.setStyleSheet("font-weight: bold;")
@@ -454,20 +456,18 @@ class OcupacionTab(QWidget):
         self.actualizar_ciudades_btn.setStyleSheet(CHANGE_BUTTON_STYLE)
         self.actualizar_ciudades_btn.clicked.connect(self.actualizar_lista_ciudades)
         
-        ciudad_selector_layout.addWidget(ciudad_label)
-        ciudad_selector_layout.addWidget(self.ciudad_combo)
-        ciudad_selector_layout.addWidget(self.actualizar_ciudades_btn)
-        ciudad_selector_layout.addStretch(1)
-        ciudad_layout.addLayout(ciudad_selector_layout)
+        ciudad_layout.addWidget(ciudad_label)
+        ciudad_layout.addWidget(self.ciudad_combo)
+        ciudad_layout.addWidget(self.actualizar_ciudades_btn)
+        ciudad_layout.addStretch(1)
+        umbrales_layout.addLayout(ciudad_layout)
         
-        ciudad_group.setLayout(ciudad_layout)
-        right_column.addWidget(ciudad_group)
-        
-        # Grupo de umbrales
-        umbrales_group = QGroupBox("Umbrales")
-        umbrales_group.setStyleSheet(GROUP_BOX_STYLE)
-        umbrales_layout = QVBoxLayout()
-        umbrales_layout.setSpacing(8)
+        # Separador
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        separator.setStyleSheet("color: #e0e0e0;")
+        umbrales_layout.addWidget(separator)
         
         # Campo para FM
         fm_layout = QHBoxLayout()
@@ -495,6 +495,7 @@ class OcupacionTab(QWidget):
         umbrales_layout.addWidget(separator)
         
         # Campo para TV
+        # Campo para TV
         tv_layout = QHBoxLayout()
         tv_layout.setSpacing(5)
         tv_label = QLabel("TV:")
@@ -505,7 +506,7 @@ class OcupacionTab(QWidget):
         self.tv_tipo_umbral.currentIndexChanged.connect(self.actualizar_campos_tv)
         self.tv_tipo_umbral.setMaximumWidth(150)
         self.tv_tipo_umbral.setStyleSheet("padding: 3px;")
-        self.tv_tipo_umbral.currentTextChanged.connect(self.guardar_umbral_actual)
+        # Eliminé la conexión a currentTextChanged para evitar conflictos
         tv_layout.addWidget(tv_label)
         tv_layout.addWidget(self.tv_tipo_umbral)
         tv_layout.addStretch(1)
@@ -589,9 +590,9 @@ class OcupacionTab(QWidget):
         self.ciudad_combo.clear()
         self.ciudad_combo.addItem("global")
         
-        # Agregar ciudades desde la configuración
+        # Agregar ciudades desde la configuración, filtrando nombres vacíos
         for ciudad in self.umbrales_ciudades.keys():
-            if ciudad != "global":
+            if ciudad != "global" and ciudad.strip():  # Filtrar nombres vacíos
                 self.ciudad_combo.addItem(ciudad)
         
         # Cargar configuración de la ciudad actual
@@ -614,7 +615,8 @@ class OcupacionTab(QWidget):
                 nombre_base = os.path.splitext(archivo)[0]
                 if '_' in nombre_base:
                     ciudad = nombre_base.split('_')[0]
-                    ciudades_encontradas.add(ciudad)
+                    if ciudad.strip():  # Solo agregar si no está vacío
+                        ciudades_encontradas.add(ciudad)
             
             # Actualizar combo box
             self.ciudad_combo.clear()
@@ -655,6 +657,8 @@ class OcupacionTab(QWidget):
             
             self.parent.log_message(f"Ciudad cambiada a: {ciudad}", "ocupacion")
     
+# ... (código anterior sin cambios)
+
     def cargar_configuracion_ciudad(self):
         """Cargar la configuración de umbrales para la ciudad actual"""
         if self.ciudad_actual not in self.umbrales_ciudades:
@@ -681,14 +685,113 @@ class OcupacionTab(QWidget):
         tv_config = config["TV"]
         if tv_config["tipo"] == "general":
             self.tv_tipo_umbral.setCurrentText("Umbral General")
+            # Solo actualizar el valor si el campo ya existe
             if self.tv_umbral_general:
                 self.tv_umbral_general.setText(str(tv_config["valor"]))
         else:
             self.tv_tipo_umbral.setCurrentText("Umbral por bandas")
+            # Solo actualizar los valores si los campos ya existen
             for banda, edit in self.tv_umbrales_bandas.items():
                 if edit and banda in tv_config["valores"]:
                     edit.setText(str(tv_config["valores"][banda]))
-    
+
+    def actualizar_campos_tv(self):
+        """Actualiza los campos de TV según la selección del tipo de umbral"""
+        # Desconectar temporalmente la señal para evitar recursión
+        try:
+            self.tv_tipo_umbral.currentIndexChanged.disconnect()
+        except:
+            pass
+            
+        # Limpiar layout actual de forma segura
+        for i in reversed(range(self.tv_campos_layout.count())):
+            item = self.tv_campos_layout.itemAt(i)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                # Limpiar layout hijo
+                for j in reversed(range(item.layout().count())):
+                    child_item = item.layout().itemAt(j)
+                    if child_item.widget():
+                        child_item.widget().deleteLater()
+                # Eliminar el layout
+                self.tv_campos_layout.removeItem(item)
+        
+        # Limpiar referencias
+        self.tv_umbral_general = None
+        self.tv_umbrales_bandas = {}
+        
+        tipo_seleccionado = self.tv_tipo_umbral.currentText()
+        
+        if tipo_seleccionado == "Umbral General":
+            # Campo único para umbral general
+            general_layout = QHBoxLayout()
+            general_layout.setSpacing(5)
+            general_label = QLabel("Umbral General:")
+            general_label.setMinimumWidth(100)
+            general_label.setStyleSheet("font-weight: bold;")
+            self.tv_umbral_general = QLineEdit()
+            self.tv_umbral_general.setValidator(QDoubleValidator(0, 1000, 2))
+            
+            # Obtener valor actual de la configuración
+            valor_actual = "45"  # Valor por defecto
+            if (self.ciudad_actual in self.umbrales_ciudades and 
+                "TV" in self.umbrales_ciudades[self.ciudad_actual] and
+                "valor" in self.umbrales_ciudades[self.ciudad_actual]["TV"]):
+                valor_actual = str(self.umbrales_ciudades[self.ciudad_actual]["TV"]["valor"])
+            
+            self.tv_umbral_general.setText(valor_actual)
+            self.tv_umbral_general.setMaximumWidth(60)
+            self.tv_umbral_general.setStyleSheet("padding: 3px;")
+            self.tv_umbral_general.textChanged.connect(self.guardar_umbral_actual)
+            general_layout.addWidget(general_label)
+            general_layout.addWidget(self.tv_umbral_general)
+            general_layout.addWidget(QLabel("dBµV/m"))
+            general_layout.addStretch(1)
+            self.tv_campos_layout.addLayout(general_layout)
+        else:
+            # Umbral por bandas
+            bandas = ["Banda I-III", "Banda III", "Banda IV-V"]
+            
+            for banda in bandas:
+                banda_layout = QHBoxLayout()
+                banda_layout.setSpacing(5)
+                banda_label = QLabel(f"{banda}:")
+                banda_label.setMinimumWidth(80)
+                banda_label.setStyleSheet("font-weight: bold;")
+                umbral_edit = QLineEdit()
+                umbral_edit.setValidator(QDoubleValidator(0, 1000, 2))
+                umbral_edit.setMaximumWidth(60)
+                umbral_edit.setStyleSheet("padding: 3px;")
+                umbral_edit.textChanged.connect(self.guardar_umbral_actual)
+                
+                # Obtener valor actual de la configuración
+                valor_actual = "47"  # Valor por defecto
+                if banda == "Banda III":
+                    valor_actual = "56"
+                elif banda == "Banda IV-V":
+                    valor_actual = "64"
+                
+                # Intentar cargar valor guardado
+                if (self.ciudad_actual in self.umbrales_ciudades and 
+                    "TV" in self.umbrales_ciudades[self.ciudad_actual] and
+                    "valores" in self.umbrales_ciudades[self.ciudad_actual]["TV"] and
+                    banda in self.umbrales_ciudades[self.ciudad_actual]["TV"]["valores"]):
+                    valor_actual = str(self.umbrales_ciudades[self.ciudad_actual]["TV"]["valores"][banda])
+                
+                umbral_edit.setText(valor_actual)
+                
+                self.tv_umbrales_bandas[banda] = umbral_edit
+                
+                banda_layout.addWidget(banda_label)
+                banda_layout.addWidget(umbbral_edit)
+                banda_layout.addWidget(QLabel("dBµV/m"))
+                banda_layout.addStretch(1)
+                self.tv_campos_layout.addLayout(banda_layout)
+        
+        # Reconectar la señal después de actualizar los campos
+        self.tv_tipo_umbral.currentIndexChanged.connect(self.actualizar_campos_tv)
+
     def guardar_umbral_actual(self):
         """Guardar la configuración actual de umbrales para la ciudad actual"""
         if not self.ciudad_actual:
@@ -721,8 +824,7 @@ class OcupacionTab(QWidget):
         }
         
         # Guardar en archivo
-        self.parent.guardar_umbrales_ciudades(self.umbrales_ciudades)
-    
+        self.parent.guardar_umbrales_ciudades(self.umbrales_ciudades)    
     def actualizar_campos_tv(self):
         """Actualiza los campos de TV según la selección del tipo de umbral"""
         # Limpiar layout actual de forma segura
@@ -800,7 +902,12 @@ class OcupacionTab(QWidget):
     
     def obtener_umbrales_todos(self):
         """Obtener todos los umbrales configurados por ciudad"""
-        return self.umbrales_ciudades
+        # Filtrar ciudades con nombres vacíos
+        umbrales_filtrados = {}
+        for ciudad, config in self.umbrales_ciudades.items():
+            if ciudad.strip():  # Solo incluir ciudades con nombres no vacíos
+                umbrales_filtrados[ciudad] = config
+        return umbrales_filtrados
     
     def obtener_umbrales_ciudad(self, ciudad):
         """Obtener umbrales para una ciudad específica"""
@@ -820,6 +927,8 @@ class OcupacionTab(QWidget):
                     }
                 }
             })
+
+# ... (el resto del código MainWindow y main() permanece igual)
 
 class MainWindow(QMainWindow):
     def __init__(self):
