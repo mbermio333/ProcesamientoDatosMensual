@@ -784,7 +784,7 @@ class OcupacionTab(QWidget):
                 self.tv_umbrales_bandas[banda] = umbral_edit
                 
                 banda_layout.addWidget(banda_label)
-                banda_layout.addWidget(umbbral_edit)
+                banda_layout.addWidget(umbral_edit)
                 banda_layout.addWidget(QLabel("dBµV/m"))
                 banda_layout.addStretch(1)
                 self.tv_campos_layout.addLayout(banda_layout)
