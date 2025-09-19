@@ -26,6 +26,51 @@ UMBRAL_TV_BANDA_IV_V = 60   # para Bandas IV-V (UHF)
 # Cargar configuración desde archivo
 CONFIG_FILE = "config.json"
 
+def insertar_umbrales_excel(archivo_excel, umbrales_ciudad):
+    """
+    Inserta los umbrales en las posiciones específicas del archivo Excel
+    """
+    try:
+        import openpyxl
+        
+        # Abrir el archivo Excel
+        workbook = openpyxl.load_workbook(archivo_excel)
+        
+        # Insertar umbrales en las posiciones especificadas
+        if 'Datos FM' in workbook.sheetnames:
+            hoja_fm = workbook['Datos FM']
+            # Umbral FM en K2
+            hoja_fm['K2'] = umbrales_ciudad['FM']
+        
+        if 'Datos TV' in workbook.sheetnames:
+            hoja_tv = workbook['Datos TV']
+            
+            # Obtener configuración de TV
+            tv_config = umbrales_ciudad['TV']
+            
+            if tv_config['tipo'] == 'general':
+                # Umbral general para todas las bandas
+                umbral_general = tv_config['valor']
+                hoja_tv['L2'] = umbral_general   # Banda I-III
+                hoja_tv['L12'] = umbral_general  # Banda III
+                hoja_tv['L22'] = umbral_general  # Banda IV-V
+            else:
+                # Umbrales específicos por banda
+                valores_bandas = tv_config['valores']
+                hoja_tv['L2'] = valores_bandas.get('Banda I-III', 47.0)   # Banda I-III
+                hoja_tv['L12'] = valores_bandas.get('Banda III', 56.0)     # Banda III
+                hoja_tv['L22'] = valores_bandas.get('Banda IV-V', 64.0)    # Banda IV-V
+        
+        # Guardar los cambios
+        workbook.save(archivo_excel)
+        workbook.close()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error al insertar umbrales en {archivo_excel}: {e}")
+        return False
+
 def crear_hoja_datos_manual(wb):
     """
     Crea la hoja 'DATOS Manual' con resumen de frecuencias autorizadas, no autorizadas
@@ -1502,7 +1547,54 @@ def verificar_posicion_tablas(ws):
 
 # ------------------ FUNCIÓN PRINCIPAL DE PROCESAMIENTO ------------------
 
-def procesar_ocupacion(callback_progreso=None, callback_log=None):
+# Agregar esta función al inicio del archivo, después de las importaciones
+def insertar_umbrales_excel(archivo_excel, umbrales_ciudad):
+    """
+    Inserta los umbrales en las posiciones específicas del archivo Excel
+    """
+    try:
+        import openpyxl
+        
+        # Abrir el archivo Excel
+        workbook = openpyxl.load_workbook(archivo_excel)
+        
+        # Insertar umbrales en las posiciones especificadas
+        if 'Datos FM' in workbook.sheetnames:
+            hoja_fm = workbook['Datos FM']
+            # Umbral FM en K2
+            hoja_fm['K2'] = umbrales_ciudad['FM']
+        
+        if 'Datos TV' in workbook.sheetnames:
+            hoja_tv = workbook['Datos TV']
+            
+            # Obtener configuración de TV
+            tv_config = umbrales_ciudad['TV']
+            
+            if tv_config['tipo'] == 'general':
+                # Umbral general para todas las bandas
+                umbral_general = tv_config['valor']
+                hoja_tv['L2'] = umbral_general   # Banda I-III
+                hoja_tv['L12'] = umbral_general  # Banda III
+                hoja_tv['L22'] = umbral_general  # Banda IV-V
+            else:
+                # Umbrales específicos por banda
+                valores_bandas = tv_config['valores']
+                hoja_tv['L2'] = valores_bandas.get('Banda I-III', 47.0)   # Banda I-III
+                hoja_tv['L12'] = valores_bandas.get('Banda III', 56.0)     # Banda III
+                hoja_tv['L22'] = valores_bandas.get('Banda IV-V', 64.0)    # Banda IV-V
+        
+        # Guardar los cambios
+        workbook.save(archivo_excel)
+        workbook.close()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error al insertar umbrales en {archivo_excel}: {e}")
+        return False
+
+# Modificar la función procesar_ocupacion para aceptar el parámetro umbrales
+def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None):
     """
     Función principal que procesa datos de ocupación de espectro
     """
@@ -1514,6 +1606,25 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
         callback_log(f"Ruta FM: {ruta_fm}")
         callback_log(f"Ruta TV: {ruta_tv}")
         callback_log(f"Ruta salida: {ruta_salida}")
+    
+    # Si no se proporcionan umbrales, usar los globales por defecto
+    if umbrales is None:
+        umbrales = {
+            "global": {
+                "FM": 60.0,
+                "TV": {
+                    "tipo": "general",
+                    "valor": 45.0,
+                    "valores": {
+                        "Banda I-III": 47.0,
+                        "Banda III": 56.0,
+                        "Banda IV-V": 64.0
+                    }
+                }
+            }
+        }
+        if callback_log:
+            callback_log("⚠️  Usando umbrales globales por defecto")
     
     # Obtener listas de archivos
     try:
@@ -1550,11 +1661,7 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
             callback_log(f"Procesando base: {base}")
         
         try:
-            # En la función procesar_ocupacion(), modifica esta parte:
-
-            # En la función procesar_ocupacion(), modifica esta parte:
-
-        # Procesar archivos FM y TV (ahora pasamos la base como parámetro)
+            # Procesar archivos FM y TV
             datos_fm, base_fm = procesar_archivo_fm(archivos_fm[base], base)
             datos_tv, base_tv = procesar_archivo_tv(archivos_tv[base], base)
 
@@ -1584,7 +1691,7 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
             else:
                 ws_fm = wb.create_sheet("Datos FM")
 
-            # AQUÍ ESTÁ LA CORRECCIÓN - Solo llamar a formatear_hoja_ocupacion si hay datos
+            # Formatear hoja FM si hay datos
             if not datos_fm.empty:
                 formatear_hoja_ocupacion(ws_fm, datos_fm.drop(columns=["Mes"]), "FM", base)
             else:
@@ -1599,7 +1706,7 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
                 if callback_log:
                     callback_log(f"⚠️  No hay datos TV para {base}")
 
-            # AÑADIR ESTA LÍNEA PARA CREAR LA HOJA "DATOS Manual"
+            # Crear hoja "DATOS Manual"
             wb = crear_hoja_datos_manual(wb)
             
             # Eliminar hoja por defecto si existe
@@ -1608,13 +1715,10 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
             
             # Generar nombre de archivo
             codigo_base = obtener_codigo_base(base)
-
-            # En la parte donde generas el nombre del archivo:
+            
+            # Normalizar nombre de ciudad
             def normalizar_nombre_ciudad(base):
-                """Normaliza el nombre de la ciudad para el nombre del archivo"""
                 base_normalizada = base.lower().strip()
-                
-                # Manejar "cañar" y sus variantes
                 if (base_normalizada == "cañar" or 
                     base_normalizada == "cañar" or 
                     base_normalizada == "canar" or 
@@ -1623,14 +1727,43 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
                 else:
                     return base.upper()
 
-            # Uso:
             nombre_ciudad = normalizar_nombre_ciudad(base)
-
             nombre_mes_completo = obtener_nombre_mes_es(mes_referencia) if mes_referencia else "Desconocido"
             nombre_salida = f"{codigo_base}_Ocupacion{nombre_ciudad}_{nombre_mes_completo}2025.xlsx"
+            ruta_completa = os.path.join(ruta_salida, nombre_salida)
             
             # Guardar archivo
-            wb.save(os.path.join(ruta_salida, nombre_salida))
+            wb.save(ruta_completa)
+            
+            # INSERTAR UMBRALES EN EL ARCHIVO EXCEL
+            # Determinar qué umbrales usar para esta ciudad
+            ciudad_normalizada = normalizar_nombre_ciudad(base)
+            if ciudad_normalizada in umbrales:
+                umbrales_ciudad = umbrales[ciudad_normalizada]
+            else:
+                # Usar umbrales globales si no hay específicos para esta ciudad
+                umbrales_ciudad = umbrales.get("global", {
+                    "FM": 60.0,
+                    "TV": {
+                        "tipo": "general",
+                        "valor": 45.0,
+                        "valores": {
+                            "Banda I-III": 47.0,
+                            "Banda III": 56.0,
+                            "Banda IV-V": 64.0
+                        }
+                    }
+                })
+                if callback_log:
+                    callback_log(f"⚠️  Usando umbrales globales para {ciudad_normalizada}")
+            
+            # Insertar umbrales en el archivo Excel
+            if insertar_umbrales_excel(ruta_completa, umbrales_ciudad):
+                if callback_log:
+                    callback_log(f"✅ Umbrales insertados en {nombre_salida}")
+            else:
+                if callback_log:
+                    callback_log(f"⚠️  No se pudieron insertar umbrales en {nombre_salida}")
             
             if callback_log:
                 callback_log(f"✅ Archivo generado: {nombre_salida}")
@@ -1648,7 +1781,6 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
         callback_log("Procesamiento de ocupación completado")
     
     return True
-
 
 # ------------------ EJECUCIÓN DIRECTA (para testing) ------------------
 

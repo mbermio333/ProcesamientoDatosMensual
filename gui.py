@@ -187,6 +187,7 @@ PATH_LABEL_STYLE = """
     border-radius: 3px;
 """
 
+# Modificar la clase WorkerThread para que reciba la referencia de la ventana principal
 class WorkerThread(QThread):
     """Hilo para ejecutar el procesamiento en segundo plano"""
     progress_signal = pyqtSignal(int)
@@ -194,13 +195,14 @@ class WorkerThread(QThread):
     finished_signal = pyqtSignal(bool)
     ciudades_signal = pyqtSignal(list)  # Nueva señal para enviar lista de ciudades
     
-    def __init__(self, fm_path, tv_path, output_path, mode="procesamiento"):
+    def __init__(self, fm_path, tv_path, output_path, mode="procesamiento", parent_window=None):
         super().__init__()
         self.running = True
         self.fm_path = fm_path
         self.tv_path = tv_path
         self.output_path = output_path
         self.mode = mode  # "procesamiento" o "ocupacion"
+        self.parent_window = parent_window  # Guardar referencia a la ventana principal
         
     def run(self):
         try:
@@ -239,8 +241,26 @@ class WorkerThread(QThread):
                 main2.ruta_tv = self.tv_path
                 main2.ruta_salida = self.output_path
                 
-                # Obtener umbrales de la interfaz
-                umbrales = self.parent().ocupacion_tab.obtener_umbrales_todos()
+                # Obtener umbrales de la interfaz - usar la referencia guardada
+                if self.parent_window and hasattr(self.parent_window, 'ocupacion_tab'):
+                    umbrales = self.parent_window.ocupacion_tab.obtener_umbrales_todos()
+                else:
+                    # Fallback: usar umbrales por defecto
+                    umbrales = {
+                        "global": {
+                            "FM": 60.0,
+                            "TV": {
+                                "tipo": "general",
+                                "valor": 45.0,
+                                "valores": {
+                                    "Banda I-III": 47.0,
+                                    "Banda III": 56.0,
+                                    "Banda IV-V": 64.0
+                                }
+                            }
+                        }
+                    }
+                    self.log_signal.emit("⚠️  Usando umbrales por defecto")
                 
                 # Llamar a la función de ocupación con nuestros callbacks
                 resultado = main2.procesar_ocupacion(
@@ -1122,8 +1142,9 @@ class MainWindow(QMainWindow):
         tab.progress_bar.setValue(0)
         tab.status_label.setText("Procesando...")
         
-        # Crear y configurar worker
-        self.worker = WorkerThread(fm_path, tv_path, output_path, mode)
+        # Crear y configurar worker - pasar la referencia de la ventana principal
+        self.worker = WorkerThread(fm_path, tv_path, output_path, mode, self)  # Pasar self como parent_window
+        
         self.worker.progress_signal.connect(lambda value: tab.progress_bar.setValue(value))
         self.worker.log_signal.connect(lambda msg: self.log_message(msg, mode))
         self.worker.finished_signal.connect(lambda success: self.processing_finished(success, mode))

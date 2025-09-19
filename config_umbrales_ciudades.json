@@ -24,22 +24,22 @@
         }
     },
     "TAMBO": {
-        "FM": 60.0,
+        "FM": 65.0,
         "TV": {
             "tipo": "bandas",
             "valor": 45.0,
             "valores": {
-                "Banda I-III": 47.0,
-                "Banda III": 56.0,
-                "Banda IV-V": 64.0
+                "Banda I-III": 45.0,
+                "Banda III": 60.0,
+                "Banda IV-V": 60.0
             }
         }
     },
     "ZAMORA": {
-        "FM": 60.0,
+        "FM": 65.0,
         "TV": {
             "tipo": "general",
-            "valor": 45.0,
+            "valor": 60.0,
             "valores": {
                 "Banda I-III": 47.0,
                 "Banda III": 56.0,
@@ -48,22 +48,22 @@
         }
     },
     "LOJA": {
-        "FM": 60.0,
+        "FM": 65.0,
         "TV": {
             "tipo": "bandas",
             "valor": 45.0,
             "valores": {
-                "Banda I-III": 56.0,
-                "Banda III": 56.0,
-                "Banda IV-V": 64.0
+                "Banda I-III": 60.0,
+                "Banda III": 65.0,
+                "Banda IV-V": 65.0
             }
         }
     },
     "MACHALA": {
         "FM": 60.0,
         "TV": {
-            "tipo": "bandas",
-            "valor": 45.0,
+            "tipo": "general",
+            "valor": 60.0,
             "valores": {
                 "Banda I-III": 47.0,
                 "Banda III": 56.0,
@@ -77,9 +77,9 @@
             "tipo": "bandas",
             "valor": 45.0,
             "valores": {
-                "Banda I-III": 47.0,
-                "Banda III": 56.0,
-                "Banda IV-V": 64.0
+                "Banda I-III": 65.0,
+                "Banda III": 60.0,
+                "Banda IV-V": 60.0
             }
         }
     },
