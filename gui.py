@@ -358,10 +358,10 @@ class OcupacionTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        self.config = self.parent.load_config("ocupacion")  # Cargar configuración específica
+        self.config = self.parent.load_config("ocupacion")
         self.umbrales_ciudades = self.parent.load_umbrales_ciudades()
         self.ciudades = []
-        self.ciudad_actual = "global"
+        self.ciudad_actual = "global"  # Asegurar valor por defecto
         self.tv_umbral_general = None
         self.tv_umbrales_bandas = {}
         self.initUI()
@@ -592,7 +592,7 @@ class OcupacionTab(QWidget):
         
         # Agregar ciudades desde la configuración, filtrando nombres vacíos
         for ciudad in self.umbrales_ciudades.keys():
-            if ciudad != "global" and ciudad.strip():  # Filtrar nombres vacíos
+            if ciudad != "global" and ciudad and ciudad.strip():  # Filtrar nombres vacíos o nulos
                 self.ciudad_combo.addItem(ciudad)
         
         # Cargar configuración de la ciudad actual
@@ -615,7 +615,7 @@ class OcupacionTab(QWidget):
                 nombre_base = os.path.splitext(archivo)[0]
                 if '_' in nombre_base:
                     ciudad = nombre_base.split('_')[0]
-                    if ciudad.strip():  # Solo agregar si no está vacío
+                    if ciudad and ciudad.strip():  # Solo agregar si no está vacío
                         ciudades_encontradas.add(ciudad)
             
             # Actualizar combo box
@@ -623,21 +623,22 @@ class OcupacionTab(QWidget):
             self.ciudad_combo.addItem("global")
             
             for ciudad in sorted(ciudades_encontradas):
-                self.ciudad_combo.addItem(ciudad)
-                if ciudad not in self.umbrales_ciudades:
-                    # Crear entrada por defecto para nueva ciudad
-                    self.umbrales_ciudades[ciudad] = {
-                        "FM": 60.0,
-                        "TV": {
-                            "tipo": "general",
-                            "valor": 45.0,
-                            "valores": {
-                                "Banda I-III": 47.0,
-                                "Banda III": 56.0,
-                                "Banda IV-V": 64.0
+                if ciudad and ciudad.strip():  # Filtrar nombres vacíos
+                    self.ciudad_combo.addItem(ciudad)
+                    if ciudad not in self.umbrales_ciudades:
+                        # Crear entrada por defecto para nueva ciudad
+                        self.umbrales_ciudades[ciudad] = {
+                            "FM": 60.0,
+                            "TV": {
+                                "tipo": "general",
+                                "valor": 45.0,
+                                "valores": {
+                                    "Banda I-III": 47.0,
+                                    "Banda III": 56.0,
+                                    "Banda IV-V": 64.0
+                                }
                             }
                         }
-                    }
             
             self.parent.guardar_umbrales_ciudades(self.umbrales_ciudades)
             self.parent.log_message(f"Lista de ciudades actualizada: {len(ciudades_encontradas)} ciudades encontradas", "ocupacion")
@@ -647,6 +648,9 @@ class OcupacionTab(QWidget):
     
     def cambiar_ciudad(self, ciudad):
         """Cambiar la ciudad actual y cargar su configuración"""
+        if not ciudad or not ciudad.strip():
+            ciudad = "global"
+        
         if ciudad != self.ciudad_actual:
             # Guardar configuración actual antes de cambiar
             self.guardar_umbral_actual()
@@ -661,6 +665,9 @@ class OcupacionTab(QWidget):
 
     def cargar_configuracion_ciudad(self):
         """Cargar la configuración de umbrales para la ciudad actual"""
+        if not self.ciudad_actual or not self.ciudad_actual.strip():
+            self.ciudad_actual = "global"
+        
         if self.ciudad_actual not in self.umbrales_ciudades:
             # Crear configuración por defecto si no existe
             self.umbrales_ciudades[self.ciudad_actual] = {
@@ -699,7 +706,7 @@ class OcupacionTab(QWidget):
         """Actualiza los campos de TV según la selección del tipo de umbral"""
         # Desconectar temporalmente la señal para evitar recursión
         try:
-            self.tv_tipo_umbral.currentIndexChanged.disconnect()
+            self.tv_tipo_umbral.currentIndexChanged.disconnect(self.actualizar_campos_tv)
         except:
             pass
             
@@ -791,14 +798,20 @@ class OcupacionTab(QWidget):
         
         # Reconectar la señal después de actualizar los campos
         self.tv_tipo_umbral.currentIndexChanged.connect(self.actualizar_campos_tv)
+        
+        # Asegurarse de que los cambios se muestren inmediatamente
+        self.tv_campos_widget.update()
 
     def guardar_umbral_actual(self):
         """Guardar la configuración actual de umbrales para la ciudad actual"""
-        if not self.ciudad_actual:
+        if not self.ciudad_actual or not self.ciudad_actual.strip():
             return
         
         # Obtener valores actuales
-        fm_valor = float(self.fm_umbral.text()) if self.fm_umbral.text() else 60.0
+        try:
+            fm_valor = float(self.fm_umbral.text()) if self.fm_umbral.text() else 60.0
+        except:
+            fm_valor = 60.0
         
         tv_config = {
             "tipo": "general" if self.tv_tipo_umbral.currentText() == "Umbral General" else "bandas",
@@ -811,11 +824,17 @@ class OcupacionTab(QWidget):
         }
         
         if tv_config["tipo"] == "general" and self.tv_umbral_general:
-            tv_config["valor"] = float(self.tv_umbral_general.text()) if self.tv_umbral_general.text() else 45.0
+            try:
+                tv_config["valor"] = float(self.tv_umbral_general.text()) if self.tv_umbral_general.text() else 45.0
+            except:
+                tv_config["valor"] = 45.0
         elif tv_config["tipo"] == "bandas":
             for banda, edit in self.tv_umbrales_bandas.items():
                 if edit:
-                    tv_config["valores"][banda] = float(edit.text()) if edit.text() else 0.0
+                    try:
+                        tv_config["valores"][banda] = float(edit.text()) if edit.text() else 0.0
+                    except:
+                        tv_config["valores"][banda] = 0.0
         
         # Guardar en diccionario
         self.umbrales_ciudades[self.ciudad_actual] = {
@@ -824,88 +843,16 @@ class OcupacionTab(QWidget):
         }
         
         # Guardar en archivo
-        self.parent.guardar_umbrales_ciudades(self.umbrales_ciudades)    
-    def actualizar_campos_tv(self):
-        """Actualiza los campos de TV según la selección del tipo de umbral"""
-        # Limpiar layout actual de forma segura
-        for i in reversed(range(self.tv_campos_layout.count())):
-            item = self.tv_campos_layout.itemAt(i)
-            if item.widget():
-                item.widget().deleteLater()
-            elif item.layout():
-                # Limpiar layout hijo
-                for j in reversed(range(item.layout().count())):
-                    child_item = item.layout().itemAt(j)
-                    if child_item.widget():
-                        child_item.widget().deleteLater()
-                # Eliminar el layout
-                self.tv_campos_layout.removeItem(item)
-        
-        # Limpiar referencias
-        self.tv_umbral_general = None
-        self.tv_umbrales_bandas = {}
-        
-        tipo_seleccionado = self.tv_tipo_umbral.currentText()
-        
-        if tipo_seleccionado == "Umbral General":
-            # Campo único para umbral general
-            general_layout = QHBoxLayout()
-            general_layout.setSpacing(5)
-            general_label = QLabel("Umbral General:")
-            general_label.setMinimumWidth(100)
-            general_label.setStyleSheet("font-weight: bold;")
-            self.tv_umbral_general = QLineEdit()
-            self.tv_umbral_general.setValidator(QDoubleValidator(0, 1000, 2))
-            self.tv_umbral_general.setText("45")
-            self.tv_umbral_general.setMaximumWidth(60)
-            self.tv_umbral_general.setStyleSheet("padding: 3px;")
-            self.tv_umbral_general.textChanged.connect(self.guardar_umbral_actual)
-            general_layout.addWidget(general_label)
-            general_layout.addWidget(self.tv_umbral_general)
-            general_layout.addWidget(QLabel("dBµV/m"))
-            general_layout.addStretch(1)
-            self.tv_campos_layout.addLayout(general_layout)
-        else:
-            # Umbral por bandas
-            bandas = ["Banda I-III", "Banda III", "Banda IV-V"]
-            
-            for banda in bandas:
-                banda_layout = QHBoxLayout()
-                banda_layout.setSpacing(5)
-                banda_label = QLabel(f"{banda}:")
-                banda_label.setMinimumWidth(80)
-                banda_label.setStyleSheet("font-weight: bold;")
-                umbral_edit = QLineEdit()
-                umbral_edit.setValidator(QDoubleValidator(0, 1000, 2))
-                umbral_edit.setMaximumWidth(60)
-                umbral_edit.setStyleSheet("padding: 3px;")
-                umbral_edit.textChanged.connect(self.guardar_umbral_actual)
-                
-                # Valores por defecto según banda
-                if banda == "Banda I-III":
-                    umbral_edit.setText("47")
-                elif banda == "Banda III":
-                    umbral_edit.setText("56")
-                else:  # Banda IV-V
-                    umbral_edit.setText("64")
-                
-                self.tv_umbrales_bandas[banda] = umbral_edit
-                
-                banda_layout.addWidget(banda_label)
-                banda_layout.addWidget(umbral_edit)
-                banda_layout.addWidget(QLabel("dBµV/m"))
-                banda_layout.addStretch(1)
-                self.tv_campos_layout.addLayout(banda_layout)
-        
-        # Cargar valores actuales después de crear los campos
-        self.cargar_configuracion_ciudad()
+        self.parent.guardar_umbrales_ciudades(self.umbrales_ciudades)
+
+    
     
     def obtener_umbrales_todos(self):
         """Obtener todos los umbrales configurados por ciudad"""
         # Filtrar ciudades con nombres vacíos
         umbrales_filtrados = {}
         for ciudad, config in self.umbrales_ciudades.items():
-            if ciudad.strip():  # Solo incluir ciudades con nombres no vacíos
+            if ciudad and ciudad.strip():  # Solo incluir ciudades con nombres no vacíos
                 umbrales_filtrados[ciudad] = config
         return umbrales_filtrados
     

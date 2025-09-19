@@ -38,7 +38,7 @@
     "ZAMORA": {
         "FM": 60.0,
         "TV": {
-            "tipo": "bandas",
+            "tipo": "general",
             "valor": 45.0,
             "valores": {
                 "Banda I-III": 47.0,
@@ -53,7 +53,7 @@
             "tipo": "bandas",
             "valor": 45.0,
             "valores": {
-                "Banda I-III": 47.0,
+                "Banda I-III": 56.0,
                 "Banda III": 56.0,
                 "Banda IV-V": 64.0
             }

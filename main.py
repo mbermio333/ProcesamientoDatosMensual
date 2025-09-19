@@ -753,6 +753,8 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
     emisoras_por_ciudad = config.get("emisoras_por_ciudad", {})
 
     for base, archivo in archivos_fm.items():
+        if not base.strip():
+            continue
         emisoras_fm = extraer_nombres_emisoras(archivo, "FM")
         if base not in emisoras_por_ciudad:
             emisoras_por_ciudad[base] = {"FM": [], "TV": []}
@@ -763,6 +765,8 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
                 emisoras_por_ciudad[base]["FM"].append(emisora)
 
     for base, archivo in archivos_tv.items():
+        if not base.strip():
+            continue
         emisoras_tv = extraer_nombres_emisoras(archivo, "TV")
         if base not in emisoras_por_ciudad:
             emisoras_por_ciudad[base] = {"FM": [], "TV": []}
