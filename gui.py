@@ -35,19 +35,9 @@ DEFAULT_PATHS_OCUPACION = {
 }
 
 # Umbrales por defecto para ciudades
+# Umbrales por defecto para ciudades - ELIMINAR "global"
 DEFAULT_UMBRALES_CIUDADES = {
-    "global": {
-        "FM": 60.0,
-        "TV": {
-            "tipo": "general",
-            "valor": 45.0,
-            "valores": {
-                "Banda I-III": 47.0,
-                "Banda III": 56.0,
-                "Banda IV-V": 64.0
-            }
-        }
-    }
+    # Eliminar completamente la entrada "global"
 }
 
 def normalizar_nombre_ciudad(nombre):
@@ -247,18 +237,7 @@ class WorkerThread(QThread):
                 else:
                     # Fallback: usar umbrales por defecto
                     umbrales = {
-                        "global": {
-                            "FM": 60.0,
-                            "TV": {
-                                "tipo": "general",
-                                "valor": 45.0,
-                                "valores": {
-                                    "Banda I-III": 47.0,
-                                    "Banda III": 56.0,
-                                    "Banda IV-V": 64.0
-                                }
-                            }
-                        }
+                        
                     }
                     self.log_signal.emit("⚠️  Usando umbrales por defecto")
                 
@@ -403,11 +382,18 @@ class OcupacionTab(QWidget):
         self.config = self.parent.load_config("ocupacion")
         self.umbrales_ciudades = self.parent.load_umbrales_ciudades()
         self.ciudades = []
-        self.ciudad_actual = "global"  # Asegurar valor por defecto
+        # Eliminar "global" como ciudad por defecto, usar la primera ciudad disponible
+        self.ciudad_actual = self.obtener_primera_ciudad() or ""
         self.tv_umbral_general = None
         self.tv_umbrales_bandas = {}
         self.initUI()
-        
+    
+    def obtener_primera_ciudad(self):
+        """Obtener la primera ciudad disponible (excluyendo 'global')"""
+        ciudades = [ciudad for ciudad in self.umbrales_ciudades.keys() 
+                   if ciudad != "global" and ciudad.strip()]
+        return ciudades[0] if ciudades else ""
+    
     def initUI(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
@@ -493,14 +479,14 @@ class OcupacionTab(QWidget):
         self.ciudad_combo.setStyleSheet("padding: 3px;")
         self.ciudad_combo.currentTextChanged.connect(self.cambiar_ciudad)
         
-        # Botón para actualizar lista de ciudades
-        self.actualizar_ciudades_btn = QPushButton("Actualizar Ciudades")
-        self.actualizar_ciudades_btn.setStyleSheet(CHANGE_BUTTON_STYLE)
-        self.actualizar_ciudades_btn.clicked.connect(self.actualizar_lista_ciudades)
+        # ELIMINAR BOTÓN ACTUALIZAR CIUDADES
+        # self.actualizar_ciudades_btn = QPushButton("Actualizar Ciudades")
+        # self.actualizar_ciudades_btn.setStyleSheet(CHANGE_BUTTON_STYLE)
+        # self.actualizar_ciudades_btn.clicked.connect(self.actualizar_lista_ciudades)
         
         ciudad_layout.addWidget(ciudad_label)
         ciudad_layout.addWidget(self.ciudad_combo)
-        ciudad_layout.addWidget(self.actualizar_ciudades_btn)
+        # ciudad_layout.addWidget(self.actualizar_ciudades_btn)  # ELIMINAR ESTA LÍNEA
         ciudad_layout.addStretch(1)
         umbrales_layout.addLayout(ciudad_layout)
         
@@ -628,22 +614,22 @@ class OcupacionTab(QWidget):
     
     def cargar_ciudades(self):
         """Cargar la lista de ciudades desde el procesamiento anterior"""
-        # Primero cargar "global" como opción por defecto
         self.ciudad_combo.clear()
-        self.ciudad_combo.addItem("global")
         
-        # Agregar ciudades desde la configuración, filtrando nombres vacíos
+        # Agregar ciudades desde la configuración, filtrando nombres vacíos y "global"
         for ciudad in self.umbrales_ciudades.keys():
-            # NO normalizar "global" - solo las demás ciudades
-            if ciudad != "global":
+            if ciudad != "global":  # Excluir "global"
                 ciudad_normalizada = normalizar_nombre_ciudad(ciudad)
                 if ciudad_normalizada and ciudad_normalizada.strip():
-                    # Verificar que no sea "global" ya normalizado
-                    if ciudad_normalizada != "GLOBAL":
-                        self.ciudad_combo.addItem(ciudad_normalizada)
+                    self.ciudad_combo.addItem(ciudad_normalizada)
         
-        # Cargar configuración de la ciudad actual
-        self.cargar_configuracion_ciudad()
+        # Si no hay ciudades, agregar un mensaje
+        if self.ciudad_combo.count() == 0:
+            self.ciudad_combo.addItem("No hay ciudades configuradas")
+            self.ciudad_actual = ""
+        else:
+            # Cargar configuración de la ciudad actual
+            self.cargar_configuracion_ciudad()
     
     def actualizar_lista_ciudades(self):
         """Actualizar la lista de ciudades desde los archivos de salida del procesamiento"""
@@ -656,21 +642,18 @@ class OcupacionTab(QWidget):
             # Buscar archivos CSV en la carpeta de salida
             archivos = [f for f in os.listdir(output_path) if f.endswith('.csv')]
             ciudades_encontradas = set()
-            ciudades_encontradas.discard("global")  # evita duplicado de 'global'
-
             
             for archivo in archivos:
                 # Extraer nombre de ciudad del archivo (ej: "Quito_FM.csv" -> "Quito")
                 nombre_base = os.path.splitext(archivo)[0]
                 if '_' in nombre_base:
                     ciudad = nombre_base.split('_')[0].strip()
-                    ciudad_normalizada = normalizar_nombre_ciudad(ciudad)  # NORMALIZAR
-                    if ciudad_normalizada:  # Solo agregar si no está vacío
+                    ciudad_normalizada = normalizar_nombre_ciudad(ciudad)
+                    if ciudad_normalizada and ciudad_normalizada != "GLOBAL":  # Excluir "GLOBAL"
                         ciudades_encontradas.add(ciudad_normalizada)
             
-            # Actualizar combo box
+            # Actualizar combo box - ELIMINAR "global"
             self.ciudad_combo.clear()
-            self.ciudad_combo.addItem("global")
             
             for ciudad in sorted(ciudades_encontradas):
                 if ciudad and ciudad.strip():  # Filtrar nombres vacíos
@@ -690,16 +673,20 @@ class OcupacionTab(QWidget):
                             }
                         }
             
+            # Filtrar "global" antes de guardar
+            if "global" in self.umbrales_ciudades:
+                del self.umbrales_ciudades["global"]
+                
             self.parent.guardar_umbrales_ciudades(self.umbrales_ciudades)
             self.parent.log_message(f"Lista de ciudades actualizada: {len(ciudades_encontradas)} ciudades encontradas", "ocupacion")
             
         except Exception as e:
             self.parent.log_message(f"Error al actualizar lista de ciudades: {str(e)}", "ocupacion")
-    
+
     def cambiar_ciudad(self, ciudad):
         """Cambiar la ciudad actual y cargar su configuración"""
-        if not ciudad or not ciudad.strip():
-            ciudad = "global"
+        if not ciudad or not ciudad.strip() or ciudad == "No hay ciudades configuradas":
+            return  # No hacer nada si no hay ciudad válida
         
         if ciudad != self.ciudad_actual:
             # Guardar configuración actual antes de cambiar
@@ -710,13 +697,12 @@ class OcupacionTab(QWidget):
             self.cargar_configuracion_ciudad()
             
             self.parent.log_message(f"Ciudad cambiada a: {ciudad}", "ocupacion")
-    
 # ... (código anterior sin cambios)
 
     def cargar_configuracion_ciudad(self):
         """Cargar la configuración de umbrales para la ciudad actual"""
         if not self.ciudad_actual or not self.ciudad_actual.strip():
-            self.ciudad_actual = "global"
+            return
         
         if self.ciudad_actual not in self.umbrales_ciudades:
             # Crear configuración por defecto si no existe
@@ -742,12 +728,10 @@ class OcupacionTab(QWidget):
         tv_config = config["TV"]
         if tv_config["tipo"] == "general":
             self.tv_tipo_umbral.setCurrentText("Umbral General")
-            # Solo actualizar el valor si el campo ya existe
             if self.tv_umbral_general:
                 self.tv_umbral_general.setText(str(tv_config["valor"]))
         else:
             self.tv_tipo_umbral.setCurrentText("Umbral por bandas")
-            # Solo actualizar los valores si los campos ya existen
             for banda, edit in self.tv_umbrales_bandas.items():
                 if edit and banda in tv_config["valores"]:
                     edit.setText(str(tv_config["valores"][banda]))
@@ -899,10 +883,10 @@ class OcupacionTab(QWidget):
     
     def obtener_umbrales_todos(self):
         """Obtener todos los umbrales configurados por ciudad"""
-        # Filtrar ciudades con nombres vacíos
+        # Filtrar ciudades con nombres vacíos y excluir "global"
         umbrales_filtrados = {}
         for ciudad, config in self.umbrales_ciudades.items():
-            if ciudad and ciudad.strip():  # Solo incluir ciudades con nombres no vacíos
+            if ciudad and ciudad.strip() and ciudad != "global":  # Excluir "global"
                 umbrales_filtrados[ciudad] = config
         return umbrales_filtrados
     
@@ -911,8 +895,8 @@ class OcupacionTab(QWidget):
         if ciudad in self.umbrales_ciudades:
             return self.umbrales_ciudades[ciudad]
         else:
-            # Devolver umbrales globales por defecto
-            return self.umbrales_ciudades.get("global", {
+            # Devolver umbrales por defecto (sin "global")
+            return {
                 "FM": 60.0,
                 "TV": {
                     "tipo": "general",
@@ -923,7 +907,7 @@ class OcupacionTab(QWidget):
                         "Banda IV-V": 64.0
                     }
                 }
-            })
+            }
 
 # ... (el resto del código MainWindow y main() permanece igual)
 
@@ -953,19 +937,24 @@ class MainWindow(QMainWindow):
         if os.path.exists(CIUDADES_UMBRALES_FILE):
             try:
                 with open(CIUDADES_UMBRALES_FILE, 'r') as f:
-                    return json.load(f)
+                    umbrales = json.load(f)
+                    # Filtrar "global" al cargar
+                    if "global" in umbrales:
+                        del umbrales["global"]
+                    return umbrales
             except:
                 return DEFAULT_UMBRALES_CIUDADES.copy()
         return DEFAULT_UMBRALES_CIUDADES.copy()
-        # Agrega esta función en la sección de CONSTANTES o al inicio de la clase MainWindow
     
     
     
     def guardar_umbrales_ciudades(self, umbrales):
         """Guardar umbrales por ciudad en archivo"""
         try:
+            # Filtrar "global" antes de guardar
+            umbrales_filtrados = {k: v for k, v in umbrales.items() if k != "global"}
             with open(CIUDADES_UMBRALES_FILE, 'w') as f:
-                json.dump(umbrales, f, indent=4)
+                json.dump(umbrales_filtrados, f, indent=4)
         except Exception as e:
             self.log_message(f"Error al guardar umbrales: {str(e)}", "ocupacion")
     
@@ -1159,48 +1148,69 @@ class MainWindow(QMainWindow):
     
     def actualizar_ciudades_desde_procesamiento(self, ciudades):
         """Actualizar la lista de ciudades en la pestaña de ocupación con las ciudades encontradas"""
-        if ciudades:
-            # NORMALIZAR nombres de ciudades
-            ciudades_normalizadas = []
-            for ciudad in ciudades:
-                ciudad_normalizada = normalizar_nombre_ciudad(ciudad)
-                # Filtrar nombres vacíos y también evitar "GLOBAL" que viene del procesamiento
-                if ciudad_normalizada and ciudad_normalizada.strip() and ciudad_normalizada != "GLOBAL":
-                    ciudades_normalizadas.append(ciudad_normalizada)
-            
-            # Eliminar duplicados
-            ciudades_normalizadas = list(set(ciudades_normalizadas))
-            
-            # Actualizar el diccionario de umbrales con las nuevas ciudades NORMALIZADAS
-            for ciudad in ciudades_normalizadas:
-                if ciudad not in self.ocupacion_tab.umbrales_ciudades:
-                    self.ocupacion_tab.umbrales_ciudades[ciudad] = {
-                        "FM": 60.0,
-                        "TV": {
-                            "tipo": "general",
-                            "valor": 45.0,
-                            "valores": {
-                                "Banda I-III": 47.0,
-                                "Banda III": 56.0,
-                                "Banda IV-V": 64.0
-                            }
+        if not ciudades:  # Si no hay ciudades, salir temprano
+            self.log_message("No se encontraron ciudades en el procesamiento", "ocupacion")
+            return
+        
+        # Inicializar la lista desde el principio
+        ciudades_normalizadas = []
+        for ciudad in ciudades:
+            ciudad_normalizada = normalizar_nombre_ciudad(ciudad)
+            # Filtrar nombres vacíos y también evitar "GLOBAL" que viene del procesamiento
+            if ciudad_normalizada and ciudad_normalizada.strip() and ciudad_normalizada != "GLOBAL":
+                ciudades_normalizadas.append(ciudad_normalizada)
+        
+        # Verificar si después del filtrado quedan ciudades
+        if not ciudades_normalizadas:
+            self.log_message("Todas las ciudades fueron filtradas (posiblemente solo 'GLOBAL')", "ocupacion")
+            return
+        
+        # Eliminar duplicados
+        ciudades_normalizadas = list(set(ciudades_normalizadas))
+        
+        # Actualizar el diccionario de umbrales con las nuevas ciudades NORMALIZADAS
+        for ciudad in ciudades_normalizadas:
+            if ciudad not in self.ocupacion_tab.umbrales_ciudades:
+                self.ocupacion_tab.umbrales_ciudades[ciudad] = {
+                    "FM": 60.0,
+                    "TV": {
+                        "tipo": "general",
+                        "valor": 45.0,
+                        "valores": {
+                            "Banda I-III": 47.0,
+                            "Banda III": 56.0,
+                            "Banda IV-V": 64.0
                         }
                     }
-            
-            # Guardar umbrales actualizados
-            self.guardar_umbrales_ciudades(self.ocupacion_tab.umbrales_ciudades)
-            
-            # Actualizar combo box en la pestaña de ocupación con ciudades NORMALIZADAS
-            self.ocupacion_tab.ciudad_combo.clear()
-            self.ocupacion_tab.ciudad_combo.addItem("global")
-            
-            # Ordenar alfabéticamente y agregar ciudades (excluyendo "global")
-            ciudades_ordenadas = sorted([c for c in self.ocupacion_tab.umbrales_ciudades.keys() if c != "global"])
-            for ciudad in ciudades_ordenadas:
-                if ciudad and ciudad.strip() and ciudad != "GLOBAL":  # Filtrar nombres vacíos y "GLOBAL"
-                    self.ocupacion_tab.ciudad_combo.addItem(ciudad)
-            
-            self.log_message(f"Lista de ciudades actualizada desde procesamiento: {len(ciudades_normalizadas)} ciudades encontradas", "ocupacion")
+                }
+        
+        # Asegurarse de eliminar "global" si existe
+        if "global" in self.ocupacion_tab.umbrales_ciudades:
+            del self.ocupacion_tab.umbrales_ciudades["global"]
+        
+        # Guardar umbrales actualizados
+        self.guardar_umbrales_ciudades(self.ocupacion_tab.umbrales_ciudades)
+        
+        # Actualizar combo box en la pestaña de ocupación con ciudades NORMALIZADAS
+        self.ocupacion_tab.ciudad_combo.clear()
+        
+        # Ordenar alfabéticamente y agregar ciudades (excluyendo "global")
+        ciudades_ordenadas = sorted([c for c in self.ocupacion_tab.umbrales_ciudades.keys() 
+                                if c != "global" and c.strip()])
+        
+        for ciudad in ciudades_ordenadas:
+            self.ocupacion_tab.ciudad_combo.addItem(ciudad)
+        
+        # Si no hay ciudades, agregar un mensaje
+        if self.ocupacion_tab.ciudad_combo.count() == 0:
+            self.ocupacion_tab.ciudad_combo.addItem("No hay ciudades configuradas")
+            self.ocupacion_tab.ciudad_actual = ""
+        else:
+            # Seleccionar la primera ciudad por defecto
+            self.ocupacion_tab.ciudad_actual = ciudades_ordenadas[0]
+            self.ocupacion_tab.cargar_configuracion_ciudad()
+        
+        self.log_message(f"Lista de ciudades actualizada desde procesamiento: {len(ciudades_normalizadas)} ciudades encontradas", "ocupacion")
     
     def stop_processing(self):
         """Detener el procesamiento"""

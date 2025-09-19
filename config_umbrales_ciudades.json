@@ -1,28 +1,4 @@
 {
-    "global": {
-        "FM": 60.0,
-        "TV": {
-            "tipo": "bandas",
-            "valor": 45.0,
-            "valores": {
-                "Banda I-III": 47.0,
-                "Banda III": 56.0,
-                "Banda IV-V": 64.0
-            }
-        }
-    },
-    "": {
-        "FM": 60.0,
-        "TV": {
-            "tipo": "general",
-            "valor": 45.0,
-            "valores": {
-                "Banda I-III": 47.0,
-                "Banda III": 56.0,
-                "Banda IV-V": 64.0
-            }
-        }
-    },
     "TAMBO": {
         "FM": 65.0,
         "TV": {
@@ -44,18 +20,6 @@
                 "Banda I-III": 47.0,
                 "Banda III": 56.0,
                 "Banda IV-V": 64.0
-            }
-        }
-    },
-    "LOJA": {
-        "FM": 65.0,
-        "TV": {
-            "tipo": "bandas",
-            "valor": 45.0,
-            "valores": {
-                "Banda I-III": 60.0,
-                "Banda III": 65.0,
-                "Banda IV-V": 65.0
             }
         }
     },
@@ -83,15 +47,15 @@
             }
         }
     },
-    "GLOBAL": {
-        "FM": 60.0,
+    "LOJA": {
+        "FM": 65.0,
         "TV": {
-            "tipo": "general",
+            "tipo": "bandas",
             "valor": 45.0,
             "valores": {
-                "Banda I-III": 47.0,
-                "Banda III": 56.0,
-                "Banda IV-V": 64.0
+                "Banda I-III": 60.0,
+                "Banda III": 65.0,
+                "Banda IV-V": 65.0
             }
         }
     }

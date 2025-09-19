@@ -395,7 +395,12 @@ def encontrar_columnas_numericas(ws, fila_encabezados):
         return 3, 33
 
 def obtener_base(nombre_archivo):
-    return nombre_archivo.split("_")[0].lower().strip()
+    """Obtiene el nombre base del archivo y filtra 'global'"""
+    base = nombre_archivo.split("_")[0].lower().strip()
+    # Filtrar "global" y variantes
+    if base in ["global", "global", "generico", "general"]:
+        return None
+    return base
 
 # ------------------ FUNCIONES PARA CREAR HOJAS ADICIONALES ------------------
 
@@ -742,6 +747,16 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None):
 
 # ------------------ FUNCIÓN PRINCIPAL DE PROCESAMIENTO ------------------
 
+def obtener_base(nombre_archivo):
+    """Obtiene el nombre base del archivo y filtra 'global'"""
+    base = nombre_archivo.split("_")[0].lower().strip()
+    # Filtrar "global" y variantes
+    if base in ["global", "global", "generico", "general"]:
+        return None
+    return base
+
+# ... (código anterior sin cambios)
+
 def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=False):
     """
     Función principal que procesa todos los datos
@@ -761,13 +776,24 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         callback_log(f"Ruta TV: {ruta_tv}")
         callback_log(f"Ruta salida: {ruta_salida}")
     
-    # Obtener listas de archivos
+    # Obtener listas de archivos FILTRANDO "global"
     try:
-        archivos_fm = {obtener_base(f): os.path.join(ruta_fm, f) for f in os.listdir(ruta_fm) if f.endswith(".csv")}
-        archivos_tv = {obtener_base(f): os.path.join(ruta_tv, f) for f in os.listdir(ruta_tv) if f.endswith(".csv")}
+        archivos_fm = {}
+        for f in os.listdir(ruta_fm):
+            if f.endswith(".csv"):
+                base = obtener_base(f)
+                if base:  # Solo agregar si base no es None (filtra "global")
+                    archivos_fm[base] = os.path.join(ruta_fm, f)
+        
+        archivos_tv = {}
+        for f in os.listdir(ruta_tv):
+            if f.endswith(".csv"):
+                base = obtener_base(f)
+                if base:  # Solo agregar si base no es None (filtra "global")
+                    archivos_tv[base] = os.path.join(ruta_tv, f)
         
         if callback_log:
-            callback_log(f"Encontrados {len(archivos_fm)} archivos FM y {len(archivos_tv)} archivos TV")
+            callback_log(f"Encontrados {len(archivos_fm)} archivos FM y {len(archivos_tv)} archivos TV (filtrados)")
     except Exception as e:
         if callback_log:
             callback_log(f"Error al leer archivos: {str(e)}")
@@ -777,7 +803,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
     emisoras_por_ciudad = config.get("emisoras_por_ciudad", {})
 
     for base, archivo in archivos_fm.items():
-        if not base or not base.strip() or base.lower() == "global":
+        if not base or not base.strip():
             continue
         base_normalizada = normalizar_nombre_ciudad(base)
         if not base_normalizada:
@@ -792,7 +818,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
                 emisoras_por_ciudad[base]["FM"].append(emisora)
 
     for base, archivo in archivos_tv.items():
-        if not base or not base.strip() or base.lower() == "global":
+        if not base or not base.strip():
             continue
         base_normalizada = normalizar_nombre_ciudad(base)
         if not base_normalizada:
@@ -821,6 +847,9 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
     
     nombres_bases = set(archivos_fm.keys()).union(archivos_tv.keys())
     
+    # Filtrar bases vacías o nulas
+    nombres_bases = {base for base in nombres_bases if base and base.strip()}
+    
     # Normalizar TODAS las bases
     ciudades_encontradas = [normalizar_nombre_ciudad(base) for base in nombres_bases]
     ciudades_encontradas = [ciudad for ciudad in ciudades_encontradas if ciudad]  # Filtrar vacíos
@@ -838,7 +867,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
             
         if callback_log:
             callback_log(f"Procesando base: {base_normalizada} (original: {base})")
-        
+
         try:
             wb = Workbook()
             ws = wb.active
