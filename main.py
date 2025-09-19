@@ -205,6 +205,30 @@ def insertar_imagenes(ws, fila_destino, tipo):
         img_right.height = 120
         ws.add_image(img_right, f"AJ{fila_destino}")
 
+
+def normalizar_nombre_ciudad(nombre):
+    """Normaliza el nombre de la ciudad para consistencia"""
+    if not nombre or not isinstance(nombre, str):
+        return ""
+    
+    nombre = nombre.lower().strip()
+    
+    # Manejar todas las variantes de "cañar"
+    if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
+        return "TAMBO"
+    
+    # Mapeo de otras ciudades si es necesario
+    mapeo_ciudades = {
+        "zamora": "ZAMORA",
+        "loja": "LOJA", 
+        "macas": "MACAS",
+        "machala": "MACHALA",
+        "cuenca": "CUENCA"
+    }
+    
+    return mapeo_ciudades.get(nombre, nombre.upper())
+
+
 # ------------------ FUNCIÓN PARA COLOREAR CELDAS ------------------
 
 def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
@@ -753,7 +777,10 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
     emisoras_por_ciudad = config.get("emisoras_por_ciudad", {})
 
     for base, archivo in archivos_fm.items():
-        if not base.strip():
+        if not base or not base.strip() or base.lower() == "global":
+            continue
+        base_normalizada = normalizar_nombre_ciudad(base)
+        if not base_normalizada:
             continue
         emisoras_fm = extraer_nombres_emisoras(archivo, "FM")
         if base not in emisoras_por_ciudad:
@@ -765,7 +792,10 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
                 emisoras_por_ciudad[base]["FM"].append(emisora)
 
     for base, archivo in archivos_tv.items():
-        if not base.strip():
+        if not base or not base.strip() or base.lower() == "global":
+            continue
+        base_normalizada = normalizar_nombre_ciudad(base)
+        if not base_normalizada:
             continue
         emisoras_tv = extraer_nombres_emisoras(archivo, "TV")
         if base not in emisoras_por_ciudad:
@@ -790,34 +820,24 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
             callback_log("Error al guardar nombres de emisoras en config.json")
     
     nombres_bases = set(archivos_fm.keys()).union(archivos_tv.keys())
-    total_bases = len(nombres_bases)
     
-    # Agregar ciudades a la lista
-    if obtener_ciudades:
-        ciudades_encontradas = list(nombres_bases)
-        # Normalizar nombres de ciudades (especialmente para "cañar")
-        ciudades_normalizadas = []
-        for ciudad in ciudades_encontradas:
-            if ciudad.lower() in ["cañar", "cañar", "canar", "caã±ar"]:
-                ciudades_normalizadas.append("TAMBO")
-            else:
-                ciudades_normalizadas.append(ciudad.upper())
-        ciudades_encontradas = ciudades_normalizadas
+    # Normalizar TODAS las bases
+    ciudades_encontradas = [normalizar_nombre_ciudad(base) for base in nombres_bases]
+    ciudades_encontradas = [ciudad for ciudad in ciudades_encontradas if ciudad]  # Filtrar vacíos
     
     if callback_log:
-        callback_log(f"Procesando {total_bases} bases de datos")
+        callback_log(f"Procesando {len(ciudades_encontradas)} bases de datos")
         if obtener_ciudades:
             callback_log(f"Ciudades encontradas: {', '.join(ciudades_encontradas)}")
     
-    # Procesar cada base
+    # Procesar cada base usando el nombre NORMALIZADO
     for i, base in enumerate(nombres_bases):
-        if callback_progreso:
-            # Calcular progreso (0-100)
-            progreso = int((i / total_bases) * 100)
-            callback_progreso(progreso)
+        base_normalizada = normalizar_nombre_ciudad(base)
+        if not base_normalizada:
+            continue
             
         if callback_log:
-            callback_log(f"Procesando base: {base}")
+            callback_log(f"Procesando base: {base_normalizada} (original: {base})")
         
         try:
             wb = Workbook()

@@ -74,6 +74,18 @@
     "MACAS": {
         "FM": 60.0,
         "TV": {
+            "tipo": "bandas",
+            "valor": 45.0,
+            "valores": {
+                "Banda I-III": 47.0,
+                "Banda III": 56.0,
+                "Banda IV-V": 64.0
+            }
+        }
+    },
+    "GLOBAL": {
+        "FM": 60.0,
+        "TV": {
             "tipo": "general",
             "valor": 45.0,
             "valores": {

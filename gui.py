@@ -50,6 +50,28 @@ DEFAULT_UMBRALES_CIUDADES = {
     }
 }
 
+def normalizar_nombre_ciudad(nombre):
+        """Normaliza el nombre de la ciudad para consistencia"""
+        if not nombre or not isinstance(nombre, str):
+            return ""
+        
+        nombre = nombre.lower().strip()
+        
+        # Manejar todas las variantes de "cañar"
+        if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
+            return "TAMBO"
+        
+        # Mapeo de otras ciudades si es necesario
+        mapeo_ciudades = {
+            "zamora": "ZAMORA",
+            "loja": "LOJA", 
+            "macas": "MACAS",
+            "machala": "MACHALA",
+            "cuenca": "CUENCA"
+        }
+    
+        return mapeo_ciudades.get(nombre, nombre.upper())
+
 # Estilos globales para mantener consistencia (sin cambios)
 GROUP_BOX_STYLE = """
     QGroupBox { 
@@ -592,8 +614,13 @@ class OcupacionTab(QWidget):
         
         # Agregar ciudades desde la configuración, filtrando nombres vacíos
         for ciudad in self.umbrales_ciudades.keys():
-            if ciudad != "global" and ciudad and ciudad.strip():  # Filtrar nombres vacíos o nulos
-                self.ciudad_combo.addItem(ciudad)
+            # NO normalizar "global" - solo las demás ciudades
+            if ciudad != "global":
+                ciudad_normalizada = normalizar_nombre_ciudad(ciudad)
+                if ciudad_normalizada and ciudad_normalizada.strip():
+                    # Verificar que no sea "global" ya normalizado
+                    if ciudad_normalizada != "GLOBAL":
+                        self.ciudad_combo.addItem(ciudad_normalizada)
         
         # Cargar configuración de la ciudad actual
         self.cargar_configuracion_ciudad()
@@ -609,14 +636,17 @@ class OcupacionTab(QWidget):
             # Buscar archivos CSV en la carpeta de salida
             archivos = [f for f in os.listdir(output_path) if f.endswith('.csv')]
             ciudades_encontradas = set()
+            ciudades_encontradas.discard("global")  # evita duplicado de 'global'
+
             
             for archivo in archivos:
                 # Extraer nombre de ciudad del archivo (ej: "Quito_FM.csv" -> "Quito")
                 nombre_base = os.path.splitext(archivo)[0]
                 if '_' in nombre_base:
-                    ciudad = nombre_base.split('_')[0]
-                    if ciudad and ciudad.strip():  # Solo agregar si no está vacío
-                        ciudades_encontradas.add(ciudad)
+                    ciudad = nombre_base.split('_')[0].strip()
+                    ciudad_normalizada = normalizar_nombre_ciudad(ciudad)  # NORMALIZAR
+                    if ciudad_normalizada:  # Solo agregar si no está vacío
+                        ciudades_encontradas.add(ciudad_normalizada)
             
             # Actualizar combo box
             self.ciudad_combo.clear()
@@ -907,6 +937,9 @@ class MainWindow(QMainWindow):
             except:
                 return DEFAULT_UMBRALES_CIUDADES.copy()
         return DEFAULT_UMBRALES_CIUDADES.copy()
+        # Agrega esta función en la sección de CONSTANTES o al inicio de la clase MainWindow
+    
+    
     
     def guardar_umbrales_ciudades(self, umbrales):
         """Guardar umbrales por ciudad en archivo"""
@@ -1106,8 +1139,19 @@ class MainWindow(QMainWindow):
     def actualizar_ciudades_desde_procesamiento(self, ciudades):
         """Actualizar la lista de ciudades en la pestaña de ocupación con las ciudades encontradas"""
         if ciudades:
-            # Actualizar el diccionario de umbrales con las nuevas ciudades
+            # NORMALIZAR nombres de ciudades
+            ciudades_normalizadas = []
             for ciudad in ciudades:
+                ciudad_normalizada = normalizar_nombre_ciudad(ciudad)
+                # Filtrar nombres vacíos y también evitar "GLOBAL" que viene del procesamiento
+                if ciudad_normalizada and ciudad_normalizada.strip() and ciudad_normalizada != "GLOBAL":
+                    ciudades_normalizadas.append(ciudad_normalizada)
+            
+            # Eliminar duplicados
+            ciudades_normalizadas = list(set(ciudades_normalizadas))
+            
+            # Actualizar el diccionario de umbrales con las nuevas ciudades NORMALIZADAS
+            for ciudad in ciudades_normalizadas:
                 if ciudad not in self.ocupacion_tab.umbrales_ciudades:
                     self.ocupacion_tab.umbrales_ciudades[ciudad] = {
                         "FM": 60.0,
@@ -1125,14 +1169,17 @@ class MainWindow(QMainWindow):
             # Guardar umbrales actualizados
             self.guardar_umbrales_ciudades(self.ocupacion_tab.umbrales_ciudades)
             
-            # Actualizar combo box en la pestaña de ocupación
+            # Actualizar combo box en la pestaña de ocupación con ciudades NORMALIZADAS
             self.ocupacion_tab.ciudad_combo.clear()
             self.ocupacion_tab.ciudad_combo.addItem("global")
-            for ciudad in sorted(self.ocupacion_tab.umbrales_ciudades.keys()):
-                if ciudad != "global":
+            
+            # Ordenar alfabéticamente y agregar ciudades (excluyendo "global")
+            ciudades_ordenadas = sorted([c for c in self.ocupacion_tab.umbrales_ciudades.keys() if c != "global"])
+            for ciudad in ciudades_ordenadas:
+                if ciudad and ciudad.strip() and ciudad != "GLOBAL":  # Filtrar nombres vacíos y "GLOBAL"
                     self.ocupacion_tab.ciudad_combo.addItem(ciudad)
             
-            self.log_message(f"Lista de ciudades actualizada desde procesamiento: {len(ciudades)} ciudades encontradas", "ocupacion")
+            self.log_message(f"Lista de ciudades actualizada desde procesamiento: {len(ciudades_normalizadas)} ciudades encontradas", "ocupacion")
     
     def stop_processing(self):
         """Detener el procesamiento"""
