@@ -26,6 +26,136 @@ UMBRAL_TV_BANDA_IV_V = 60   # para Bandas IV-V (UHF)
 # Cargar configuración desde archivo
 CONFIG_FILE = "config.json"
 
+# Agregar estas funciones al inicio del archivo, después de las importaciones
+
+def normalizar_nombre_ciudad(nombre):
+    """Normaliza el nombre de la ciudad para consistencia"""
+    if not nombre or not isinstance(nombre, str):
+        return ""
+    
+    nombre = nombre.lower().strip()
+    
+    # Manejar todas las variantes de "cañar"
+    if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
+        return "TAMBO"
+    
+    # Mapeo de otras ciudades si es necesario
+    mapeo_ciudades = {
+        "zamora": "ZAMORA",
+        "loja": "LOJA", 
+        "macas": "MACAS",
+        "machala": "MACHALA",
+        "cuenca": "CUENCA"
+    }
+
+    return mapeo_ciudades.get(nombre, nombre.upper())
+
+def guardar_advertencia_ocupacion_cero(datos_problematicos, ruta_salida):
+    """
+    Guarda las frecuencias con ocupación 0% en un archivo JSON
+    """
+    try:
+        archivo_advertencia = os.path.join(ruta_salida, "AdvertenciaOcup.json")
+        
+        # Preparar datos para JSON
+        datos_json = {
+            "fecha_generacion": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "total_frecuencias_problematicas": len(datos_problematicos.get("FM", [])) + len(datos_problematicos.get("TV", [])),
+            "frecuencias_fm": datos_problematicos.get("FM", []),
+            "frecuencias_tv": datos_problematicos.get("TV", [])
+        }
+        
+        with open(archivo_advertencia, 'w', encoding='utf-8') as f:
+            json.dump(datos_json, f, indent=4, ensure_ascii=False)
+        
+        return archivo_advertencia
+    except Exception as e:
+        print(f"Error al guardar advertencia de ocupación 0%: {e}")
+        return None
+
+def detectar_frecuencias_ocupacion_cero(ws, tipo, ciudad, resultados_estadisticas=None):
+    """
+    Detecta frecuencias con ocupación 0% que tienen nombre en el campo Estación
+    Retorna lista de frecuencias problemáticas
+    """
+    frecuencias_problematicas = []
+    
+    try:
+        # Determinar columnas según el tipo
+        if tipo == "FM":
+            col_frecuencia = 1  # Columna A
+            col_estacion = 2    # Columna B
+            col_ocupacion = 4   # Columna D
+            col_level = 5       # Columna E
+        else:  # TV
+            col_frecuencia = 1  # Columna A
+            col_estacion = 2    # Columna B
+            col_ocupacion = 5   # Columna E (para TV)
+            col_level = 6       # Columna F (para TV)
+            col_banda = 3       # Columna C (para TV)
+        
+        # Recorrer filas (empezando desde la fila 2, ya que la 1 es encabezado)
+        for fila in range(2, ws.max_row + 1):
+            try:
+                # Obtener valores de las celdas
+                frecuencia_celda = ws.cell(row=fila, column=col_frecuencia)
+                estacion_celda = ws.cell(row=fila, column=col_estacion)
+                ocupacion_celda = ws.cell(row=fila, column=col_ocupacion)
+                level_celda = ws.cell(row=fila, column=col_level)
+                
+                # Verificar que todas las celdas tengan valores
+                if (frecuencia_celda.value is None or 
+                    estacion_celda.value is None or 
+                    ocupacion_celda.value is None):
+                    continue
+                
+                # Convertir ocupación a número
+                try:
+                    ocupacion_valor = float(ocupacion_celda.value)
+                except (ValueError, TypeError):
+                    continue
+                
+                # Verificar si es frecuencia problemática: ocupación 0% y tiene nombre de estación
+                estacion_nombre = str(estacion_celda.value).strip()
+                tiene_nombre_valido = (estacion_nombre and 
+                                     estacion_nombre != "No identificada" and 
+                                     estacion_nombre != "")
+                
+                if ocupacion_valor == 0 and tiene_nombre_valido:
+                    # Obtener información adicional
+                    frecuencia_valor = frecuencia_celda.value
+                    level_valor = level_celda.value if level_celda.value is not None else "N/A"
+                    
+                    # Para TV, obtener la banda
+                    tipo_detallado = tipo
+                    if tipo == "TV":
+                        banda_celda = ws.cell(row=fila, column=col_banda)
+                        banda_valor = banda_celda.value if banda_celda.value else "Desconocida"
+                        tipo_detallado = f"TV-{banda_valor}"
+                    
+                    # Crear registro de frecuencia problemática
+                    frecuencia_problematica = {
+                        "ciudad": normalizar_nombre_ciudad(ciudad),
+                        "estacion": estacion_nombre,
+                        "tipo": tipo_detallado,
+                        "frecuencia": frecuencia_valor,
+                        "ocupacion": ocupacion_valor,
+                        "level": level_valor,
+                        "fila_excel": fila
+                    }
+                    
+                    frecuencias_problematicas.append(frecuencia_problematica)
+                    
+            except Exception as e:
+                print(f"Error procesando fila {fila} en {tipo}: {e}")
+                continue
+                
+    except Exception as e:
+        print(f"Error general detectando frecuencias con ocupación 0% en {tipo}: {e}")
+    
+    return frecuencias_problematicas
+
+
 def insertar_umbrales_excel(archivo_excel, umbrales_ciudad):
     """
     Inserta los umbrales en las posiciones específicas del archivo Excel
@@ -484,15 +614,19 @@ ruta_salida = config.get("output_path", "ReportesOcupacion")
 fecha_actual = datetime.now().strftime("%d/%m/%Y")
 
 # ------------------ FUNCIONES AUXILIARES ------------------
-def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
+def crear_tabla_ocupacion_fm(ws, datos, umbral=60, ciudad=""):
     """
     Crea la tabla de ocupación FM a partir de la columna J
+    Retorna: estadísticas y frecuencias problemáticas
     """
     # Obtener los datos de la hoja
     fila_inicio = 2
     
     # Calcular estadísticas
     total_frecuencias = len(datos)
+    
+    # Lista para frecuencias problemáticas
+    frecuencias_problematicas = []
     
     # Contar frecuencias operando mayor al umbral (OCUPACIÓN > 0%)
     frecuencias_mayor_umbral = 0
@@ -502,7 +636,7 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
             if ocupacion_celda.value > 0:  # Ocupación > 0%
                 frecuencias_mayor_umbral += 1
     
-    # Contar frecuencias con criterios corregidos
+    # Contar frecuencias con criterios corregidos y detectar problemáticas
     frecuencias_autorizadas = 0
     frecuencias_no_autorizadas = 0
     frecuencias_observacion = 0
@@ -522,6 +656,23 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
         
         # Verificar si tiene nombre en ESTACIÓN
         tiene_nombre = estacion_celda.value and estacion_celda.value != "No identificada" and estacion_celda.value != ""
+        
+        # DETECTAR FRECUENCIAS PROBLEMÁTICAS (ocupación 0% con nombre)
+        if ocupacion_valor == 0 and tiene_nombre:
+            # Obtener información adicional para el reporte
+            frecuencia_celda = ws.cell(row=fila, column=1)  # Columna A = Frecuencia
+            level_celda = ws.cell(row=fila, column=5)       # Columna E = Level
+            
+            frecuencia_problematica = {
+                "ciudad": normalizar_nombre_ciudad(ciudad),
+                "estacion": str(estacion_celda.value),
+                "tipo": "FM",
+                "frecuencia": frecuencia_celda.value if frecuencia_celda.value else "N/A",
+                "ocupacion": 0,
+                "level": level_celda.value if level_celda.value else "N/A",
+                "fila_excel": fila
+            }
+            frecuencias_problematicas.append(frecuencia_problematica)
         
         # CONTAR FRECUENCIAS LIBRES (ocupación = 0%)
         if ocupacion_valor == 0:
@@ -651,6 +802,7 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60):
         "frecuencias_no_autorizadas": frecuencias_no_autorizadas,
         "frecuencias_observacion": frecuencias_observacion,
         "frecuencias_libres": frecuencias_libres,
+        "frecuencias_problematicas": frecuencias_problematicas,  # ← NUEVO
         "porcentajes": {
             "ocupadas": porcentaje_ocupadas,
             "libres": porcentaje_libres,
@@ -676,7 +828,7 @@ def verificar_posicion_tablas(ws):
         print(f"Celda {get_column_letter(col)}{fila}: '{celda.value}'")
         
 
-def crear_tablas_ocupacion_tv(ws, datos):
+def crear_tablas_ocupacion_tv(ws, datos, ciudad=""):
     """
     Crea las tablas de ocupación TV por bandas a partir de la columna K
     """
@@ -728,7 +880,12 @@ def crear_tablas_ocupacion_tv(ws, datos):
         "Banda III (VHF)": 16,      # Segunda gráfica en fila 16  
         "Bandas IV-V (UHF)": 31     # Tercera gráfica en fila 31
     }
+
     
+    
+    resultados_bandas = {}
+    frecuencias_problematicas_tv = []  # ← NUEVO: lista para todas las frecuencias problemáticas de TV
+
     for banda, filas_banda in datos_por_banda.items():
         if not filas_banda:
             continue  # Saltar bandas sin datos
@@ -739,13 +896,15 @@ def crear_tablas_ocupacion_tv(ws, datos):
         total_frecuencias = len(filas_banda)
         
         frecuencias_mayor_umbral = 0
+        frecuencias_problematicas_banda = []  # ← NUEVO: para esta banda específica
+        
         for fila in filas_banda:
             ocupacion_celda = ws.cell(row=fila, column=5)  # Columna E = Ocupación (%) para TV
             if ocupacion_celda.value and isinstance(ocupacion_celda.value, (int, float)):
                 if ocupacion_celda.value > 0:  # Ocupación > 0%
                     frecuencias_mayor_umbral += 1
         
-        # Contar frecuencias con criterios específicos
+        # Contar frecuencias con criterios específicos y detectar problemáticas
         frecuencias_autorizadas = 0
         frecuencias_no_autorizadas = 0
         frecuencias_observacion = 0
@@ -763,12 +922,30 @@ def crear_tablas_ocupacion_tv(ws, datos):
                 except (ValueError, TypeError):
                     ocupacion_valor = 0
             
+            # DETECTAR FRECUENCIAS PROBLEMÁTICAS (ocupación 0% con nombre)
+            tiene_nombre = estacion_celda.value and estacion_celda.value != "No identificada" and estacion_celda.value != ""
+            
+            if ocupacion_valor == 0 and tiene_nombre:
+                # Obtener información adicional para el reporte
+                frecuencia_celda = ws.cell(row=fila, column=1)  # Columna A = Frecuencia
+                level_celda = ws.cell(row=fila, column=6)       # Columna F = Level
+                banda_celda = ws.cell(row=fila, column=3)       # Columna C = Banda
+                
+                frecuencia_problematica = {
+                    "ciudad": normalizar_nombre_ciudad(ciudad),
+                    "estacion": str(estacion_celda.value),
+                    "tipo": f"TV-{banda_celda.value}" if banda_celda.value else "TV-Desconocida",
+                    "frecuencia": frecuencia_celda.value if frecuencia_celda.value else "N/A",
+                    "ocupacion": 0,
+                    "level": level_celda.value if level_celda.value else "N/A",
+                    "fila_excel": fila
+                }
+                frecuencias_problematicas_banda.append(frecuencia_problematica)
+                frecuencias_problematicas_tv.append(frecuencia_problematica)
+            
             # CONTAR FRECUENCIAS LIBRES (ocupación = 0%)
             if ocupacion_valor == 0:
                 frecuencias_libres += 1
-            
-            # Verificar si tiene nombre en ESTACIÓN
-            tiene_nombre = estacion_celda.value and estacion_celda.value != "No identificada" and estacion_celda.value != ""
             
             if tiene_nombre:
                 # Tiene nombre -> Verificar si es autorizada o no autorizada
@@ -809,6 +986,7 @@ def crear_tablas_ocupacion_tv(ws, datos):
             "frecuencias_no_autorizadas": frecuencias_no_autorizadas,
             "frecuencias_observacion": frecuencias_observacion,
             "frecuencias_libres": frecuencias_libres,
+            "frecuencias_problematicas": frecuencias_problematicas_banda,  # ← NUEVO
             "porcentajes": {
                 "ocupadas": porcentaje_ocupadas,
                 "libres": porcentaje_libres,
@@ -908,7 +1086,7 @@ def crear_tablas_ocupacion_tv(ws, datos):
 
         print(f"✅ Tabla creada para {banda}: {total_frecuencias} frecuencias")
     
-    return resultados_bandas
+    return resultados_bandas, frecuencias_problematicas_tv  # ← MODIFICADO
 
 
 def buscar_emisora_por_frecuencia(ciudad, frecuencia, tipo, tolerancia=0.1):
@@ -1061,7 +1239,9 @@ def reducir_archivo_csv(ruta_archivo, tipo):
         return False
 
 def formatear_hoja_ocupacion(ws, datos, tipo, ciudad):
-    """Formatea una hoja de ocupación con bordes y estilos, incluyendo columna Estación"""
+    """Formatea una hoja de ocupación con bordes y estilos, incluyendo columna Estación
+    Retorna: frecuencias problemáticas detectadas"""
+    
     # Limpiar hoja existente
     ws.delete_rows(1, ws.max_row)
     
@@ -1153,12 +1333,18 @@ def formatear_hoja_ocupacion(ws, datos, tipo, ciudad):
         else:
             ws.column_dimensions[col_letter].width = max_length + 2
     
-    # Solo para FM, crear la tabla de ocupación
+    # MODIFICACIÓN: Ahora las funciones de creación de tablas retornan frecuencias problemáticas
+    frecuencias_problematicas = []
+    
     if tipo == "FM":
-        crear_tabla_ocupacion_fm(ws, datos)
+        resultados_fm = crear_tabla_ocupacion_fm(ws, datos, ciudad=ciudad)
+        frecuencias_problematicas = resultados_fm.get("frecuencias_problematicas", [])
+    elif tipo == "TV":
+        resultados_tv, frecuencias_problematicas_tv = crear_tablas_ocupacion_tv(ws, datos, ciudad=ciudad)
+        frecuencias_problematicas = frecuencias_problematicas_tv
 
-    if tipo == "TV":
-        crear_tablas_ocupacion_tv(ws, datos)
+    return frecuencias_problematicas
+
 
 def limpiar_valor_numerico(valor):
     """Limpia y convierte valores numéricos, manejando formatos con coma decimal"""
@@ -1597,9 +1783,18 @@ def insertar_umbrales_excel(archivo_excel, umbrales_ciudad):
 def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None):
     """
     Función principal que procesa datos de ocupación de espectro
+    Retorna: dict con información de procesamiento y frecuencias problemáticas
     """
     # Inicializar directorios
     inicializar_directorios()
+    
+    # Inicializar estructura para resultados
+    resultado = {
+        "existen_problemas": False,
+        "datos": {"FM": [], "TV": []},
+        "archivos_generados": [],
+        "error": None
+    }
     
     if callback_log:
         callback_log("Iniciando procesamiento de ocupación de espectro...")
@@ -1636,7 +1831,8 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
     except Exception as e:
         if callback_log:
             callback_log(f"Error al leer archivos: {str(e)}")
-        return False
+        resultado["error"] = f"Error al leer archivos: {str(e)}"
+        return resultado
 
     # Encontrar bases comunes entre FM y TV
     bases_comunes = set(archivos_fm.keys()).intersection(archivos_tv.keys())
@@ -1645,10 +1841,15 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
     if total_bases == 0:
         if callback_log:
             callback_log("No se encontraron bases comunes entre FM and TV")
-        return False
+        resultado["error"] = "No se encontraron bases comunes entre FM y TV"
+        return resultado
     
     if callback_log:
         callback_log(f"Procesando {total_bases} bases comunes")
+    
+    # Variables para tracking
+    archivos_generados = []
+    todas_frecuencias_problematicas = {"FM": [], "TV": []}
     
     # Procesar cada base común
     for i, base in enumerate(bases_comunes):
@@ -1691,9 +1892,15 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
             else:
                 ws_fm = wb.create_sheet("Datos FM")
 
+            # Variables para frecuencias problemáticas de esta base
+            frecuencias_problematicas_fm = []
+            frecuencias_problematicas_tv = []
+
             # Formatear hoja FM si hay datos
             if not datos_fm.empty:
-                formatear_hoja_ocupacion(ws_fm, datos_fm.drop(columns=["Mes"]), "FM", base)
+                # MODIFICACIÓN: Ahora formatear_hoja_ocupacion retorna las frecuencias problemáticas
+                frecuencias_problematicas_fm = formatear_hoja_ocupacion(ws_fm, datos_fm.drop(columns=["Mes"]), "FM", base)
+                todas_frecuencias_problematicas["FM"].extend(frecuencias_problematicas_fm)
             else:
                 if callback_log:
                     callback_log(f"⚠️  No hay datos FM para {base}")
@@ -1701,7 +1908,9 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
             # Crear hoja para TV
             ws_tv = wb.create_sheet("Datos TV")
             if not datos_tv.empty:
-                formatear_hoja_ocupacion(ws_tv, datos_tv.drop(columns=["Mes"]), "TV", base)
+                # MODIFICACIÓN: Ahora formatear_hoja_ocupacion retorna las frecuencias problemáticas
+                frecuencias_problematicas_tv = formatear_hoja_ocupacion(ws_tv, datos_tv.drop(columns=["Mes"]), "TV", base)
+                todas_frecuencias_problematicas["TV"].extend(frecuencias_problematicas_tv)
             else:
                 if callback_log:
                     callback_log(f"⚠️  No hay datos TV para {base}")
@@ -1717,16 +1926,6 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
             codigo_base = obtener_codigo_base(base)
             
             # Normalizar nombre de ciudad
-            def normalizar_nombre_ciudad(base):
-                base_normalizada = base.lower().strip()
-                if (base_normalizada == "cañar" or 
-                    base_normalizada == "cañar" or 
-                    base_normalizada == "canar" or 
-                    base_normalizada == "caÃ±ar"):
-                    return "TAMBO"
-                else:
-                    return base.upper()
-
             nombre_ciudad = normalizar_nombre_ciudad(base)
             nombre_mes_completo = obtener_nombre_mes_es(mes_referencia) if mes_referencia else "Desconocido"
             nombre_salida = f"{codigo_base}_Ocupacion{nombre_ciudad}_{nombre_mes_completo}2025.xlsx"
@@ -1765,6 +1964,14 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
                 if callback_log:
                     callback_log(f"⚠️  No se pudieron insertar umbrales en {nombre_salida}")
             
+            # Agregar a la lista de archivos generados
+            archivos_generados.append(ruta_completa)
+            
+            # Log de frecuencias problemáticas para esta base
+            total_problematicas_base = len(frecuencias_problematicas_fm) + len(frecuencias_problematicas_tv)
+            if total_problematicas_base > 0 and callback_log:
+                callback_log(f"⚠️  {base}: {total_problematicas_base} frecuencias con ocupación 0%")
+            
             if callback_log:
                 callback_log(f"✅ Archivo generado: {nombre_salida}")
                 
@@ -1774,13 +1981,33 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
             import traceback
             traceback.print_exc()
     
+    # VERIFICAR SI HAY FRECUENCIAS PROBLEMÁTICAS EN TOTAL
+    total_problematicas = len(todas_frecuencias_problematicas["FM"]) + len(todas_frecuencias_problematicas["TV"])
+    
+    if total_problematicas > 0:
+        resultado["existen_problemas"] = True
+        resultado["datos"] = todas_frecuencias_problematicas
+        
+        # Guardar advertencia en JSON
+        archivo_advertencia = guardar_advertencia_ocupacion_cero(todas_frecuencias_problematicas, ruta_salida)
+        if archivo_advertencia:
+            if callback_log:
+                callback_log(f"📄 Archivo de advertencia generado: {os.path.basename(archivo_advertencia)}")
+            # Agregar también el archivo de advertencia a la lista
+            archivos_generados.append(archivo_advertencia)
+    
+    resultado["archivos_generados"] = archivos_generados
+    
     if callback_progreso:
         callback_progreso(100)
         
     if callback_log:
-        callback_log("Procesamiento de ocupación completado")
+        if resultado["existen_problemas"]:
+            callback_log(f"✅ Procesamiento completado con {total_problematicas} frecuencias problemáticas")
+        else:
+            callback_log("✅ Procesamiento completado sin frecuencias problemáticas")
     
-    return True
+    return resultado
 
 # ------------------ EJECUCIÓN DIRECTA (para testing) ------------------
 

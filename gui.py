@@ -12,7 +12,8 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QPushButton, QLabel, QTextEdit, 
                              QFileDialog, QProgressBar, QMessageBox, QGroupBox,
                              QTabWidget, QFrame, QComboBox, QLineEdit, QGridLayout,
-                             QScrollArea, QSizePolicy)
+                             QScrollArea, QSizePolicy, QDialog, QTableWidget, 
+                             QTableWidgetItem, QHeaderView, QDialogButtonBox)  # Agregar QDialog, QTableWidget, etc.
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QDoubleValidator
 
@@ -177,13 +178,90 @@ PATH_LABEL_STYLE = """
     border-radius: 3px;
 """
 
+class AdvertenciaOcupacionCeroDialog(QDialog):
+    def __init__(self, frecuencias_cero, parent=None):
+        super().__init__(parent)
+        self.frecuencias_cero = frecuencias_cero
+        self.setWindowTitle("Advertencia - Frecuencias con Ocupación 0%")
+        self.setModal(True)
+        self.setMinimumSize(800, 500)
+        self.initUI()
+        
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        
+        # Mensaje de advertencia
+        mensaje_label = QLabel(
+            "Se han detectado frecuencias autorizadas o no autorizadas con ocupación = 0%.\nSe recomienda reconsiderar el umbral.\n"
+            "Los archivos Excel generados. ¿Qué desea hacer?"
+        )
+        mensaje_label.setStyleSheet("font-weight: bold; color: #d32f2f; font-size: 12pt;")
+        mensaje_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(mensaje_label)
+        
+        # Información adicional
+        info_label = QLabel(
+            "• FINALIZAR: Mantener los archivos generados y terminar el proceso\n"
+            "• CANCELAR: Eliminar todos los archivos generados y cancelar el proceso"
+        )
+        info_label.setStyleSheet("color: #666; font-size: 10pt; margin: 10px;")
+        layout.addWidget(info_label)
+        
+        # Tabla de frecuencias con ocupación 0%
+        if self.frecuencias_cero:
+            tabla_label = QLabel("Frecuencias detectadas con ocupación 0%:")
+            tabla_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+            layout.addWidget(tabla_label)
+            
+            self.tabla = QTableWidget()
+            self.tabla.setColumnCount(6)
+            self.tabla.setHorizontalHeaderLabels([
+                "CIUDAD/PROVINCIA", "ESTACIÓN", "TIPO", "Frecuencia (MHz)", 
+                "Ocupación (%)", "Level (dBµV/m)"
+            ])
+            
+            # Configurar tabla
+            self.tabla.setRowCount(len(self.frecuencias_cero))
+            header = self.tabla.horizontalHeader()
+            header.setSectionResizeMode(QHeaderView.ResizeToContents)
+            header.setStretchLastSection(True)
+            
+            # Llenar tabla con datos
+            for row, frecuencia in enumerate(self.frecuencias_cero):
+                self.tabla.setItem(row, 0, QTableWidgetItem(frecuencia.get('ciudad', '')))
+                self.tabla.setItem(row, 1, QTableWidgetItem(frecuencia.get('estacion', '')))
+                self.tabla.setItem(row, 2, QTableWidgetItem(frecuencia.get('tipo', '')))
+                self.tabla.setItem(row, 3, QTableWidgetItem(str(frecuencia.get('frecuencia', ''))))
+                self.tabla.setItem(row, 4, QTableWidgetItem(str(frecuencia.get('ocupacion', ''))))
+                self.tabla.setItem(row, 5, QTableWidgetItem(str(frecuencia.get('level', ''))))
+            
+            layout.addWidget(self.tabla)
+        
+        # Botones
+        botones_layout = QHBoxLayout()
+        
+        self.btn_continuar = QPushButton("Finalizar Procesamiento")
+        self.btn_continuar.setStyleSheet(BUTTON_STYLE)
+        self.btn_continuar.clicked.connect(self.accept)
+        self.btn_continuar.setToolTip("Mantener los archivos generados y terminar el proceso")
+        
+        self.btn_cancelar = QPushButton("Cancelar y Eliminar Archivos")
+        self.btn_cancelar.setStyleSheet(STOP_BUTTON_STYLE)
+        self.btn_cancelar.clicked.connect(self.reject)
+        self.btn_cancelar.setToolTip("Eliminar todos los archivos generados y cancelar el proceso")
+        
+        botones_layout.addWidget(self.btn_continuar)
+        botones_layout.addWidget(self.btn_cancelar)
+        
+        layout.addLayout(botones_layout)
+
 # Modificar la clase WorkerThread para que reciba la referencia de la ventana principal
 class WorkerThread(QThread):
     """Hilo para ejecutar el procesamiento en segundo plano"""
     progress_signal = pyqtSignal(int)
     log_signal = pyqtSignal(str)
-    finished_signal = pyqtSignal(bool)
-    ciudades_signal = pyqtSignal(list)  # Nueva señal para enviar lista de ciudades
+    finished_signal = pyqtSignal(object)  # Cambiar a object para recibir diferentes tipos de datos
+    ciudades_signal = pyqtSignal(list)
     
     def __init__(self, fm_path, tv_path, output_path, mode="procesamiento", parent_window=None):
         super().__init__()
@@ -191,8 +269,8 @@ class WorkerThread(QThread):
         self.fm_path = fm_path
         self.tv_path = tv_path
         self.output_path = output_path
-        self.mode = mode  # "procesamiento" o "ocupacion"
-        self.parent_window = parent_window  # Guardar referencia a la ventana principal
+        self.mode = mode
+        self.parent_window = parent_window
         
     def run(self):
         try:
@@ -200,61 +278,65 @@ class WorkerThread(QThread):
                 # Importar y configurar el módulo principal de procesamiento
                 import main
                 
-                # Ejecutar el procesamiento principal
                 self.log_signal.emit("Iniciando procesamiento...")
                 
-                # Configurar rutas en el módulo main
+                # Configurar rutas
                 main.ruta_fm = self.fm_path
                 main.ruta_tv = self.tv_path
                 main.ruta_salida = self.output_path
                 
-                # Llamar a la función principal con nuestros callbacks
+                # Llamar a la función principal
                 resultado, ciudades = main.procesar_datos(
                     callback_progreso=self.progress_signal.emit,
                     callback_log=self.log_signal.emit,
-                    obtener_ciudades=True  # Nueva bandera para obtener ciudades
+                    obtener_ciudades=True
                 )
                 
-                # Emitir la lista de ciudades encontradas
+                # Emitir ciudades encontradas
                 if ciudades:
                     self.ciudades_signal.emit(ciudades)
                 
-            else:
+                # Para procesamiento, emitir booleano
+                self.finished_signal.emit(resultado)
+                
+            else:  # modo == "ocupacion"
                 # Importar y configurar el módulo principal de ocupación
                 import main2
                 
-                # Ejecutar el procesamiento de ocupación
                 self.log_signal.emit("Iniciando análisis de ocupación...")
                 
-                # Configurar rutas en el módulo main2
+                # Configurar rutas
                 main2.ruta_fm = self.fm_path
                 main2.ruta_tv = self.tv_path
                 main2.ruta_salida = self.output_path
                 
-                # Obtener umbrales de la interfaz - usar la referencia guardada
+                # Obtener umbrales de la interfaz
                 if self.parent_window and hasattr(self.parent_window, 'ocupacion_tab'):
                     umbrales = self.parent_window.ocupacion_tab.obtener_umbrales_todos()
                 else:
-                    # Fallback: usar umbrales por defecto
-                    umbrales = {
-                        
-                    }
+                    umbrales = {}
                     self.log_signal.emit("⚠️  Usando umbrales por defecto")
                 
-                # Llamar a la función de ocupación con nuestros callbacks
+                # Llamar a la función de ocupación
                 resultado = main2.procesar_ocupacion(
                     callback_progreso=self.progress_signal.emit,
                     callback_log=self.log_signal.emit,
-                    umbrales=umbrales  # Pasar umbrales por ciudad
+                    umbrales=umbrales
                 )
                 
-            self.finished_signal.emit(resultado)
+                # Para ocupación, emitir el diccionario completo
+                self.finished_signal.emit(resultado)
             
         except Exception as e:
             self.log_signal.emit(f"Error: {str(e)}")
             import traceback
             self.log_signal.emit(f"Traceback: {traceback.format_exc()}")
-            self.finished_signal.emit(False)
+            
+            # Emitir resultado de error según el modo
+            if self.mode == "procesamiento":
+                self.finished_signal.emit(False)
+            else:
+                self.finished_signal.emit({"existen_problemas": False, "error": str(e)})
     
     def stop(self):
         self.running = False
@@ -1230,22 +1312,109 @@ class MainWindow(QMainWindow):
                 self.ocupacion_tab.stop_btn.setEnabled(False)
                 self.ocupacion_tab.status_label.setText("Procesamiento detenido")
     
-    def processing_finished(self, success, mode):
-        """Manejar la finalización del procesamiento"""
+    def processing_finished(self, resultado, mode):
+        """Manejar la finalización del procesamiento - MODIFICADA"""
         if mode == "procesamiento":
             tab = self.procesamiento_tab
-        else:
+            # Manejo normal para procesamiento (resultado es booleano)
+            tab.start_btn.setEnabled(True)
+            tab.stop_btn.setEnabled(False)
+            
+            if resultado:
+                tab.status_label.setText("Procesamiento completado con éxito")
+                self.log_message("Procesamiento completado exitosamente", mode)
+            else:
+                tab.status_label.setText("Procesamiento falló")
+                self.log_message("Procesamiento falló", mode)
+        
+        else:  # modo == "ocupacion"
             tab = self.ocupacion_tab
+            tab.start_btn.setEnabled(True)
+            tab.stop_btn.setEnabled(False)
+            
+            # resultado ahora es un diccionario
+            if isinstance(resultado, dict):
+                if resultado.get("error"):
+                    # Error en el procesamiento
+                    tab.status_label.setText("Procesamiento falló")
+                    error_msg = resultado.get("error", "Error desconocido")
+                    self.log_message(f"Procesamiento falló: {error_msg}", mode)
+                
+                elif resultado.get("existen_problemas", False):
+                    # Hay frecuencias problemáticas
+                    tab.status_label.setText("Procesamiento completado - Verificar advertencias")
+                    self.log_message("Procesamiento completado con frecuencias problemáticas", mode)
+                    
+                    # Mostrar advertencia
+                    self.mostrar_advertencia_ocupacion_cero(resultado)
+                else:
+                    # Procesamiento exitoso sin problemas
+                    tab.status_label.setText("Procesamiento completado con éxito")
+                    self.log_message("Procesamiento completado exitosamente", mode)
+            else:
+                # Fallback para compatibilidad
+                tab.status_label.setText("Procesamiento completado")
+                self.log_message("Procesamiento completado", mode)
+    def mostrar_advertencia_ocupacion_cero(self, resultado):
+        """Mostrar diálogo de advertencia para frecuencias con ocupación 0%"""
+        datos_problematicos = resultado.get("datos", {})
+        archivos_generados = resultado.get("archivos_generados", [])
         
-        tab.start_btn.setEnabled(True)
-        tab.stop_btn.setEnabled(False)
+        # Preparar datos para el diálogo
+        todas_frecuencias = []
+        for tipo in ["FM", "TV"]:
+            todas_frecuencias.extend(datos_problematicos.get(tipo, []))
         
-        if success:
-            tab.status_label.setText("Procesamiento completado con éxito")
-            self.log_message("Procesamiento completado exitosamente", mode)
+        if not todas_frecuencias:
+            return
+        
+        # Crear y mostrar diálogo
+        dialog = AdvertenciaOcupacionCeroDialog(todas_frecuencias, self)
+        resultado_dialogo = dialog.exec_()
+        
+        if resultado_dialogo == QDialog.Accepted:
+            # Usuario eligió FINALIZAR
+            self.log_message("Usuario decidió finalizar el procesamiento. Archivos guardados.", "ocupacion")
+            QMessageBox.information(self, "Procesamiento Completado", 
+                                "El procesamiento se ha completado. Los archivos se han guardado correctamente.")
         else:
-            tab.status_label.setText("Procesamiento falló")
-            self.log_message("Procesamiento falló", mode)
+            # Usuario eligió CANCELAR - eliminar archivos
+            self.log_message("Usuario canceló el procesamiento. Eliminando archivos generados...", "ocupacion")
+            archivos_eliminados = self.eliminar_archivos_generados(archivos_generados)
+            
+            if archivos_eliminados:
+                self.log_message(f"Se eliminaron {archivos_eliminados} archivos generados", "ocupacion")
+                QMessageBox.information(self, "Procesamiento Cancelado", 
+                                    f"Se eliminaron {archivos_eliminados} archivos generados.")
+            else:
+                self.log_message("No se pudieron eliminar algunos archivos", "ocupacion")
+                QMessageBox.warning(self, "Advertencia", 
+                                "El procesamiento fue cancelado, pero algunos archivos no pudieron ser eliminados.")
+    
+    def eliminar_archivos_generados(self, archivos_generados):
+        """Eliminar archivos generados durante el procesamiento"""
+        eliminados_exitosos = 0
+        
+        for archivo in archivos_generados:
+            try:
+                if os.path.exists(archivo):
+                    os.remove(archivo)
+                    eliminados_exitosos += 1
+                    self.log_message(f"Eliminado: {os.path.basename(archivo)}", "ocupacion")
+            except Exception as e:
+                self.log_message(f"Error eliminando {archivo}: {str(e)}", "ocupacion")
+        
+        # También intentar eliminar el archivo JSON de verificación
+        json_files = ["AdvertenciaOcup.json", "VerificacionOcup.json"]
+        for json_file in json_files:
+            try:
+                if os.path.exists(json_file):
+                    os.remove(json_file)
+                    self.log_message(f"Archivo {json_file} eliminado", "ocupacion")
+            except Exception as e:
+                self.log_message(f"Error eliminando {json_file}: {str(e)}", "ocupacion")
+        
+        return eliminados_exitosos
     
     def log_message(self, message, mode):
         """Agregar mensaje al log de la pestaña correspondiente"""
