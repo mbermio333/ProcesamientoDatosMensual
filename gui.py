@@ -434,19 +434,18 @@ class ObservacionTab(QWidget):
             error_msg = f"❌ Error al cargar datos: {str(e)}"
             self.log_text.append(error_msg)
             self.info_label.setText(error_msg)
-    
+ 
     def actualizar_tabla_fm(self, datos_fm):
-        """Actualizar la tabla de frecuencias FM"""
+        """Actualizar la tabla de frecuencias FM - Solo columnas deseadas"""
         if not datos_fm:
             self.tabla_fm.setRowCount(0)
             self.tabla_fm.setColumnCount(1)
-            self.tabla_fm.setHorizontalHeaderLabels(["No hay datos"])
+            self.tabla_fm.setHorizontalHeaderLabels(["No hay frecuencias FM en observación"])
             return
         
-        # Definir columnas para FM
+        # Definir SOLO las columnas deseadas para FM (sin Bandwidth, Offset, FM, Tipo)
         columnas = [
-            'Frecuencia (MHz)', 'Estación', 'Ocupación (%)', 'Level (dBµV/m)',
-            'Bandwidth (Hz)', 'Offset (Hz)', 'FM (kHz)', 'Tipo'
+            'Frecuencia (MHz)', 'Estación', 'Ocupación (%)', 'Level (dBµV/m)'
         ]
         
         self.tabla_fm.setRowCount(len(datos_fm))
@@ -456,26 +455,58 @@ class ObservacionTab(QWidget):
         for fila, dato in enumerate(datos_fm):
             for col, columna in enumerate(columnas):
                 valor = dato.get(columna, '')
+                # Formatear valores numéricos
+                if columna == 'Frecuencia (MHz)' and valor != '':
+                    try:
+                        valor = f"{float(valor):.2f}"
+                    except:
+                        pass
+                elif columna == 'Ocupación (%)' and valor != '':
+                    try:
+                        valor = f"{float(valor):.1f}%"
+                    except:
+                        pass
+                elif columna == 'Level (dBµV/m)' and valor != '':
+                    try:
+                        valor = f"{float(valor):.1f}"
+                    except:
+                        pass
+                
                 item = QTableWidgetItem(str(valor))
+                # Alinear números a la derecha
+                if columna in ['Frecuencia (MHz)', 'Ocupación (%)', 'Level (dBµV/m)']:
+                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.tabla_fm.setItem(fila, col, item)
         
         # Ajustar el tamaño de las columnas
         header = self.tabla_fm.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
         header.setStretchLastSection(True)
+        
+        # Resaltar filas con ocupación > 0
+        for fila in range(len(datos_fm)):
+            for col in range(len(columnas)):
+                if columnas[col] == 'Ocupación (%)':
+                    item = self.tabla_fm.item(fila, col)
+                    if item and '%' in item.text():
+                        try:
+                            ocupacion = float(item.text().replace('%', ''))
+                            if ocupacion > 0:
+                                item.setBackground(Qt.yellow)
+                        except:
+                            pass
     
     def actualizar_tabla_tv(self, datos_tv):
-        """Actualizar la tabla de frecuencias TV"""
+        """Actualizar la tabla de frecuencias TV - Solo columnas deseadas"""
         if not datos_tv:
             self.tabla_tv.setRowCount(0)
             self.tabla_tv.setColumnCount(1)
-            self.tabla_tv.setHorizontalHeaderLabels(["No hay datos"])
+            self.tabla_tv.setHorizontalHeaderLabels(["No hay frecuencias TV en observación"])
             return
         
-        # Definir columnas para TV
+        # Definir SOLO las columnas deseadas para TV (sin Bandwidth, Offset, AM, Tipo)
         columnas = [
-            'Frecuencia (MHz)', 'Estación', 'Banda', 'Canal', 'Ocupación (%)',
-            'Level (dBµV/m)', 'Bandwidth (Hz)', 'Offset (Hz)', 'AM (%)', 'Tipo'
+            'Frecuencia (MHz)', 'Estación', 'Banda', 'Canal', 'Ocupación (%)', 'Level (dBµV/m)'
         ]
         
         self.tabla_tv.setRowCount(len(datos_tv))
@@ -485,13 +516,47 @@ class ObservacionTab(QWidget):
         for fila, dato in enumerate(datos_tv):
             for col, columna in enumerate(columnas):
                 valor = dato.get(columna, '')
+                # Formatear valores numéricos
+                if columna == 'Frecuencia (MHz)' and valor != '':
+                    try:
+                        valor = f"{float(valor):.2f}"
+                    except:
+                        pass
+                elif columna == 'Ocupación (%)' and valor != '':
+                    try:
+                        valor = f"{float(valor):.1f}%"
+                    except:
+                        pass
+                elif columna == 'Level (dBµV/m)' and valor != '':
+                    try:
+                        valor = f"{float(valor):.1f}"
+                    except:
+                        pass
+                
                 item = QTableWidgetItem(str(valor))
+                # Alinear números a la derecha
+                if columna in ['Frecuencia (MHz)', 'Ocupación (%)', 'Level (dBµV/m)']:
+                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.tabla_tv.setItem(fila, col, item)
         
         # Ajustar el tamaño de las columnas
         header = self.tabla_tv.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
         header.setStretchLastSection(True)
+        
+        # Resaltar filas con ocupación > 0
+        for fila in range(len(datos_tv)):
+            for col in range(len(columnas)):
+                if columnas[col] == 'Ocupación (%)':
+                    item = self.tabla_tv.item(fila, col)
+                    if item and '%' in item.text():
+                        try:
+                            ocupacion = float(item.text().replace('%', ''))
+                            if ocupacion > 0:
+                                item.setBackground(Qt.yellow)
+                        except:
+                            pass
+
 
 # Modificar la clase WorkerThread para que reciba la referencia de la ventana principal
 class WorkerThread(QThread):

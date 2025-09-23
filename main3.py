@@ -9,6 +9,7 @@ def obtener_frecuencias_observacion(ruta_archivo_excel, ciudad):
     """
     Obtiene las frecuencias en observación (con "No identificada" en la columna Estación)
     tanto para FM como para TV de un archivo Excel generado en la pestaña de ocupación
+    Filtra solo las filas con ocupación diferente a 0
     """
     try:
         # Verificar si el archivo existe
@@ -23,20 +24,22 @@ def obtener_frecuencias_observacion(ruta_archivo_excel, ciudad):
         try:
             df_fm = pd.read_excel(ruta_archivo_excel, sheet_name='Datos FM')
             
-            # Buscar filas con "No identificada" en la columna Estación
-            if 'Estación' in df_fm.columns:
-                filas_no_identificadas = df_fm[df_fm['Estación'].str.contains('No identificada', na=False, case=False)]
+            # Buscar filas con "No identificada" en la columna Estación Y ocupación diferente a 0
+            if 'Estación' in df_fm.columns and 'Ocupación (%)' in df_fm.columns:
+                # Filtrar por "No identificada" y ocupación ≠ 0
+                filtro = (df_fm['Estación'].str.contains('No identificada', na=False, case=False) & 
+                         (df_fm['Ocupación (%)'] != 0) & 
+                         (df_fm['Ocupación (%)'].notna()))
+                
+                filas_no_identificadas = df_fm[filtro]
                 
                 for _, fila in filas_no_identificadas.iterrows():
                     datos_fm.append({
                         'Frecuencia (MHz)': fila.get('Frecuencia (MHz)', ''),
                         'Estación': fila.get('Estación', ''),
                         'Ocupación (%)': fila.get('Ocupación (%)', ''),
-                        'Level (dBµV/m)': fila.get('Level (dBµV/m)', ''),
-                        'Bandwidth (Hz)': fila.get('Bandwidth (Hz)', ''),
-                        'Offset (Hz)': fila.get('Offset (Hz)', ''),
-                        'FM (kHz)': fila.get('FM (kHz)', ''),
-                        'Tipo': 'FM'
+                        'Level (dBµV/m)': fila.get('Level (dBµV/m)', '')
+                        # Eliminadas las columnas no deseadas: Bandwidth, Offset, FM, Tipo
                     })
         except Exception as e:
             print(f"Error procesando hoja FM: {e}")
@@ -45,9 +48,13 @@ def obtener_frecuencias_observacion(ruta_archivo_excel, ciudad):
         try:
             df_tv = pd.read_excel(ruta_archivo_excel, sheet_name='Datos TV')
             
-            # Buscar filas con "No identificada" en la columna Estación
-            if 'Estación' in df_tv.columns:
-                filas_no_identificadas = df_tv[df_tv['Estación'].str.contains('No identificada', na=False, case=False)]
+            # Buscar filas con "No identificada" en la columna Estación Y ocupación diferente a 0
+            if 'Estación' in df_tv.columns and 'Ocupación (%)' in df_tv.columns:
+                # Filtrar por "No identificada" y ocupación ≠ 0
+                filtro = (df_tv['Estación'].str.contains('No identificada', na=False, case=False) & 
+                         (df_tv['Ocupación (%)'] != 0) & 
+                         (df_tv['Ocupación (%)'].notna()))
+                filas_no_identificadas = df_tv[filtro]
                 
                 for _, fila in filas_no_identificadas.iterrows():
                     datos_tv.append({
@@ -56,11 +63,8 @@ def obtener_frecuencias_observacion(ruta_archivo_excel, ciudad):
                         'Banda': fila.get('Banda', ''),
                         'Canal': fila.get('Canal', ''),
                         'Ocupación (%)': fila.get('Ocupación (%)', ''),
-                        'Level (dBµV/m)': fila.get('Level (dBµV/m)', ''),
-                        'Bandwidth (Hz)': fila.get('Bandwidth (Hz)', ''),
-                        'Offset (Hz)': fila.get('Offset (Hz)', ''),
-                        'AM (%)': fila.get('AM (%)', ''),
-                        'Tipo': 'TV'
+                        'Level (dBµV/m)': fila.get('Level (dBµV/m)', '')
+                        # Eliminadas las columnas no deseadas: Bandwidth, Offset, AM, Tipo
                     })
         except Exception as e:
             print(f"Error procesando hoja TV: {e}")
@@ -75,6 +79,31 @@ def obtener_frecuencias_observacion(ruta_archivo_excel, ciudad):
         
     except Exception as e:
         return {"FM": [], "TV": [], "error": f"Error general: {str(e)}"}
+
+def limpiar_valor_numerico(valor):
+    """Limpia y convierte valores numéricos, manejando diferentes formatos"""
+    if pd.isna(valor) or valor is None:
+        return 0
+    
+    # Convertir a string y limpiar
+    str_valor = str(valor).strip()
+    
+    # Manejar valores inválidos
+    if str_valor == '-1e+040' or 'nan' in str_valor.lower():
+        return 0
+    
+    # Reemplazar coma por punto para decimales
+    str_valor = str_valor.replace(',', '.')
+    
+    # Eliminar espacios y caracteres no numéricos (excepto punto y signo negativo)
+    str_valor = ''.join(c for c in str_valor if c.isdigit() or c in ['.', '-'])
+    
+    try:
+        return float(str_valor)
+    except ValueError:
+        return 0
+
+
 
 def buscar_archivos_ocupacion_ciudad(ruta_salida_ocupacion, ciudad):
     """
