@@ -10,3 +10,8 @@ ReportesUnificados/zamora_ReporteUnificado.xlsx
 ReportesSeparados/.DS_Store
 ReportesUnificados/.DS_Store
 /ReportesOcupacion
+__pycache__/main2.cpython-313.pyc
+__pycache__/main2.cpython-313.pyc
+__pycache__/main3.cpython-313.pyc
+config_ocupacion.json
+config_procesamiento.json

@@ -255,6 +255,244 @@ class AdvertenciaOcupacionCeroDialog(QDialog):
         
         layout.addLayout(botones_layout)
 
+
+class ObservacionTab(QWidget):
+    """Pestaña de frecuencias en observación"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.umbrales_ciudades = self.parent.load_umbrales_ciudades()
+        self.datos_actuales = {"FM": [], "TV": []}
+        self.initUI()
+    
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        
+        # Título de la pestaña
+        titulo_label = QLabel("Frecuencias en Observación")
+        titulo_label.setStyleSheet("font-size: 16pt; font-weight: bold; color: #2c3e50; margin: 10px;")
+        titulo_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(titulo_label)
+        
+        # Grupo de selección de ciudad
+        ciudad_group = QGroupBox("Selección de Ciudad")
+        ciudad_group.setStyleSheet(GROUP_BOX_STYLE)
+        ciudad_layout = QVBoxLayout()
+        
+        # Layout horizontal para la selección de ciudad
+        seleccion_layout = QHBoxLayout()
+        
+        ciudad_label = QLabel("Ciudad:")
+        ciudad_label.setMinimumWidth(60)
+        ciudad_label.setStyleSheet("font-weight: bold;")
+        
+        self.ciudad_combo = QComboBox()
+        self.ciudad_combo.setMaximumWidth(250)
+        self.ciudad_combo.setStyleSheet("padding: 5px; font-size: 10pt;")
+        self.ciudad_combo.currentTextChanged.connect(self.cargar_frecuencias_ciudad)
+        
+        self.btn_actualizar = QPushButton("Actualizar")
+        self.btn_actualizar.setStyleSheet(CHANGE_BUTTON_STYLE)
+        self.btn_actualizar.clicked.connect(self.actualizar_datos)
+        
+        seleccion_layout.addWidget(ciudad_label)
+        seleccion_layout.addWidget(self.ciudad_combo)
+        seleccion_layout.addWidget(self.btn_actualizar)
+        seleccion_layout.addStretch(1)
+        
+        ciudad_layout.addLayout(seleccion_layout)
+        ciudad_group.setLayout(ciudad_layout)
+        layout.addWidget(ciudad_group)
+        
+        # Información de resultados
+        self.info_label = QLabel("Seleccione una ciudad para ver las frecuencias en observación")
+        self.info_label.setAlignment(Qt.AlignCenter)
+        self.info_label.setStyleSheet("color: #666; font-size: 11pt; padding: 10px; background-color: #f8f8f8; border-radius: 4px;")
+        layout.addWidget(self.info_label)
+        
+        # Crear pestañas para FM y TV
+        self.tabs_datos = QTabWidget()
+        self.tabs_datos.setStyleSheet("""
+            QTabWidget::pane { border: 1px solid #cccccc; }
+            QTabBar::tab { 
+                background: #f0f0f0; 
+                padding: 6px 10px; 
+                border: 1px solid #cccccc; 
+                border-bottom: none; 
+                border-top-left-radius: 4px; 
+                border-top-right-radius: 4px;
+            }
+            QTabBar::tab:selected { 
+                background: #ffffff; 
+                font-weight: bold;
+            }
+        """)
+        
+        # Pestaña FM
+        self.tab_fm = QWidget()
+        layout_fm = QVBoxLayout(self.tab_fm)
+        self.tabla_fm = QTableWidget()
+        layout_fm.addWidget(self.tabla_fm)
+        self.tabs_datos.addTab(self.tab_fm, "Frecuencias FM")
+        
+        # Pestaña TV
+        self.tab_tv = QWidget()
+        layout_tv = QVBoxLayout(self.tab_tv)
+        self.tabla_tv = QTableWidget()
+        layout_tv.addWidget(self.tabla_tv)
+        self.tabs_datos.addTab(self.tab_tv, "Frecuencias TV")
+        
+        layout.addWidget(self.tabs_datos)
+        
+        # Área de log
+        log_group = QGroupBox("Log de Actividad")
+        log_group.setStyleSheet(GROUP_BOX_STYLE)
+        log_layout = QVBoxLayout()
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setStyleSheet(LOG_TEXT_STYLE)
+        self.log_text.setMaximumHeight(150)
+        log_layout.addWidget(self.log_text)
+        log_group.setLayout(log_layout)
+        layout.addWidget(log_group)
+        
+        # Cargar las ciudades al inicializar
+        self.cargar_ciudades()
+    
+    def cargar_ciudades(self):
+        """Cargar la lista de ciudades desde la configuración"""
+        self.ciudad_combo.clear()
+        
+        # Agregar ciudades desde la configuración, filtrando nombres vacíos y "global"
+        for ciudad in self.umbrales_ciudades.keys():
+            if ciudad != "global":  # Excluir "global"
+                ciudad_normalizada = normalizar_nombre_ciudad(ciudad)
+                if ciudad_normalizada and ciudad_normalizada.strip():
+                    self.ciudad_combo.addItem(ciudad_normalizada)
+        
+        # Si no hay ciudades, agregar un mensaje
+        if self.ciudad_combo.count() == 0:
+            self.ciudad_combo.addItem("No hay ciudades configuradas")
+    
+    def actualizar_datos(self):
+        """Actualizar los datos para la ciudad seleccionada"""
+        ciudad_actual = self.ciudad_combo.currentText()
+        if ciudad_actual and ciudad_actual != "No hay ciudades configuradas":
+            self.cargar_frecuencias_ciudad(ciudad_actual)
+    
+    def cargar_frecuencias_ciudad(self, ciudad):
+        """Cargar las frecuencias en observación para la ciudad seleccionada"""
+        if not ciudad or ciudad == "No hay ciudades configuradas":
+            return
+        
+        self.log_text.append(f"🔍 Buscando frecuencias en observación para: {ciudad}")
+        
+        try:
+            # Importar el módulo main3
+            import main3
+            
+            # Obtener la ruta de salida de ocupación
+            ruta_salida_ocupacion = self.parent.ocupacion_tab.output_path_label_ocup.toolTip()
+            
+            if not os.path.exists(ruta_salida_ocupacion):
+                self.log_text.append(f"❌ La ruta de salida no existe: {ruta_salida_ocupacion}")
+                return
+            
+            # Llamar a la función de main3
+            resultado = main3.procesar_frecuencias_observacion(
+                ruta_salida_ocupacion, 
+                ciudad,
+                callback_log=self.log_text.append
+            )
+            
+            if resultado.get('error'):
+                self.log_text.append(f"❌ Error: {resultado['error']}")
+                self.info_label.setText(f"Error: {resultado['error']}")
+                return
+            
+            # Guardar datos actuales
+            self.datos_actuales = resultado
+            
+            # Actualizar la información
+            total_fm = resultado.get('total_fm', 0)
+            total_tv = resultado.get('total_tv', 0)
+            archivo = resultado.get('archivo_utilizado', 'N/A')
+            
+            self.info_label.setText(
+                f"📊 Encontradas {total_fm} frecuencias FM y {total_tv} frecuencias TV en observación\n"
+                f"📁 Archivo: {archivo}"
+            )
+            
+            # Actualizar tablas
+            self.actualizar_tabla_fm(resultado.get('FM', []))
+            self.actualizar_tabla_tv(resultado.get('TV', []))
+            
+            self.log_text.append("✅ Datos cargados correctamente")
+            
+        except Exception as e:
+            error_msg = f"❌ Error al cargar datos: {str(e)}"
+            self.log_text.append(error_msg)
+            self.info_label.setText(error_msg)
+    
+    def actualizar_tabla_fm(self, datos_fm):
+        """Actualizar la tabla de frecuencias FM"""
+        if not datos_fm:
+            self.tabla_fm.setRowCount(0)
+            self.tabla_fm.setColumnCount(1)
+            self.tabla_fm.setHorizontalHeaderLabels(["No hay datos"])
+            return
+        
+        # Definir columnas para FM
+        columnas = [
+            'Frecuencia (MHz)', 'Estación', 'Ocupación (%)', 'Level (dBµV/m)',
+            'Bandwidth (Hz)', 'Offset (Hz)', 'FM (kHz)', 'Tipo'
+        ]
+        
+        self.tabla_fm.setRowCount(len(datos_fm))
+        self.tabla_fm.setColumnCount(len(columnas))
+        self.tabla_fm.setHorizontalHeaderLabels(columnas)
+        
+        for fila, dato in enumerate(datos_fm):
+            for col, columna in enumerate(columnas):
+                valor = dato.get(columna, '')
+                item = QTableWidgetItem(str(valor))
+                self.tabla_fm.setItem(fila, col, item)
+        
+        # Ajustar el tamaño de las columnas
+        header = self.tabla_fm.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        header.setStretchLastSection(True)
+    
+    def actualizar_tabla_tv(self, datos_tv):
+        """Actualizar la tabla de frecuencias TV"""
+        if not datos_tv:
+            self.tabla_tv.setRowCount(0)
+            self.tabla_tv.setColumnCount(1)
+            self.tabla_tv.setHorizontalHeaderLabels(["No hay datos"])
+            return
+        
+        # Definir columnas para TV
+        columnas = [
+            'Frecuencia (MHz)', 'Estación', 'Banda', 'Canal', 'Ocupación (%)',
+            'Level (dBµV/m)', 'Bandwidth (Hz)', 'Offset (Hz)', 'AM (%)', 'Tipo'
+        ]
+        
+        self.tabla_tv.setRowCount(len(datos_tv))
+        self.tabla_tv.setColumnCount(len(columnas))
+        self.tabla_tv.setHorizontalHeaderLabels(columnas)
+        
+        for fila, dato in enumerate(datos_tv):
+            for col, columna in enumerate(columnas):
+                valor = dato.get(columna, '')
+                item = QTableWidgetItem(str(valor))
+                self.tabla_tv.setItem(fila, col, item)
+        
+        # Ajustar el tamaño de las columnas
+        header = self.tabla_tv.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        header.setStretchLastSection(True)
+
 # Modificar la clase WorkerThread para que reciba la referencia de la ventana principal
 class WorkerThread(QThread):
     """Hilo para ejecutar el procesamiento en segundo plano"""
@@ -1081,10 +1319,12 @@ class MainWindow(QMainWindow):
         # Crear las pestañas
         self.procesamiento_tab = ProcesamientoTab(self)
         self.ocupacion_tab = OcupacionTab(self)
+        self.observacion_tab = ObservacionTab(self)  # Nueva pestaña
         
         # Agregar pestañas
         self.tabs.addTab(self.procesamiento_tab, "Procesamiento")
         self.tabs.addTab(self.ocupacion_tab, "Ocupación")
+        self.tabs.addTab(self.observacion_tab, "Frecuencias en Observación")  # Nueva pestaña
         
         # Conectar señal de cambio de pestaña
         self.tabs.currentChanged.connect(self.cambiar_pestana)
@@ -1098,8 +1338,12 @@ class MainWindow(QMainWindow):
         """Manejar el cambio de pestaña"""
         if index == 0:
             self.current_tab = "procesamiento"
-        else:
+        elif index == 1:
             self.current_tab = "ocupacion"
+        else:  # index == 2
+            self.current_tab = "observacion"
+            # Actualizar la lista de ciudades cuando se cambie a esta pestaña
+            self.observacion_tab.cargar_ciudades()
     
     def truncar_texto(self, texto, max_length=50):
         """Truncar texto largo para mostrar en la interfaz"""
