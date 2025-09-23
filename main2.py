@@ -581,6 +581,55 @@ def crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, ti
 
     return chart
 
+# Agregar esta nueva función después de la función crear_grafico_pastel_openpyxl existente
+
+def crear_grafico_pastel_estatus_openpyxl(ws, porcentaje_autorizadas, porcentaje_no_autorizadas, porcentaje_observacion, 
+                                        titulo, celda_destino, identificador_unico):
+    """
+    Crea un gráfico de pastel para los estatus (autorizadas, no autorizadas, observación)
+    """
+    # Crear datos para el gráfico en celdas ocultas con posición única
+    fila_inicio = 150 + (identificador_unico * 10)  # Espacio suficiente entre gráficos (diferente del anterior)
+    col_datos = 25  # Columna Y para datos temporales
+
+    # Limpiar celdas previas (por si acaso)
+    for i in range(4):  # Limpiar 4 filas
+        ws.cell(row=fila_inicio + i, column=col_datos, value="")
+        ws.cell(row=fila_inicio + i, column=col_datos + 1, value="")
+
+    # Crear datos para el gráfico
+    ws.cell(row=fila_inicio, column=col_datos, value="AUTORIZADAS")
+    ws.cell(row=fila_inicio, column=col_datos + 1, value=porcentaje_autorizadas)
+
+    ws.cell(row=fila_inicio + 1, column=col_datos, value="NO AUTORIZADAS")
+    ws.cell(row=fila_inicio + 1, column=col_datos + 1, value=porcentaje_no_autorizadas)
+
+    ws.cell(row=fila_inicio + 2, column=col_datos, value="OBSERVACIÓN")
+    ws.cell(row=fila_inicio + 2, column=col_datos + 1, value=porcentaje_observacion)
+
+    # Crear gráfico de pastel
+    chart = PieChart()
+    chart.title = titulo
+
+    # Referencias a datos y etiquetas
+    labels = Reference(ws, min_col=col_datos, min_row=fila_inicio, max_row=fila_inicio + 2)
+    data = Reference(ws, min_col=col_datos + 1, min_row=fila_inicio, max_row=fila_inicio + 2)
+
+    # Añadir datos y categorías correctamente
+    chart.add_data(data, titles_from_data=False)
+    chart.set_categories(labels)
+
+    # Configurar etiquetas de datos
+    chart.dataLabels = DataLabelList()
+    chart.dataLabels.showPercent = True
+    chart.dataLabels.showCategoryName = True
+    chart.dataLabels.showVal = False
+    chart.dataLabels.showSerName = False
+
+    # Añadir gráfico a la hoja
+    ws.add_chart(chart, celda_destino)
+
+    return chart
 
 
 def cargar_configuracion():
@@ -737,7 +786,7 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60, ciudad=""):
     datos_tabla = [
         ["UMBRAL", umbral, "% FRECUENCIAS OCUPADAS", f"{porcentaje_ocupadas:.2f}%"],
         ["TOTAL DE FRECUENCIAS MONITOREADAS", total_frecuencias, "% FRECUENCIAS LIBRES", f"{porcentaje_libres:.2f}%"],
-        ["FRECUENCIAS OPERANDO MAYOR AL UMBRAL", frecuencias_mayor_umbral, "% AUTORIZADAS", f"{porcentaje_autorizadas:.2f}%"],
+        ["FRECUENCIAS OCUPADAS", frecuencias_mayor_umbral, "% AUTORIZADAS", f"{porcentaje_autorizadas:.2f}%"],
         ["FRECUENCIAS AUTORIZADAS", frecuencias_autorizadas, "% NO AUTORIZADAS", f"{porcentaje_no_autorizadas:.2f}%"],
         ["FRECUENCIAS EN OBSERVACIÓN", frecuencias_observacion, "% INTERMODULACIÓN O RUIDO", f"{porcentaje_observacion:.2f}%"],
         ["FRECUENCIAS NO AUTORIZADOS", frecuencias_no_autorizadas, "", ""],
@@ -794,7 +843,20 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60, ciudad=""):
         crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, "OCUPACIÓN FM", "P2", 999)  # ID único para FM
     except Exception as e:
         print(f"Error al crear gráfico FM: {e}")
-    
+
+     # NUEVO: Crear gráfico de pastel para estatus (autorizadas/no autorizadas/observación)
+    try:
+        # Obtener porcentajes de las celdas M4, M5, M6
+        porcentaje_autorizadas = porcentaje_autorizadas  # Ya calculado
+        porcentaje_no_autorizadas = porcentaje_no_autorizadas  # Ya calculado  
+        porcentaje_observacion = porcentaje_observacion  # Ya calculado
+        
+        # Crear el nuevo gráfico en columna Y (celda Y2)
+        crear_grafico_pastel_estatus_openpyxl(ws, porcentaje_autorizadas, porcentaje_no_autorizadas, 
+                                            porcentaje_observacion, "ESTATUS FM", "Y2", 998)
+    except Exception as e:
+        print(f"Error al crear gráfico FM (estatus): {e}")
+
     return {
         "total_frecuencias": total_frecuencias,
         "frecuencias_mayor_umbral": frecuencias_mayor_umbral,
@@ -834,10 +896,10 @@ def crear_tablas_ocupacion_tv(ws, datos, ciudad=""):
     """
     
     # Al inicio de la función
-    verificar_posicion_tablas(ws)
+    #verificar_posicion_tablas(ws)
     
     # ... resto del código ...
-    debug_bandas_tv(ws)
+    #debug_bandas_tv(ws)
     
     # Definir umbrales por banda
     umbrales_por_banda = {
@@ -879,6 +941,13 @@ def crear_tablas_ocupacion_tv(ws, datos, ciudad=""):
         "Bandas I-III (VHF)": 1,    # Primera gráfica en fila 1
         "Banda III (VHF)": 16,      # Segunda gráfica en fila 16  
         "Bandas IV-V (UHF)": 31     # Tercera gráfica en fila 31
+    }
+
+    # NUEVO: Mapeo de filas para los gráficos de estatus (en columna Y)
+    filas_graficos_estatus = {
+        "Bandas I-III (VHF)": 1,    # Misma fila que el gráfico original
+        "Banda III (VHF)": 16,      # Misma fila que el gráfico original
+        "Bandas IV-V (UHF)": 31     # Misma fila que el gráfico original
     }
 
     
@@ -1016,7 +1085,7 @@ def crear_tablas_ocupacion_tv(ws, datos, ciudad=""):
         datos_tabla = [
             ["UMBRAL", umbral, "% FRECUENCIAS OCUPADAS", f"{porcentaje_ocupadas:.2f}%"],
             ["TOTAL DE FRECUENCIAS MONITOREADAS", total_frecuencias, "% FRECUENCIAS LIBRES", f"{porcentaje_libres:.2f}%"],
-            ["FRECUENCIAS OPERANDO MAYOR AL UMBRAL", frecuencias_mayor_umbral, "% AUTORIZADAS", f"{porcentaje_autorizadas:.2f}%"],
+            ["FRECUENCIAS OCUPADAS", frecuencias_mayor_umbral, "% AUTORIZADAS", f"{porcentaje_autorizadas:.2f}%"],
             ["FRECUENCIAS AUTORIZADAS", frecuencias_autorizadas, "% NO AUTORIZADAS", f"{porcentaje_no_autorizadas:.2f}%"],
             ["FRECUENCIAS EN OBSERVACIÓN", frecuencias_observacion, "% INTERMODULACIÓN O RUIDO", f"{porcentaje_observacion:.2f}%"],
             ["FRECUENCIAS NO AUTORIZADOS", frecuencias_no_autorizadas, "", ""],
@@ -1081,6 +1150,40 @@ def crear_tablas_ocupacion_tv(ws, datos, ciudad=""):
         except Exception as e:
             print(f"Error al crear gráfico para {banda}: {e}")
         
+         # NUEVO: Crear gráfico de pastel para estatus de esta banda
+        try:
+            fila_grafico_estatus = filas_graficos_estatus.get(banda, fila_actual)
+            celda_destino_estatus = f"Y{fila_grafico_estatus}"
+            
+            # Usar un identificador diferente para el gráfico de estatus
+            identificador_unico_estatus = (hash(banda) + 1000) % 100  # Diferente del anterior
+            
+            # Determinar de qué celdas obtener los porcentajes según la banda
+            if banda == "Bandas I-III (VHF)":
+                # Usar porcentajes calculados: N4, N5, N6
+                porcentaje_autorizadas_banda = porcentaje_autorizadas
+                porcentaje_no_autorizadas_banda = porcentaje_no_autorizadas
+                porcentaje_observacion_banda = porcentaje_observacion
+            elif banda == "Banda III (VHF)":
+                # Usar porcentajes calculados: N14, N15, N16  
+                porcentaje_autorizadas_banda = porcentaje_autorizadas
+                porcentaje_no_autorizadas_banda = porcentaje_no_autorizadas
+                porcentaje_observacion_banda = porcentaje_observacion
+            elif banda == "Bandas IV-V (UHF)":
+                # Usar porcentajes calculados: N24, N25, N26
+                porcentaje_autorizadas_banda = porcentaje_autorizadas
+                porcentaje_no_autorizadas_banda = porcentaje_no_autorizadas
+                porcentaje_observacion_banda = porcentaje_observacion
+            
+            crear_grafico_pastel_estatus_openpyxl(ws, porcentaje_autorizadas_banda, porcentaje_no_autorizadas_banda,
+                                                porcentaje_observacion_banda, f"ESTATUS {banda.upper()}", 
+                                                celda_destino_estatus, identificador_unico_estatus)
+        except Exception as e:
+            print(f"Error al crear gráfico de estatus para {banda}: {e}")
+
+
+
+
         # Actualizar fila actual para la próxima tabla
         fila_actual = fila_actual + len(datos_tabla) + separacion_entre_tablas + 1
 
@@ -2013,10 +2116,10 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
 
 if __name__ == "__main__":
     # Si se ejecuta directamente, usar callbacks simples
-    verificar_encoding_config()
+    #verificar_encoding_config()
     
     # Luego debug del contenido
-    debug_emisoras_config()
+    #debug_emisoras_config()
 
 
     def mostrar_progreso(progreso):
