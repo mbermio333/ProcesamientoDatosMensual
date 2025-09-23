@@ -1143,7 +1143,7 @@ def buscar_emisora_por_frecuencia(ciudad, frecuencia, tipo, tolerancia=0.1):
         except (ValueError, TypeError):
             continue
     
-    print(f"⚠️  No se encontró emisora para frecuencia {frecuencia} MHz en {ciudad_normalizada} (tolerancia: {tolerancia} MHz)")
+    #print(f"⚠️  No se encontró emisora para frecuencia {frecuencia} MHz en {ciudad_normalizada} (tolerancia: {tolerancia} MHz)")
     return None
 
 def obtener_emisoras_ciudad(ciudad):
