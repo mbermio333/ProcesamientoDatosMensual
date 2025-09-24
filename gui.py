@@ -192,8 +192,8 @@ class AdvertenciaOcupacionCeroDialog(QDialog):
         
         # Mensaje de advertencia
         mensaje_label = QLabel(
-            "Se han detectado frecuencias autorizadas o no autorizadas con ocupación = 0%.\nSe recomienda reconsiderar el umbral.\n"
-            "Los archivos Excel generados. ¿Qué desea hacer?"
+            "Se han detectado frecuencias autorizadas o no autorizadas con ocupación = 0%.\nLos porcentajes obtenidos podrian ser inconsistentes.\nSe recomienda reconsiderar el umbral.\n"
+            #"Los archivos Excel han sido generados. ¿Qué desea hacer?"
         )
         mensaje_label.setStyleSheet("font-weight: bold; color: #d32f2f; font-size: 12pt;")
         mensaje_label.setAlignment(Qt.AlignCenter)

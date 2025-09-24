@@ -1187,7 +1187,7 @@ def crear_tablas_ocupacion_tv(ws, datos, ciudad=""):
         # Actualizar fila actual para la próxima tabla
         fila_actual = fila_actual + len(datos_tabla) + separacion_entre_tablas + 1
 
-        print(f"✅ Tabla creada para {banda}: {total_frecuencias} frecuencias")
+        #print(f"✅ Tabla creada para {banda}: {total_frecuencias} frecuencias")
     
     return resultados_bandas, frecuencias_problematicas_tv  # ← MODIFICADO
 
