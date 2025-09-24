@@ -763,7 +763,7 @@ class ObservacionTab(QWidget):
                 if estado_fm['estado'] == "No Autorizada":
                     nombre_completo = f"{nombre_estacion} (NO AUTORIZADO)"
                 else:
-                    nombre_completo = f"{nombre_estacion}"
+                    nombre_completo = f"{nombre_estacion}_OBSERVACION"
                 
                 # Buscar si ya existe esta frecuencia
                 frecuencia_existente = False

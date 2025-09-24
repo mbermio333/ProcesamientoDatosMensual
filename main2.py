@@ -76,6 +76,7 @@ def guardar_advertencia_ocupacion_cero(datos_problematicos, ruta_salida):
 def detectar_frecuencias_ocupacion_cero(ws, tipo, ciudad, resultados_estadisticas=None):
     """
     Detecta frecuencias con ocupación 0% que tienen nombre en el campo Estación
+    y NO terminan en "_OBSERVACION"
     Retorna lista de frecuencias problemáticas
     """
     frecuencias_problematicas = []
@@ -116,10 +117,12 @@ def detectar_frecuencias_ocupacion_cero(ws, tipo, ciudad, resultados_estadistica
                     continue
                 
                 # Verificar si es frecuencia problemática: ocupación 0% y tiene nombre de estación
+                # que NO termina en "_OBSERVACION"
                 estacion_nombre = str(estacion_celda.value).strip()
                 tiene_nombre_valido = (estacion_nombre and 
                                      estacion_nombre != "No identificada" and 
-                                     estacion_nombre != "")
+                                     estacion_nombre != "" and
+                                     not estacion_nombre.upper().endswith("_OBSERVACION"))  # NUEVA CONDICIÓN
                 
                 if ocupacion_valor == 0 and tiene_nombre_valido:
                     # Obtener información adicional
@@ -703,12 +706,50 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60, ciudad=""):
             except (ValueError, TypeError):
                 ocupacion_valor = 0
         
-        # Verificar si tiene nombre en ESTACIÓN
+        # Verificar si tiene nombre en ESTACIÓN y si termina en "_OBSERVACION"
         tiene_nombre = estacion_celda.value and estacion_celda.value != "No identificada" and estacion_celda.value != ""
+        es_observacion = False
+        if tiene_nombre:
+            estacion_str = str(estacion_celda.value).strip()
+            es_observacion = estacion_str.upper().endswith("_OBSERVACION")
         
-        # DETECTAR FRECUENCIAS PROBLEMÁTICAS (ocupación 0% con nombre)
-        if ocupacion_valor == 0 and tiene_nombre:
-            # Obtener información adicional para el reporte
+        # NUEVA LÓGICA DE CLASIFICACIÓN
+        
+        # Caso 1: Frecuencias con ocupación > 0% y nombre no termina en "_OBSERVACION"
+        if ocupacion_valor > 0 and tiene_nombre and not es_observacion:
+            # Se clasifican como autorizadas/no autorizadas
+            estacion_str = str(estacion_celda.value).lower()
+            if "no autorizado" in estacion_str or "no autorizada" in estacion_str or "no aut" in estacion_str:
+                frecuencias_no_autorizadas += 1
+                # Pintar de rojo
+                ws.cell(row=fila, column=1).fill = ROJO  # Frecuencia
+                ws.cell(row=fila, column=2).fill = ROJO  # Estación
+                ws.cell(row=fila, column=4).fill = ROJO  # Ocupación
+            else:
+                frecuencias_autorizadas += 1
+                # Pintar de verde
+                ws.cell(row=fila, column=1).fill = VERDE  # Frecuencia
+                ws.cell(row=fila, column=2).fill = VERDE  # Estación
+                ws.cell(row=fila, column=4).fill = VERDE  # Ocupación
+        
+        # Caso 2: Frecuencias con ocupación 0% y nombre no termina en "_OBSERVACION"
+        elif ocupacion_valor == 0 and tiene_nombre and not es_observacion:
+            # Se detectan como problemáticas pero se incluyen en autorizadas/no autorizadas
+            estacion_str = str(estacion_celda.value).lower()
+            if "no autorizado" in estacion_str or "no autorizada" in estacion_str or "no aut" in estacion_str:
+                frecuencias_no_autorizadas += 1
+                # Pintar de rojo (aunque tenga 0% de ocupación)
+                ws.cell(row=fila, column=1).fill = ROJO  # Frecuencia
+                ws.cell(row=fila, column=2).fill = ROJO  # Estación
+                ws.cell(row=fila, column=4).fill = ROJO  # Ocupación
+            else:
+                frecuencias_autorizadas += 1
+                # Pintar de verde (aunque tenga 0% de ocupación)
+                ws.cell(row=fila, column=1).fill = VERDE  # Frecuencia
+                ws.cell(row=fila, column=2).fill = VERDE  # Estación
+                ws.cell(row=fila, column=4).fill = VERDE  # Ocupación
+            
+            # DETECTAR COMO PROBLEMÁTICA (ocupación 0% con nombre válido)
             frecuencia_celda = ws.cell(row=fila, column=1)  # Columna A = Frecuencia
             level_celda = ws.cell(row=fila, column=5)       # Columna E = Level
             
@@ -723,45 +764,35 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60, ciudad=""):
             }
             frecuencias_problematicas.append(frecuencia_problematica)
         
-        # CONTAR FRECUENCIAS LIBRES (ocupación = 0%)
-        if ocupacion_valor == 0:
-            frecuencias_libres += 1
+        # Caso 3: Frecuencias con ocupación > 0% sin nombre o con nombre terminado en "_OBSERVACION"
+        elif ocupacion_valor > 0 and (not tiene_nombre or es_observacion):
+            # Se clasifican como observación
+            frecuencias_observacion += 1
+            # Pintar de amarillo
+            ws.cell(row=fila, column=1).fill = AMARILLO  # Frecuencia
+            ws.cell(row=fila, column=2).fill = AMARILLO  # Estación
+            ws.cell(row=fila, column=4).fill = AMARILLO  # Ocupación
         
-        if tiene_nombre:
-            # Tiene nombre -> Verificar si es autorizada o no autorizada
-            estacion_str = str(estacion_celda.value).lower()
-            if "no autorizado" in estacion_str or "no autorizada" in estacion_str or "no aut" in estacion_str:
-                frecuencias_no_autorizadas += 1
-                # Pintar de rojo (incluso si tiene 0% de ocupación)
-                ws.cell(row=fila, column=1).fill = ROJO  # Frecuencia
-                ws.cell(row=fila, column=2).fill = ROJO  # Estación
-                ws.cell(row=fila, column=4).fill = ROJO  # Ocupación
-            else:
-                frecuencias_autorizadas += 1
-                # Pintar de verde (incluso si tiene 0% de ocupación)
-                ws.cell(row=fila, column=1).fill = VERDE  # Frecuencia
-                ws.cell(row=fila, column=2).fill = VERDE  # Estación
-                ws.cell(row=fila, column=4).fill = VERDE  # Ocupación
-        else:
-            # No tiene nombre y ocupación > 0% -> Frecuencia en observación
-            if ocupacion_valor > 0:
-                frecuencias_observacion += 1
-                # Pintar de amarillo (ocupación > 0% pero sin nombre)
-                ws.cell(row=fila, column=1).fill = AMARILLO  # Frecuencia
-                ws.cell(row=fila, column=2).fill = AMARILLO  # Estación
-                ws.cell(row=fila, column=4).fill = AMARILLO  # Ocupación
+        # Caso 4: Frecuencias con ocupación 0% sin nombre
+        elif ocupacion_valor == 0 and not tiene_nombre:
+            # Se clasifican como libres
+            frecuencias_libres += 1
+            # No se pinta (queda con formato por defecto)
     
     # VERIFICACIÓN: La suma debe coincidir con el total
-    # Nota: frecuencias_libres puede incluir frecuencias autorizadas con 0%
-    suma_categorias_operando = (frecuencias_autorizadas + frecuencias_no_autorizadas + frecuencias_observacion)
-    print(f"✅ Frecuencias operando: {suma_categorias_operando}, Libres: {frecuencias_libres}, Total: {total_frecuencias}")
-    
+    suma_categorias = (frecuencias_autorizadas + frecuencias_no_autorizadas + 
+                      frecuencias_observacion + frecuencias_libres)
+    print(f"✅ Frecuencias totales: {suma_categorias}, Autorizadas: {frecuencias_autorizadas}, No autorizadas: {frecuencias_no_autorizadas}, Observación: {frecuencias_observacion}, Libres: {frecuencias_libres}")
+
+    # El resto de la función permanece igual...
     # Calcular porcentajes
     porcentaje_ocupadas = (frecuencias_mayor_umbral / total_frecuencias * 100) if total_frecuencias > 0 else 0
     porcentaje_libres = (frecuencias_libres / total_frecuencias * 100) if total_frecuencias > 0 else 0
     porcentaje_autorizadas = (frecuencias_autorizadas / total_frecuencias * 100) if total_frecuencias > 0 else 0
     porcentaje_no_autorizadas = (frecuencias_no_autorizadas / total_frecuencias * 100) if total_frecuencias > 0 else 0
     porcentaje_observacion = (frecuencias_observacion / total_frecuencias * 100) if total_frecuencias > 0 else 0
+
+    # ... (el resto del código de la función permanece igual)
 
     # Crear la tabla a partir de la columna J (columna 10)
     col_inicio = 10
@@ -979,6 +1010,10 @@ def crear_tablas_ocupacion_tv(ws, datos, ciudad=""):
         frecuencias_observacion = 0
         frecuencias_libres = 0
         
+        # En la función crear_tablas_ocupacion_tv, modifica la sección de clasificación:
+
+        # ... código anterior ...
+
         for fila in filas_banda:
             estacion_celda = ws.cell(row=fila, column=2)  # Columna B = Estación
             ocupacion_celda = ws.cell(row=fila, column=5)  # Columna E = Ocupación (%)
@@ -991,11 +1026,50 @@ def crear_tablas_ocupacion_tv(ws, datos, ciudad=""):
                 except (ValueError, TypeError):
                     ocupacion_valor = 0
             
-            # DETECTAR FRECUENCIAS PROBLEMÁTICAS (ocupación 0% con nombre)
+            # Verificar si tiene nombre en ESTACIÓN y si termina en "_OBSERVACION"
             tiene_nombre = estacion_celda.value and estacion_celda.value != "No identificada" and estacion_celda.value != ""
+            es_observacion = False
+            if tiene_nombre:
+                estacion_str = str(estacion_celda.value).strip()
+                es_observacion = estacion_str.upper().endswith("_OBSERVACION")
             
-            if ocupacion_valor == 0 and tiene_nombre:
-                # Obtener información adicional para el reporte
+            # NUEVA LÓGICA DE CLASIFICACIÓN (IGUAL QUE PARA FM)
+            
+            # Caso 1: Frecuencias con ocupación > 0% y nombre no termina en "_OBSERVACION"
+            if ocupacion_valor > 0 and tiene_nombre and not es_observacion:
+                # Se clasifican como autorizadas/no autorizadas
+                estacion_str = str(estacion_celda.value).lower()
+                if any(x in estacion_str for x in ["no autorizado", "no autorizada", "no aut"]):
+                    frecuencias_no_autorizadas += 1
+                    # Pintar de rojo
+                    ws.cell(row=fila, column=1).fill = ROJO  # Frecuencia
+                    ws.cell(row=fila, column=2).fill = ROJO  # Estación
+                    ws.cell(row=fila, column=5).fill = ROJO  # Ocupación
+                else:
+                    frecuencias_autorizadas += 1
+                    # Pintar de verde
+                    ws.cell(row=fila, column=1).fill = VERDE  # Frecuencia
+                    ws.cell(row=fila, column=2).fill = VERDE  # Estación
+                    ws.cell(row=fila, column=5).fill = VERDE  # Ocupación
+            
+            # Caso 2: Frecuencias con ocupación 0% y nombre no termina en "_OBSERVACION"
+            elif ocupacion_valor == 0 and tiene_nombre and not es_observacion:
+                # Se detectan como problemáticas pero se incluyen en autorizadas/no autorizadas
+                estacion_str = str(estacion_celda.value).lower()
+                if any(x in estacion_str for x in ["no autorizado", "no autorizada", "no aut"]):
+                    frecuencias_no_autorizadas += 1
+                    # Pintar de rojo (aunque tenga 0% de ocupación)
+                    ws.cell(row=fila, column=1).fill = ROJO  # Frecuencia
+                    ws.cell(row=fila, column=2).fill = ROJO  # Estación
+                    ws.cell(row=fila, column=5).fill = ROJO  # Ocupación
+                else:
+                    frecuencias_autorizadas += 1
+                    # Pintar de verde (aunque tenga 0% de ocupación)
+                    ws.cell(row=fila, column=1).fill = VERDE  # Frecuencia
+                    ws.cell(row=fila, column=2).fill = VERDE  # Estación
+                    ws.cell(row=fila, column=5).fill = VERDE  # Ocupación
+                
+                # DETECTAR COMO PROBLEMÁTICA (ocupación 0% con nombre válido)
                 frecuencia_celda = ws.cell(row=fila, column=1)  # Columna A = Frecuencia
                 level_celda = ws.cell(row=fila, column=6)       # Columna F = Level
                 banda_celda = ws.cell(row=fila, column=3)       # Columna C = Banda
@@ -1012,33 +1086,22 @@ def crear_tablas_ocupacion_tv(ws, datos, ciudad=""):
                 frecuencias_problematicas_banda.append(frecuencia_problematica)
                 frecuencias_problematicas_tv.append(frecuencia_problematica)
             
-            # CONTAR FRECUENCIAS LIBRES (ocupación = 0%)
-            if ocupacion_valor == 0:
-                frecuencias_libres += 1
+            # Caso 3: Frecuencias con ocupación > 0% sin nombre o con nombre terminado en "_OBSERVACION"
+            elif ocupacion_valor > 0 and (not tiene_nombre or es_observacion):
+                # Se clasifican como observación
+                frecuencias_observacion += 1
+                # Pintar de amarillo
+                ws.cell(row=fila, column=1).fill = AMARILLO  # Frecuencia
+                ws.cell(row=fila, column=2).fill = AMARILLO  # Estación
+                ws.cell(row=fila, column=5).fill = AMARILLO  # Ocupación
             
-            if tiene_nombre:
-                # Tiene nombre -> Verificar si es autorizada o no autorizada
-                estacion_str = str(estacion_celda.value).lower()
-                if any(x in estacion_str for x in ["no autorizado", "no autorizada", "no aut"]):
-                    frecuencias_no_autorizadas += 1
-                    # Pintar de rojo (incluso si tiene 0% de ocupación)
-                    ws.cell(row=fila, column=1).fill = ROJO  # Frecuencia
-                    ws.cell(row=fila, column=2).fill = ROJO  # Estación
-                    ws.cell(row=fila, column=5).fill = ROJO  # Ocupación
-                else:
-                    frecuencias_autorizadas += 1
-                    # Pintar de verde (incluso si tiene 0% de ocupación)
-                    ws.cell(row=fila, column=1).fill = VERDE  # Frecuencia
-                    ws.cell(row=fila, column=2).fill = VERDE  # Estación
-                    ws.cell(row=fila, column=5).fill = VERDE  # Ocupación
-            else:
-                # No tiene nombre y ocupación > 0% -> Frecuencia en observación
-                if ocupacion_valor > 0:
-                    frecuencias_observacion += 1
-                    # Pintar de amarillo (ocupación > 0% pero sin nombre)
-                    ws.cell(row=fila, column=1).fill = AMARILLO  # Frecuencia
-                    ws.cell(row=fila, column=2).fill = AMARILLO  # Estación
-                    ws.cell(row=fila, column=5).fill = AMARILLO  # Ocupación
+            # Caso 4: Frecuencias con ocupación 0% sin nombre
+            elif ocupacion_valor == 0 and not tiene_nombre:
+                # Se clasifican como libres
+                frecuencias_libres += 1
+                # No se pinta (queda con formato por defecto)
+
+        # ... código posterior ...
         
         # Calcular porcentajes
         porcentaje_ocupadas = (frecuencias_mayor_umbral / total_frecuencias * 100) if total_frecuencias > 0 else 0
