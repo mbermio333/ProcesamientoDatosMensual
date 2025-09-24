@@ -119,6 +119,131 @@
                     "nombre": "RADIO CAÑARI",
                     "frecuencia": 107.7,
                     "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 89.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 89.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 90.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 90.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 90.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 91.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 91.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 92.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 92.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 93.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 94.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 95.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 95.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 95.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 99.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 99.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 99.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 100.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 101.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 101.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 101.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 103.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 106.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 107.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 107.5,
+                    "tipo": "FM"
                 }
             ],
             "TV": [
@@ -170,6 +295,11 @@
                 {
                     "nombre": "OROMAR",
                     "frecuencia": 621.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "ECUAVISA CATV_OBSERVACION",
+                    "frecuencia": 55.25,
                     "tipo": "TV"
                 }
             ]

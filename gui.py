@@ -45,26 +45,26 @@ DEFAULT_UMBRALES_CIUDADES = {
 }
 
 def normalizar_nombre_ciudad(nombre):
-        """Normaliza el nombre de la ciudad para consistencia"""
-        if not nombre or not isinstance(nombre, str):
-            return ""
-        
-        nombre = nombre.lower().strip()
-        
-        # Manejar todas las variantes de "cañar"
-        if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
-            return "TAMBO"
-        
-        # Mapeo de otras ciudades si es necesario
-        mapeo_ciudades = {
-            "zamora": "ZAMORA",
-            "loja": "LOJA", 
-            "macas": "MACAS",
-            "machala": "MACHALA",
-            "cuenca": "CUENCA"
-        }
+    """Normaliza el nombre de la ciudad para consistencia"""
+    if not nombre or not isinstance(nombre, str):
+        return ""
     
-        return mapeo_ciudades.get(nombre, nombre.upper())
+    nombre = nombre.lower().strip()
+    
+    # Manejar todas las variantes de "cañar" y "tambo"
+    if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
+        return "TAMBO"  # Mostrar "TAMBO" en la interfaz, pero guardar en "cañar"
+    
+    # Mapeo de otras ciudades si es necesario
+    mapeo_ciudades = {
+        "zamora": "ZAMORA",
+        "loja": "LOJA", 
+        "macas": "MACAS",
+        "machala": "MACHALA",
+        "cuenca": "CUENCA"
+    }
+
+    return mapeo_ciudades.get(nombre, nombre.upper())
 
 # Estilos globales para mantener consistencia (sin cambios)
 GROUP_BOX_STYLE = """
@@ -417,11 +417,16 @@ class ObservacionTab(QWidget):
         self.ciudad_combo.clear()
         
         # Agregar ciudades desde la configuración, filtrando nombres vacíos y "global"
+        ciudades_unicas = set()
+        
         for ciudad in self.umbrales_ciudades.keys():
             if ciudad != "global":  # Excluir "global"
                 ciudad_normalizada = normalizar_nombre_ciudad(ciudad)
                 if ciudad_normalizada and ciudad_normalizada.strip():
-                    self.ciudad_combo.addItem(ciudad_normalizada)
+                    # Evitar duplicados (como "cañar" y "tambo" que se mapean ambos a "TAMBO")
+                    if ciudad_normalizada not in ciudades_unicas:
+                        ciudades_unicas.add(ciudad_normalizada)
+                        self.ciudad_combo.addItem(ciudad_normalizada)
         
         # Si no hay ciudades, agregar un mensaje
         if self.ciudad_combo.count() == 0:
@@ -588,7 +593,7 @@ class ObservacionTab(QWidget):
         header.setStretchLastSection(True)
     
     def actualizar_tabla_tv(self, datos_tv):
-        """Actualizar la tabla de frecuencias TV - Con campos editables para estación"""
+        """Actualizar la tabla de frecuencias TV - Con campos editables para estación y estado"""
         if not datos_tv:
             self.tabla_tv.setRowCount(0)
             self.tabla_tv.setColumnCount(1)
@@ -651,6 +656,19 @@ class ObservacionTab(QWidget):
         header = self.tabla_tv.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
         header.setStretchLastSection(True)
+        
+        # Resaltar filas con ocupación > 0
+        for fila in range(len(datos_tv)):
+            for col in range(len(columnas)):
+                if columnas[col] == 'Ocupación (%)':
+                    item = self.tabla_tv.item(fila, col)
+                    if item and '%' in item.text():
+                        try:
+                            ocupacion = float(item.text().replace('%', ''))
+                            if ocupacion > 0:
+                                item.setBackground(Qt.yellow)
+                        except:
+                            pass
     
     def actualizar_nombre_estacion(self, fila, texto, tipo):
         """Actualizar el nombre de la estación en los datos actuales"""
@@ -681,7 +699,7 @@ class ObservacionTab(QWidget):
                         'estado': estado
                     })
         
-        # Obtener estados de TV
+        # Obtener estados de TV (AGREGAR ESTA SECCIÓN)
         if hasattr(self, 'grupos_tv'):
             for fila, grupo in self.grupos_tv:
                 if grupo.checkedButton():
@@ -750,9 +768,15 @@ class ObservacionTab(QWidget):
             # Normalizar nombre de ciudad para buscar en config.json
             ciudad_normalizada = ciudad_actual.lower()
             
+            # MAPEO ESPECIAL: Si la ciudad es "tambo", guardar en "cañar"
+            ciudad_guardar = ciudad_normalizada
+            if ciudad_normalizada == "tambo":
+                ciudad_guardar = "cañar"
+                self.log_text.append(f"🔀 Ciudad 'TAMBO' mapeada a 'CAÑAR' para guardado en configuración")
+            
             # Asegurarse de que la ciudad existe en la configuración
-            if ciudad_normalizada not in self.config_data.get('emisoras_por_ciudad', {}):
-                self.config_data['emisoras_por_ciudad'][ciudad_normalizada] = {'FM': [], 'TV': []}
+            if ciudad_guardar not in self.config_data.get('emisoras_por_ciudad', {}):
+                self.config_data['emisoras_por_ciudad'][ciudad_guardar] = {'FM': [], 'TV': []}
             
             # Procesar frecuencias FM
             for estado_fm in estados_fm:
@@ -767,7 +791,7 @@ class ObservacionTab(QWidget):
                 
                 # Buscar si ya existe esta frecuencia
                 frecuencia_existente = False
-                for emisora in self.config_data['emisoras_por_ciudad'][ciudad_normalizada]['FM']:
+                for emisora in self.config_data['emisoras_por_ciudad'][ciudad_guardar]['FM']:
                     if abs(emisora['frecuencia'] - frecuencia) < 0.01:  # Tolerancia para comparación de floats
                         emisora['nombre'] = nombre_completo
                         frecuencia_existente = True
@@ -780,7 +804,7 @@ class ObservacionTab(QWidget):
                         "frecuencia": frecuencia,
                         "tipo": "FM"
                     }
-                    self.config_data['emisoras_por_ciudad'][ciudad_normalizada]['FM'].append(nueva_emisora)
+                    self.config_data['emisoras_por_ciudad'][ciudad_guardar]['FM'].append(nueva_emisora)
             
             # Procesar frecuencias TV
             for estado_tv in estados_tv:
@@ -795,7 +819,7 @@ class ObservacionTab(QWidget):
                 
                 # Buscar si ya existe esta frecuencia
                 frecuencia_existente = False
-                for emisora in self.config_data['emisoras_por_ciudad'][ciudad_normalizada]['TV']:
+                for emisora in self.config_data['emisoras_por_ciudad'][ciudad_guardar]['TV']:
                     if abs(emisora['frecuencia'] - frecuencia) < 0.01:  # Tolerancia para comparación de floats
                         emisora['nombre'] = nombre_completo
                         frecuencia_existente = True
@@ -808,12 +832,17 @@ class ObservacionTab(QWidget):
                         "frecuencia": frecuencia,
                         "tipo": "TV"
                     }
-                    self.config_data['emisoras_por_ciudad'][ciudad_normalizada]['TV'].append(nueva_emisora)
+                    self.config_data['emisoras_por_ciudad'][ciudad_guardar]['TV'].append(nueva_emisora)
             
             # Guardar la configuración
             if self.guardar_configuracion():
-                self.log_text.append(f"✅ Configuración guardada en config.json para {ciudad_actual}")
-                QMessageBox.information(self, "Éxito", f"Configuración guardada correctamente en config.json para {ciudad_actual}")
+                if ciudad_normalizada == "tambo":
+                    mensaje_ciudad = "TAMBO (guardado en CAÑAR)"
+                else:
+                    mensaje_ciudad = ciudad_actual
+                    
+                self.log_text.append(f"✅ Configuración guardada en config.json para {mensaje_ciudad}")
+                QMessageBox.information(self, "Éxito", f"Configuración guardada correctamente en config.json para {mensaje_ciudad}")
             else:
                 raise Exception("No se pudo guardar el archivo config.json")
             
@@ -916,66 +945,7 @@ class ObservacionTab(QWidget):
             self.log_text.append(error_msg)
             QMessageBox.critical(self, "Error", error_msg)
     
-    def actualizar_tabla_tv(self, datos_tv):
-        """Actualizar la tabla de frecuencias TV - Solo columnas deseadas"""
-        if not datos_tv:
-            self.tabla_tv.setRowCount(0)
-            self.tabla_tv.setColumnCount(1)
-            self.tabla_tv.setHorizontalHeaderLabels(["No hay frecuencias TV en observación"])
-            return
-        
-        # Definir SOLO las columnas deseadas para TV (sin Bandwidth, Offset, AM, Tipo)
-        columnas = [
-            'Frecuencia (MHz)', 'Estación', 'Banda', 'Canal', 'Ocupación (%)', 'Level (dBµV/m)'
-        ]
-        
-        self.tabla_tv.setRowCount(len(datos_tv))
-        self.tabla_tv.setColumnCount(len(columnas))
-        self.tabla_tv.setHorizontalHeaderLabels(columnas)
-        
-        for fila, dato in enumerate(datos_tv):
-            for col, columna in enumerate(columnas):
-                valor = dato.get(columna, '')
-                # Formatear valores numéricos
-                if columna == 'Frecuencia (MHz)' and valor != '':
-                    try:
-                        valor = f"{float(valor):.2f}"
-                    except:
-                        pass
-                elif columna == 'Ocupación (%)' and valor != '':
-                    try:
-                        valor = f"{float(valor):.1f}%"
-                    except:
-                        pass
-                elif columna == 'Level (dBµV/m)' and valor != '':
-                    try:
-                        valor = f"{float(valor):.1f}"
-                    except:
-                        pass
-                
-                item = QTableWidgetItem(str(valor))
-                # Alinear números a la derecha
-                if columna in ['Frecuencia (MHz)', 'Ocupación (%)', 'Level (dBµV/m)']:
-                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                self.tabla_tv.setItem(fila, col, item)
-        
-        # Ajustar el tamaño de las columnas
-        header = self.tabla_tv.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeToContents)
-        header.setStretchLastSection(True)
-        
-        # Resaltar filas con ocupación > 0
-        for fila in range(len(datos_tv)):
-            for col in range(len(columnas)):
-                if columnas[col] == 'Ocupación (%)':
-                    item = self.tabla_tv.item(fila, col)
-                    if item and '%' in item.text():
-                        try:
-                            ocupacion = float(item.text().replace('%', ''))
-                            if ocupacion > 0:
-                                item.setBackground(Qt.yellow)
-                        except:
-                            pass
+    
 
 
 # Modificar la clase WorkerThread para que reciba la referencia de la ventana principal
