@@ -339,10 +339,10 @@ class ObservacionTab(QWidget):
         estados_group.setStyleSheet(GROUP_BOX_STYLE)
         estados_layout = QHBoxLayout()
         
-        self.btn_guardar_estados = QPushButton("Guardar Estados")
-        self.btn_guardar_estados.setStyleSheet(BUTTON_STYLE)
-        self.btn_guardar_estados.clicked.connect(self.guardar_estados)
-        self.btn_guardar_estados.setEnabled(False)
+        #self.btn_guardar_estados = QPushButton("Guardar Estados")
+        #self.btn_guardar_estados.setStyleSheet(BUTTON_STYLE)
+        #self.btn_guardar_estados.clicked.connect(self.guardar_estados)
+        #self.btn_guardar_estados.setEnabled(False)
         
         self.btn_guardar_config = QPushButton("Guardar en Configuración")
         self.btn_guardar_config.setStyleSheet(OPEN_BUTTON_STYLE)
@@ -355,7 +355,7 @@ class ObservacionTab(QWidget):
         self.btn_exportar_excel.clicked.connect(self.exportar_a_excel)
         self.btn_exportar_excel.setEnabled(False)
         
-        estados_layout.addWidget(self.btn_guardar_estados)
+        #estados_layout.addWidget(self.btn_guardar_estados)
         estados_layout.addWidget(self.btn_guardar_config)
         estados_layout.addWidget(self.btn_exportar_excel)
         estados_layout.addStretch(1)
@@ -433,10 +433,23 @@ class ObservacionTab(QWidget):
             self.ciudad_combo.addItem("No hay ciudades configuradas")
     
     def actualizar_datos(self):
-        """Actualizar los datos para la ciudad seleccionada"""
+        """Actualizar los datos para la ciudad seleccionada - FORZAR RECARGA COMPLETA"""
         ciudad_actual = self.ciudad_combo.currentText()
         if ciudad_actual and ciudad_actual != "No hay ciudades configuradas":
+            self.log_text.append("🔄 Actualizando datos desde archivos recientes...")
+            
+            # Limpiar completamente los datos previos
+            self.datos_actuales = {"FM": [], "TV": []}
+            self.info_label.setText("Actualizando datos...")
+            
+            # Limpiar las tablas visualmente
+            self.tabla_fm.setRowCount(0)
+            self.tabla_tv.setRowCount(0)
+            
+            # Forzar recarga completa
             self.cargar_frecuencias_ciudad(ciudad_actual)
+            
+            self.log_text.append("✅ Actualización completada")
     
     def cargar_frecuencias_ciudad(self, ciudad):
         """Cargar las frecuencias en observación para la ciudad seleccionada"""
@@ -487,7 +500,7 @@ class ObservacionTab(QWidget):
             
             # Habilitar botones
             tiene_datos = total_fm + total_tv > 0
-            self.btn_guardar_estados.setEnabled(tiene_datos)
+            #self.btn_guardar_estados.setEnabled(tiene_datos)
             self.btn_guardar_config.setEnabled(tiene_datos)
             self.btn_exportar_excel.setEnabled(tiene_datos)
             
@@ -718,8 +731,8 @@ class ObservacionTab(QWidget):
         
         return estados_fm, estados_tv
     
-    def guardar_estados(self):
-        """Guardar los estados seleccionados en un archivo JSON"""
+    """def guardar_estados(self):
+        #Guardar los estados seleccionados en un archivo JSON
         try:
             ciudad_actual = self.ciudad_combo.currentText()
             if not ciudad_actual or ciudad_actual == "No hay ciudades configuradas":
@@ -749,7 +762,7 @@ class ObservacionTab(QWidget):
         except Exception as e:
             error_msg = f"❌ Error al guardar estados: {str(e)}"
             self.log_text.append(error_msg)
-            QMessageBox.critical(self, "Error", error_msg)
+            QMessageBox.critical(self, "Error", error_msg)"""
     
     def guardar_en_configuracion(self):
         """Guardar las frecuencias en observación en el archivo config.json"""
