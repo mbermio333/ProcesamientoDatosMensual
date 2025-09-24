@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import sys
 import io
+import pandas as pd
+from datetime import datetime
 
 # Forzar UTF-8 en stdout (evita errores de consola con ñ, tildes, etc.)
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -13,7 +15,8 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QFileDialog, QProgressBar, QMessageBox, QGroupBox,
                              QTabWidget, QFrame, QComboBox, QLineEdit, QGridLayout,
                              QScrollArea, QSizePolicy, QDialog, QTableWidget, 
-                             QTableWidgetItem, QHeaderView, QDialogButtonBox)  # Agregar QDialog, QTableWidget, etc.
+                             QTableWidgetItem, QHeaderView, QDialogButtonBox,
+                             QCheckBox, QButtonGroup, QRadioButton)  # Agregar QCheckBox y QRadioButton
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QDoubleValidator
 
@@ -263,8 +266,28 @@ class ObservacionTab(QWidget):
         self.parent = parent
         self.umbrales_ciudades = self.parent.load_umbrales_ciudades()
         self.datos_actuales = {"FM": [], "TV": []}
+        self.config_data = self.cargar_configuracion()
         self.initUI()
     
+    def cargar_configuracion(self):
+        """Cargar la configuración desde config.json"""
+        try:
+            with open('config.json', 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            self.log_text.append(f"❌ Error al cargar config.json: {str(e)}")
+            return {"emisoras_por_ciudad": {}}
+    
+    def guardar_configuracion(self):
+        """Guardar la configuración en config.json"""
+        try:
+            with open('config.json', 'w', encoding='utf-8') as f:
+                json.dump(self.config_data, f, indent=4, ensure_ascii=False)
+            return True
+        except Exception as e:
+            self.log_text.append(f"❌ Error al guardar config.json: {str(e)}")
+            return False
+
     def initUI(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
@@ -310,6 +333,35 @@ class ObservacionTab(QWidget):
         self.info_label.setAlignment(Qt.AlignCenter)
         self.info_label.setStyleSheet("color: #666; font-size: 11pt; padding: 10px; background-color: #f8f8f8; border-radius: 4px;")
         layout.addWidget(self.info_label)
+        
+        # Botones de acción para estados
+        estados_group = QGroupBox("Gestión de Estados")
+        estados_group.setStyleSheet(GROUP_BOX_STYLE)
+        estados_layout = QHBoxLayout()
+        
+        self.btn_guardar_estados = QPushButton("Guardar Estados")
+        self.btn_guardar_estados.setStyleSheet(BUTTON_STYLE)
+        self.btn_guardar_estados.clicked.connect(self.guardar_estados)
+        self.btn_guardar_estados.setEnabled(False)
+        
+        self.btn_guardar_config = QPushButton("Guardar en Configuración")
+        self.btn_guardar_config.setStyleSheet(OPEN_BUTTON_STYLE)
+        self.btn_guardar_config.clicked.connect(self.guardar_en_configuracion)
+        self.btn_guardar_config.setEnabled(False)
+        self.btn_guardar_config.setToolTip("Guardar los cambios en el archivo config.json")
+        
+        self.btn_exportar_excel = QPushButton("Exportar a Excel")
+        self.btn_exportar_excel.setStyleSheet(OPEN_BUTTON_STYLE)
+        self.btn_exportar_excel.clicked.connect(self.exportar_a_excel)
+        self.btn_exportar_excel.setEnabled(False)
+        
+        estados_layout.addWidget(self.btn_guardar_estados)
+        estados_layout.addWidget(self.btn_guardar_config)
+        estados_layout.addWidget(self.btn_exportar_excel)
+        estados_layout.addStretch(1)
+        
+        estados_group.setLayout(estados_layout)
+        layout.addWidget(estados_group)
         
         # Crear pestañas para FM y TV
         self.tabs_datos = QTabWidget()
@@ -428,73 +480,441 @@ class ObservacionTab(QWidget):
             self.actualizar_tabla_fm(resultado.get('FM', []))
             self.actualizar_tabla_tv(resultado.get('TV', []))
             
+            # Habilitar botones
+            tiene_datos = total_fm + total_tv > 0
+            self.btn_guardar_estados.setEnabled(tiene_datos)
+            self.btn_guardar_config.setEnabled(tiene_datos)
+            self.btn_exportar_excel.setEnabled(tiene_datos)
+            
             self.log_text.append("✅ Datos cargados correctamente")
             
         except Exception as e:
             error_msg = f"❌ Error al cargar datos: {str(e)}"
             self.log_text.append(error_msg)
             self.info_label.setText(error_msg)
+    
+    def crear_checkbox_estado(self, estado_actual="Observación"):
+        """Crear grupo de radio buttons para seleccionar estado"""
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        
+        grupo = QButtonGroup(widget)
+        
+        rb_observacion = QRadioButton("Obs")
+        rb_observacion.setToolTip("Observación")
+        rb_no_autorizada = QRadioButton("No Aut")
+        rb_no_autorizada.setToolTip("No Autorizada")
+        
+        grupo.addButton(rb_observacion, 1)
+        grupo.addButton(rb_no_autorizada, 2)
+        
+        # Establecer estado inicial
+        if estado_actual == "No Autorizada":
+            rb_no_autorizada.setChecked(True)
+        else:
+            rb_observacion.setChecked(True)
+        
+        layout.addWidget(rb_observacion)
+        layout.addWidget(rb_no_autorizada)
+        layout.addStretch(1)
+        
+        return widget, grupo
  
     def actualizar_tabla_fm(self, datos_fm):
-        """Actualizar la tabla de frecuencias FM - Solo columnas deseadas"""
+        """Actualizar la tabla de frecuencias FM - Con campos editables para estación"""
         if not datos_fm:
             self.tabla_fm.setRowCount(0)
             self.tabla_fm.setColumnCount(1)
             self.tabla_fm.setHorizontalHeaderLabels(["No hay frecuencias FM en observación"])
             return
         
-        # Definir SOLO las columnas deseadas para FM (sin Bandwidth, Offset, FM, Tipo)
+        # Definir columnas para FM (incluyendo Estado)
         columnas = [
-            'Frecuencia (MHz)', 'Estación', 'Ocupación (%)', 'Level (dBµV/m)'
+            'Frecuencia (MHz)', 'Estación', 'Ocupación (%)', 'Level (dBµV/m)', 'Estado'
         ]
         
         self.tabla_fm.setRowCount(len(datos_fm))
         self.tabla_fm.setColumnCount(len(columnas))
         self.tabla_fm.setHorizontalHeaderLabels(columnas)
         
+        # Guardar referencias a los grupos de botones
+        self.grupos_fm = []
+        
         for fila, dato in enumerate(datos_fm):
             for col, columna in enumerate(columnas):
-                valor = dato.get(columna, '')
-                # Formatear valores numéricos
-                if columna == 'Frecuencia (MHz)' and valor != '':
-                    try:
-                        valor = f"{float(valor):.2f}"
-                    except:
-                        pass
-                elif columna == 'Ocupación (%)' and valor != '':
-                    try:
-                        valor = f"{float(valor):.1f}%"
-                    except:
-                        pass
-                elif columna == 'Level (dBµV/m)' and valor != '':
-                    try:
-                        valor = f"{float(valor):.1f}"
-                    except:
-                        pass
-                
-                item = QTableWidgetItem(str(valor))
-                # Alinear números a la derecha
-                if columna in ['Frecuencia (MHz)', 'Ocupación (%)', 'Level (dBµV/m)']:
-                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                self.tabla_fm.setItem(fila, col, item)
+                if columna == 'Estado':
+                    # Crear radio buttons para estado
+                    estado_actual = dato.get('Estado', 'Observación')
+                    widget_estado, grupo = self.crear_checkbox_estado(estado_actual)
+                    self.grupos_fm.append((fila, grupo))
+                    self.tabla_fm.setCellWidget(fila, col, widget_estado)
+                elif columna == 'Estación':
+                    # Crear campo editable para el nombre de la estación
+                    nombre_estacion = dato.get('Estación', '')
+                    edit_estacion = QLineEdit(nombre_estacion)
+                    edit_estacion.setStyleSheet("padding: 2px;")
+                    edit_estacion.textChanged.connect(lambda text, f=fila: self.actualizar_nombre_estacion(f, text, 'FM'))
+                    self.tabla_fm.setCellWidget(fila, col, edit_estacion)
+                else:
+                    valor = dato.get(columna, '')
+                    # Formatear valores numéricos
+                    if columna == 'Frecuencia (MHz)' and valor != '':
+                        try:
+                            valor = f"{float(valor):.2f}"
+                        except:
+                            pass
+                    elif columna == 'Ocupación (%)' and valor != '':
+                        try:
+                            valor = f"{float(valor):.1f}%"
+                        except:
+                            pass
+                    elif columna == 'Level (dBµV/m)' and valor != '':
+                        try:
+                            valor = f"{float(valor):.1f}"
+                        except:
+                            pass
+                    
+                    item = QTableWidgetItem(str(valor))
+                    # Alinear números a la derecha
+                    if columna in ['Frecuencia (MHz)', 'Ocupación (%)', 'Level (dBµV/m)']:
+                        item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    self.tabla_fm.setItem(fila, col, item)
         
         # Ajustar el tamaño de las columnas
         header = self.tabla_fm.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
         header.setStretchLastSection(True)
+    
+    def actualizar_tabla_tv(self, datos_tv):
+        """Actualizar la tabla de frecuencias TV - Con campos editables para estación"""
+        if not datos_tv:
+            self.tabla_tv.setRowCount(0)
+            self.tabla_tv.setColumnCount(1)
+            self.tabla_tv.setHorizontalHeaderLabels(["No hay frecuencias TV en observación"])
+            return
         
-        # Resaltar filas con ocupación > 0
-        for fila in range(len(datos_fm)):
-            for col in range(len(columnas)):
-                if columnas[col] == 'Ocupación (%)':
-                    item = self.tabla_fm.item(fila, col)
-                    if item and '%' in item.text():
+        # Definir columnas para TV (incluyendo Estado)
+        columnas = [
+            'Frecuencia (MHz)', 'Estación', 'Banda', 'Canal', 'Ocupación (%)', 'Level (dBµV/m)', 'Estado'
+        ]
+        
+        self.tabla_tv.setRowCount(len(datos_tv))
+        self.tabla_tv.setColumnCount(len(columnas))
+        self.tabla_tv.setHorizontalHeaderLabels(columnas)
+        
+        # Guardar referencias a los grupos de botones
+        self.grupos_tv = []
+        
+        for fila, dato in enumerate(datos_tv):
+            for col, columna in enumerate(columnas):
+                if columna == 'Estado':
+                    # Crear radio buttons para estado
+                    estado_actual = dato.get('Estado', 'Observación')
+                    widget_estado, grupo = self.crear_checkbox_estado(estado_actual)
+                    self.grupos_tv.append((fila, grupo))
+                    self.tabla_tv.setCellWidget(fila, col, widget_estado)
+                elif columna == 'Estación':
+                    # Crear campo editable para el nombre de la estación
+                    nombre_estacion = dato.get('Estación', '')
+                    edit_estacion = QLineEdit(nombre_estacion)
+                    edit_estacion.setStyleSheet("padding: 2px;")
+                    edit_estacion.textChanged.connect(lambda text, f=fila: self.actualizar_nombre_estacion(f, text, 'TV'))
+                    self.tabla_tv.setCellWidget(fila, col, edit_estacion)
+                else:
+                    valor = dato.get(columna, '')
+                    # Formatear valores numéricos
+                    if columna == 'Frecuencia (MHz)' and valor != '':
                         try:
-                            ocupacion = float(item.text().replace('%', ''))
-                            if ocupacion > 0:
-                                item.setBackground(Qt.yellow)
+                            valor = f"{float(valor):.2f}"
                         except:
                             pass
+                    elif columna == 'Ocupación (%)' and valor != '':
+                        try:
+                            valor = f"{float(valor):.1f}%"
+                        except:
+                            pass
+                    elif columna == 'Level (dBµV/m)' and valor != '':
+                        try:
+                            valor = f"{float(valor):.1f}"
+                        except:
+                            pass
+                    
+                    item = QTableWidgetItem(str(valor))
+                    # Alinear números a la derecha
+                    if columna in ['Frecuencia (MHz)', 'Ocupación (%)', 'Level (dBµV/m)']:
+                        item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    self.tabla_tv.setItem(fila, col, item)
+        
+        # Ajustar el tamaño de las columnas
+        header = self.tabla_tv.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        header.setStretchLastSection(True)
+    
+    def actualizar_nombre_estacion(self, fila, texto, tipo):
+        """Actualizar el nombre de la estación en los datos actuales"""
+        if tipo == 'FM' and fila < len(self.datos_actuales.get('FM', [])):
+            self.datos_actuales['FM'][fila]['Estación'] = texto
+        elif tipo == 'TV' and fila < len(self.datos_actuales.get('TV', [])):
+            self.datos_actuales['TV'][fila]['Estación'] = texto
+    
+    def obtener_estados_actuales(self):
+        """Obtener los estados actuales seleccionados en las tablas"""
+        estados_fm = []
+        estados_tv = []
+        
+        # Obtener estados de FM
+        if hasattr(self, 'grupos_fm'):
+            for fila, grupo in self.grupos_fm:
+                if grupo.checkedButton():
+                    estado = "No Autorizada" if grupo.checkedButton().text() == "No Aut" else "Observación"
+                    frecuencia = self.tabla_fm.item(fila, 0).text() if self.tabla_fm.item(fila, 0) else ""
+                    # Obtener el nombre de la estación del campo editable
+                    estacion_widget = self.tabla_fm.cellWidget(fila, 1)
+                    nombre_estacion = estacion_widget.text() if estacion_widget else ""
+                    
+                    estados_fm.append({
+                        'fila': fila,
+                        'frecuencia': frecuencia,
+                        'estacion': nombre_estacion,
+                        'estado': estado
+                    })
+        
+        # Obtener estados de TV
+        if hasattr(self, 'grupos_tv'):
+            for fila, grupo in self.grupos_tv:
+                if grupo.checkedButton():
+                    estado = "No Autorizada" if grupo.checkedButton().text() == "No Aut" else "Observación"
+                    frecuencia = self.tabla_tv.item(fila, 0).text() if self.tabla_tv.item(fila, 0) else ""
+                    # Obtener el nombre de la estación del campo editable
+                    estacion_widget = self.tabla_tv.cellWidget(fila, 1)
+                    nombre_estacion = estacion_widget.text() if estacion_widget else ""
+                    
+                    estados_tv.append({
+                        'fila': fila,
+                        'frecuencia': frecuencia,
+                        'estacion': nombre_estacion,
+                        'estado': estado
+                    })
+        
+        return estados_fm, estados_tv
+    
+    def guardar_estados(self):
+        """Guardar los estados seleccionados en un archivo JSON"""
+        try:
+            ciudad_actual = self.ciudad_combo.currentText()
+            if not ciudad_actual or ciudad_actual == "No hay ciudades configuradas":
+                QMessageBox.warning(self, "Advertencia", "Seleccione una ciudad primero.")
+                return
+            
+            estados_fm, estados_tv = self.obtener_estados_actuales()
+            
+            datos_guardar = {
+                'ciudad': ciudad_actual,
+                'fecha_actualizacion': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'FM': estados_fm,
+                'TV': estados_tv,
+                'total_fm': len(estados_fm),
+                'total_tv': len(estados_tv)
+            }
+            
+            # Crear nombre de archivo
+            nombre_archivo = f"estados_frecuencias_{ciudad_actual.lower().replace(' ', '_')}.json"
+            
+            with open(nombre_archivo, 'w', encoding='utf-8') as f:
+                json.dump(datos_guardar, f, indent=4, ensure_ascii=False)
+            
+            self.log_text.append(f"✅ Estados guardados en: {nombre_archivo}")
+            QMessageBox.information(self, "Éxito", f"Estados guardados correctamente en {nombre_archivo}")
+            
+        except Exception as e:
+            error_msg = f"❌ Error al guardar estados: {str(e)}"
+            self.log_text.append(error_msg)
+            QMessageBox.critical(self, "Error", error_msg)
+    
+    def guardar_en_configuracion(self):
+        """Guardar las frecuencias en observación en el archivo config.json"""
+        try:
+            ciudad_actual = self.ciudad_combo.currentText()
+            if not ciudad_actual or ciudad_actual == "No hay ciudades configuradas":
+                QMessageBox.warning(self, "Advertencia", "Seleccione una ciudad primero.")
+                return
+            
+            estados_fm, estados_tv = self.obtener_estados_actuales()
+            
+            if not estados_fm and not estados_tv:
+                QMessageBox.warning(self, "Advertencia", "No hay frecuencias para guardar.")
+                return
+            
+            # Normalizar nombre de ciudad para buscar en config.json
+            ciudad_normalizada = ciudad_actual.lower()
+            
+            # Asegurarse de que la ciudad existe en la configuración
+            if ciudad_normalizada not in self.config_data.get('emisoras_por_ciudad', {}):
+                self.config_data['emisoras_por_ciudad'][ciudad_normalizada] = {'FM': [], 'TV': []}
+            
+            # Procesar frecuencias FM
+            for estado_fm in estados_fm:
+                frecuencia = float(estado_fm['frecuencia'])
+                nombre_estacion = estado_fm['estacion']
+                
+                # Agregar sufijo según el estado
+                if estado_fm['estado'] == "No Autorizada":
+                    nombre_completo = f"{nombre_estacion} (NO AUTORIZADO)"
+                else:
+                    nombre_completo = f"{nombre_estacion}"
+                
+                # Buscar si ya existe esta frecuencia
+                frecuencia_existente = False
+                for emisora in self.config_data['emisoras_por_ciudad'][ciudad_normalizada]['FM']:
+                    if abs(emisora['frecuencia'] - frecuencia) < 0.01:  # Tolerancia para comparación de floats
+                        emisora['nombre'] = nombre_completo
+                        frecuencia_existente = True
+                        break
+                
+                # Si no existe, agregar nueva
+                if not frecuencia_existente:
+                    nueva_emisora = {
+                        "nombre": nombre_completo,
+                        "frecuencia": frecuencia,
+                        "tipo": "FM"
+                    }
+                    self.config_data['emisoras_por_ciudad'][ciudad_normalizada]['FM'].append(nueva_emisora)
+            
+            # Procesar frecuencias TV
+            for estado_tv in estados_tv:
+                frecuencia = float(estado_tv['frecuencia'])
+                nombre_estacion = estado_tv['estacion']
+                
+                # Agregar sufijo según el estado
+                if estado_tv['estado'] == "No Autorizada":
+                    nombre_completo = f"{nombre_estacion} (SIS NO AUTORI)"
+                else:
+                    nombre_completo = f"{nombre_estacion} (SIS OBSERVACION)"
+                
+                # Buscar si ya existe esta frecuencia
+                frecuencia_existente = False
+                for emisora in self.config_data['emisoras_por_ciudad'][ciudad_normalizada]['TV']:
+                    if abs(emisora['frecuencia'] - frecuencia) < 0.01:  # Tolerancia para comparación de floats
+                        emisora['nombre'] = nombre_completo
+                        frecuencia_existente = True
+                        break
+                
+                # Si no existe, agregar nueva
+                if not frecuencia_existente:
+                    nueva_emisora = {
+                        "nombre": nombre_completo,
+                        "frecuencia": frecuencia,
+                        "tipo": "TV"
+                    }
+                    self.config_data['emisoras_por_ciudad'][ciudad_normalizada]['TV'].append(nueva_emisora)
+            
+            # Guardar la configuración
+            if self.guardar_configuracion():
+                self.log_text.append(f"✅ Configuración guardada en config.json para {ciudad_actual}")
+                QMessageBox.information(self, "Éxito", f"Configuración guardada correctamente en config.json para {ciudad_actual}")
+            else:
+                raise Exception("No se pudo guardar el archivo config.json")
+            
+        except Exception as e:
+            error_msg = f"❌ Error al guardar en configuración: {str(e)}"
+            self.log_text.append(error_msg)
+            QMessageBox.critical(self, "Error", error_msg)
+    
+    def exportar_a_excel(self):
+        """Exportar las frecuencias con sus estados a Excel"""
+        try:
+            ciudad_actual = self.ciudad_combo.currentText()
+            if not ciudad_actual or ciudad_actual == "No hay ciudades configuradas":
+                QMessageBox.warning(self, "Advertencia", "Seleccione una ciudad primero.")
+                return
+            
+            # Obtener datos actuales con estados
+            datos_fm = self.datos_actuales.get('FM', [])
+            datos_tv = self.datos_actuales.get('TV', [])
+            
+            # Actualizar datos con estados seleccionados
+            estados_fm, estados_tv = self.obtener_estados_actuales()
+            
+            # Actualizar estados en datos FM
+            for estado in estados_fm:
+                if estado['fila'] < len(datos_fm):
+                    datos_fm[estado['fila']]['Estado'] = estado['estado']
+            
+            # Actualizar estados en datos TV
+            for estado in estados_tv:
+                if estado['fila'] < len(datos_tv):
+                    datos_tv[estado['fila']]['Estado'] = estado['estado']
+            
+            # Crear DataFrames
+            df_fm = pd.DataFrame(datos_fm)
+            df_tv = pd.DataFrame(datos_tv)
+            
+            # Crear nombre de archivo
+            nombre_archivo = f"frecuencias_observacion_{ciudad_actual.lower().replace(' ', '_')}.xlsx"
+            
+            # Exportar a Excel
+            with pd.ExcelWriter(nombre_archivo, engine='openpyxl') as writer:
+                if not df_fm.empty:
+                    df_fm.to_excel(writer, sheet_name='FM', index=False)
+                if not df_tv.empty:
+                    df_tv.to_excel(writer, sheet_name='TV', index=False)
+            
+            self.log_text.append(f"✅ Datos exportados a: {nombre_archivo}")
+            QMessageBox.information(self, "Éxito", f"Datos exportados correctamente a {nombre_archivo}")
+            
+        except Exception as e:
+            error_msg = f"❌ Error al exportar a Excel: {str(e)}"
+            self.log_text.append(error_msg)
+            QMessageBox.critical(self, "Error", error_msg)
+    
+    def exportar_a_excel(self):
+        """Exportar las frecuencias con sus estados a Excel"""
+        try:
+            ciudad_actual = self.ciudad_combo.currentText()
+            if not ciudad_actual or ciudad_actual == "No hay ciudades configuradas":
+                QMessageBox.warning(self, "Advertencia", "Seleccione una ciudad primero.")
+                return
+            
+            # Obtener datos actuales con estados
+            datos_fm = self.datos_actuales.get('FM', [])
+            datos_tv = self.datos_actuales.get('TV', [])
+            
+            # Actualizar datos con estados seleccionados
+            estados_fm, estados_tv = self.obtener_estados_actuales()
+            
+            # Actualizar estados en datos FM
+            for estado in estados_fm:
+                if estado['fila'] < len(datos_fm):
+                    datos_fm[estado['fila']]['Estado'] = estado['estado']
+            
+            # Actualizar estados en datos TV
+            for estado in estados_tv:
+                if estado['fila'] < len(datos_tv):
+                    datos_tv[estado['fila']]['Estado'] = estado['estado']
+            
+            # Crear DataFrames
+            df_fm = pd.DataFrame(datos_fm)
+            df_tv = pd.DataFrame(datos_tv)
+            
+            # Crear nombre de archivo
+            nombre_archivo = f"frecuencias_observacion_{ciudad_actual.lower().replace(' ', '_')}.xlsx"
+            
+            # Exportar a Excel
+            with pd.ExcelWriter(nombre_archivo, engine='openpyxl') as writer:
+                if not df_fm.empty:
+                    df_fm.to_excel(writer, sheet_name='FM', index=False)
+                if not df_tv.empty:
+                    df_tv.to_excel(writer, sheet_name='TV', index=False)
+            
+            self.log_text.append(f"✅ Datos exportados a: {nombre_archivo}")
+            QMessageBox.information(self, "Éxito", f"Datos exportados correctamente a {nombre_archivo}")
+            
+        except Exception as e:
+            error_msg = f"❌ Error al exportar a Excel: {str(e)}"
+            self.log_text.append(error_msg)
+            QMessageBox.critical(self, "Error", error_msg)
     
     def actualizar_tabla_tv(self, datos_tv):
         """Actualizar la tabla de frecuencias TV - Solo columnas deseadas"""

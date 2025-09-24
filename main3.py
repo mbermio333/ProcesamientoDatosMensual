@@ -38,7 +38,8 @@ def obtener_frecuencias_observacion(ruta_archivo_excel, ciudad):
                         'Frecuencia (MHz)': fila.get('Frecuencia (MHz)', ''),
                         'Estación': fila.get('Estación', ''),
                         'Ocupación (%)': fila.get('Ocupación (%)', ''),
-                        'Level (dBµV/m)': fila.get('Level (dBµV/m)', '')
+                        'Level (dBµV/m)': fila.get('Level (dBµV/m)', ''),
+                        'Estado': 'Observación'  # Estado por defecto
                         # Eliminadas las columnas no deseadas: Bandwidth, Offset, FM, Tipo
                     })
         except Exception as e:
@@ -63,7 +64,8 @@ def obtener_frecuencias_observacion(ruta_archivo_excel, ciudad):
                         'Banda': fila.get('Banda', ''),
                         'Canal': fila.get('Canal', ''),
                         'Ocupación (%)': fila.get('Ocupación (%)', ''),
-                        'Level (dBµV/m)': fila.get('Level (dBµV/m)', '')
+                        'Level (dBµV/m)': fila.get('Level (dBµV/m)', ''),
+                        'Estado': 'Observación'  # Estado por defecto
                         # Eliminadas las columnas no deseadas: Bandwidth, Offset, AM, Tipo
                     })
         except Exception as e:
@@ -102,8 +104,6 @@ def limpiar_valor_numerico(valor):
         return float(str_valor)
     except ValueError:
         return 0
-
-
 
 def buscar_archivos_ocupacion_ciudad(ruta_salida_ocupacion, ciudad):
     """
