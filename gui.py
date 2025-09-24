@@ -789,9 +789,9 @@ class ObservacionTab(QWidget):
                 
                 # Agregar sufijo según el estado
                 if estado_tv['estado'] == "No Autorizada":
-                    nombre_completo = f"{nombre_estacion} (SIS NO AUTORI)"
+                    nombre_completo = f"{nombre_estacion} (NO AUTORIZADO)"
                 else:
-                    nombre_completo = f"{nombre_estacion} (SIS OBSERVACION)"
+                    nombre_completo = f"{nombre_estacion}_OBSERVACION"
                 
                 # Buscar si ya existe esta frecuencia
                 frecuencia_existente = False

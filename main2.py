@@ -271,7 +271,7 @@ def crear_hoja_datos_manual(wb):
     celda_tv.font = fuente_subtitulo
     celda_tv.alignment = alineacion_centro
     
-    # Obtener datos de FM
+      # Obtener datos de FM
     ws_fm = wb["Datos FM"]
     datos_fm_autorizadas = []
     datos_fm_no_autorizadas = []
@@ -283,8 +283,12 @@ def crear_hoja_datos_manual(wb):
         frecuencia = ws_fm.cell(row=fila, column=1).value  # Columna A = Frecuencia (MHz)
         color_celda = ws_fm.cell(row=fila, column=2).fill  # Color de la celda de estación
         
+        # NUEVO: Quitar sufijo _OBSERVACION para visualización
+        if estacion and "_OBSERVACION" in estacion:
+            estacion = estacion.replace("_OBSERVACION", "").strip()
+        
         if estacion and frecuencia:
-            # Determinar tipo por color
+            # Determinar tipo por color (la clasificación ya se hizo)
             if color_celda.start_color.index == VERDE.start_color.index:
                 datos_fm_autorizadas.append((frecuencia, estacion))
             elif color_celda.start_color.index == ROJO.start_color.index:
@@ -304,8 +308,12 @@ def crear_hoja_datos_manual(wb):
         frecuencia = ws_tv.cell(row=fila, column=1).value  # Columna A = Frecuencia (MHz)
         color_celda = ws_tv.cell(row=fila, column=2).fill  # Color de la celda de estación
         
+        # NUEVO: Quitar sufijo _OBSERVACION para visualización
+        if estacion and "_OBSERVACION" in estacion:
+            estacion = estacion.replace("_OBSERVACION", "").strip()
+        
         if estacion and frecuencia:
-            # Determinar tipo por color
+            # Determinar tipo por color (la clasificación ya se hizo)
             if color_celda.start_color.index == VERDE.start_color.index:
                 datos_tv_autorizadas.append((frecuencia, estacion))
             elif color_celda.start_color.index == ROJO.start_color.index:
@@ -1434,7 +1442,7 @@ def formatear_hoja_ocupacion(ws, datos, tipo, ciudad):
     for fila_idx, (_, fila) in enumerate(datos.iterrows(), 2):
         frecuencia = fila["Frecuencia (MHz)"]
         
-        # Buscar emisora por frecuencia
+        # Buscar emisora por frecuencia (SIN quitar _OBSERVACION para la clasificación)
         nombre_emisora = buscar_emisora_por_frecuencia(ciudad, frecuencia, tipo)
         
         if tipo == "FM":
@@ -1508,6 +1516,14 @@ def formatear_hoja_ocupacion(ws, datos, tipo, ciudad):
     elif tipo == "TV":
         resultados_tv, frecuencias_problematicas_tv = crear_tablas_ocupacion_tv(ws, datos, ciudad=ciudad)
         frecuencias_problematicas = frecuencias_problematicas_tv
+
+    # NUEVO: QUITAR EL SUFIJO _OBSERVACION DESPUÉS DE LA CLASIFICACIÓN
+    for fila in range(2, ws.max_row + 1):
+        estacion_celda = ws.cell(row=fila, column=2)  # Columna B = Estación
+        if estacion_celda.value and "_OBSERVACION" in estacion_celda.value:
+            # Quitar el sufijo solo para visualización, después de que ya se hizo la clasificación
+            nombre_limpio = estacion_celda.value.replace("_OBSERVACION", "").strip()
+            estacion_celda.value = nombre_limpio
 
     return frecuencias_problematicas
 
