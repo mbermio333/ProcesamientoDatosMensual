@@ -798,7 +798,7 @@ class ObservacionTab(QWidget):
                 
                 # Agregar sufijo según el estado
                 if estado_fm['estado'] == "No Autorizada":
-                    nombre_completo = f"{nombre_estacion} (NO AUTORIZADO)"
+                    nombre_completo = f"{nombre_estacion} (NO AUTORIZADA)"
                 else:
                     nombre_completo = f"{nombre_estacion}_OBSERVACION"
                 
@@ -826,7 +826,7 @@ class ObservacionTab(QWidget):
                 
                 # Agregar sufijo según el estado
                 if estado_tv['estado'] == "No Autorizada":
-                    nombre_completo = f"{nombre_estacion} (NO AUTORIZADO)"
+                    nombre_completo = f"{nombre_estacion} (NO AUTORIZADA)"
                 else:
                     nombre_completo = f"{nombre_estacion}_OBSERVACION"
                 
