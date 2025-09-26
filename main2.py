@@ -790,7 +790,7 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60, ciudad=""):
     # VERIFICACIÓN: La suma debe coincidir con el total
     suma_categorias = (frecuencias_autorizadas + frecuencias_no_autorizadas + 
                       frecuencias_observacion + frecuencias_libres)
-    print(f"✅ Frecuencias totales: {suma_categorias}, Autorizadas: {frecuencias_autorizadas}, No autorizadas: {frecuencias_no_autorizadas}, Observación: {frecuencias_observacion}, Libres: {frecuencias_libres}")
+    #print(f"✅ Frecuencias totales: {suma_categorias}, Autorizadas: {frecuencias_autorizadas}, No autorizadas: {frecuencias_no_autorizadas}, Observación: {frecuencias_observacion}, Libres: {frecuencias_libres}")
 
     # El resto de la función permanece igual...
     # Calcular porcentajes

@@ -1100,6 +1100,10 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
     # Inicializar lista de ciudades
     ciudades_encontradas = []
     
+    # Emitir progreso inicial
+    if callback_progreso:
+        callback_progreso(0)
+    
     # Cargar configuración actual
     config = cargar_configuracion()
     config = limpiar_configuracion_duplicados(config)
@@ -1108,6 +1112,10 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         callback_log(f"Ruta FM: {ruta_fm}")
         callback_log(f"Ruta TV: {ruta_tv}")
         callback_log(f"Ruta salida: {ruta_salida}")
+    
+    # Emitir progreso después de inicialización
+    if callback_progreso:
+        callback_progreso(5)
     
     # Obtener listas de archivos FILTRANDO "global"
     try:
@@ -1127,6 +1135,11 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         
         if callback_log:
             callback_log(f"Encontrados {len(archivos_fm)} archivos FM y {len(archivos_tv)} archivos TV (filtrados)")
+        
+        # Emitir progreso después de leer archivos
+        if callback_progreso:
+            callback_progreso(10)
+            
     except Exception as e:
         if callback_log:
             callback_log(f"Error al leer archivos: {str(e)}")
@@ -1138,10 +1151,15 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
     
     frecuencias_a_procesar = cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_log)
     
+    # Emitir progreso después del cotejo
+    if callback_progreso:
+        callback_progreso(15)
+    
     # Extraer nombres de emisoras de todos los archivos por ciudad (mantener para referencia)
     emisoras_por_ciudad = config.get("emisoras_por_ciudad", {})
 
-    for base, archivo in archivos_fm.items():
+    # Procesar archivos FM
+    for i, (base, archivo) in enumerate(archivos_fm.items()):
         if not base or not base.strip():
             continue
         base_normalizada = normalizar_nombre_ciudad(base)
@@ -1155,8 +1173,14 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         for emisora in emisoras_fm:
             if emisora["nombre"] not in emisoras_existentes:
                 emisoras_por_ciudad[base]["FM"].append(emisora)
+        
+        # Emitir progreso incremental para FM
+        if callback_progreso:
+            progreso_fm = 15 + (i / max(len(archivos_fm), 1)) * 10  # 15% a 25%
+            callback_progreso(int(progreso_fm))
 
-    for base, archivo in archivos_tv.items():
+    # Procesar archivos TV
+    for i, (base, archivo) in enumerate(archivos_tv.items()):
         if not base or not base.strip():
             continue
         base_normalizada = normalizar_nombre_ciudad(base)
@@ -1170,6 +1194,11 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         for emisora in emisoras_tv:
             if emisora["nombre"] not in emisoras_existentes:
                 emisoras_por_ciudad[base]["TV"].append(emisora)
+        
+        # Emitir progreso incremental para TV
+        if callback_progreso:
+            progreso_tv = 25 + (i / max(len(archivos_tv), 1)) * 10  # 25% a 35%
+            callback_progreso(int(progreso_tv))
     
     # Actualizar configuración
     config["emisoras_por_ciudad"] = emisoras_por_ciudad
@@ -1180,9 +1209,10 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         total_tv = sum(len(ciudad["TV"]) for ciudad in emisoras_por_ciudad.values())
         if callback_log:
             callback_log(f"Guardadas {total_fm} emisoras FM y {total_tv} emisoras TV por ciudad en config.json")
-    else:
-        if callback_log:
-            callback_log("Error al guardar nombres de emisoras en config.json")
+    
+    # Emitir progreso después de guardar configuración
+    if callback_progreso:
+        callback_progreso(40)
     
     nombres_bases = set(archivos_fm.keys()).union(archivos_tv.keys())
     
@@ -1199,6 +1229,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
             callback_log(f"Ciudades encontradas: {', '.join(ciudades_encontradas)}")
     
     # Procesar cada base usando el nombre NORMALIZADO
+    total_bases = len(nombres_bases)
     for i, base in enumerate(nombres_bases):
         base_normalizada = normalizar_nombre_ciudad(base)
         if not base_normalizada:
@@ -1208,6 +1239,11 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
             callback_log(f"Procesando base: {base_normalizada} (original: {base})")
 
         try:
+            # Emitir progreso al iniciar cada base
+            if callback_progreso:
+                progreso_base = 40 + (i / max(total_bases, 1)) * 55  # 40% a 95%
+                callback_progreso(int(progreso_base))
+            
             wb = Workbook()
             ws = wb.active
             ws.title = "Informe"
@@ -1402,6 +1438,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
             if callback_log:
                 callback_log(f"❌ Error procesando base {base}: {str(e)}")
     
+    # Emitir progreso final
     if callback_progreso:
         callback_progreso(100)
         
