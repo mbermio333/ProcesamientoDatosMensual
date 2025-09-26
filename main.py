@@ -169,15 +169,36 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_
     # Obtener frecuencias deseadas actuales (excluyendo _OBSERVACION)
     frecuencias_deseadas = obtener_frecuencias_deseadas(config.get("emisoras_por_ciudad", {}))
     
-    # Procesar cada ciudad
-    for ciudad in config.get("emisoras_por_ciudad", {}).keys():
-        frecuencias_a_procesar[ciudad] = {"FM": [], "TV": []}
+    # Procesar cada ciudad NORMALIZANDO el nombre
+    for ciudad_original in config.get("emisoras_por_ciudad", {}).keys():
+        ciudad_normalizada = normalizar_nombre_ciudad(ciudad_original)
+        
+        # Buscar la ciudad normalizada en los archivos
+        ciudad_en_archivos = None
+        for archivo_ciudad in archivos_fm.keys():
+            if normalizar_nombre_ciudad(archivo_ciudad) == ciudad_normalizada:
+                ciudad_en_archivos = archivo_ciudad
+                break
+        
+        if not ciudad_en_archivos:
+            # Intentar en archivos TV si no se encuentra en FM
+            for archivo_ciudad in archivos_tv.keys():
+                if normalizar_nombre_ciudad(archivo_ciudad) == ciudad_normalizada:
+                    ciudad_en_archivos = archivo_ciudad
+                    break
+        
+        if not ciudad_en_archivos:
+            if callback_log:
+                callback_log(f"❌ Ciudad {ciudad_original} (normalizada: {ciudad_normalizada}) no encontrada en archivos CSV")
+            continue
+            
+        frecuencias_a_procesar[ciudad_en_archivos] = {"FM": [], "TV": []}
         
         # Procesar FM
-        if ciudad in archivos_fm:
-            frecuencias_csv_fm = extraer_frecuencias_csv(archivos_fm[ciudad], "FM")
+        if ciudad_en_archivos in archivos_fm:
+            frecuencias_csv_fm = extraer_frecuencias_csv(archivos_fm[ciudad_en_archivos], "FM")
             
-            for freq_deseada in frecuencias_deseadas.get(ciudad, {}).get("FM", []):
+            for freq_deseada in frecuencias_deseadas.get(ciudad_original, {}).get("FM", []):
                 freq_str_deseada = freq_deseada["frecuencia"]
                 nombre_deseado = freq_deseada["nombre"]
                 
@@ -198,15 +219,15 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_
                             "frecuencia": freq_str_deseada,
                             "tipo": "FM"
                         }
-                        frecuencias_a_procesar[ciudad]["FM"].append(frecuencia_a_procesar)
+                        frecuencias_a_procesar[ciudad_en_archivos]["FM"].append(frecuencia_a_procesar)
                         
                     # Caso 2: Nombre en CSV es diferente al de config - ACTUALIZAR config
                     elif nombre_csv != nombre_deseado:
                         if callback_log:
-                            callback_log(f"⚠️  Actualizando nombre en {ciudad} FM {freq_str_deseada}: '{nombre_deseado}' -> '{nombre_csv}'")
+                            callback_log(f"⚠️  Actualizando nombre en {ciudad_en_archivos} FM {freq_str_deseada}: '{nombre_deseado}' -> '{nombre_csv}'")
                         
-                        # Actualizar config.json
-                        for emisora in config["emisoras_por_ciudad"][ciudad]["FM"]:
+                        # Actualizar config.json - usar ciudad original
+                        for emisora in config["emisoras_por_ciudad"][ciudad_original]["FM"]:
                             if str(emisora.get("frecuencia", "")) == freq_str_deseada:
                                 emisora["nombre"] = nombre_csv
                                 config_actualizada = True
@@ -217,7 +238,7 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_
                             "frecuencia": freq_str_deseada,
                             "tipo": "FM"
                         }
-                        frecuencias_a_procesar[ciudad]["FM"].append(frecuencia_a_procesar)
+                        frecuencias_a_procesar[ciudad_en_archivos]["FM"].append(frecuencia_a_procesar)
                     
                     # Caso 3: Nombres iguales - procesar normalmente
                     else:
@@ -226,18 +247,18 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_
                             "frecuencia": freq_str_deseada,
                             "tipo": "FM"
                         }
-                        frecuencias_a_procesar[ciudad]["FM"].append(frecuencia_a_procesar)
+                        frecuencias_a_procesar[ciudad_en_archivos]["FM"].append(frecuencia_a_procesar)
                 
                 else:
                     # Frecuencia deseada no encontrada en CSV
                     if callback_log:
-                        callback_log(f"❌ Frecuencia FM {freq_str_deseada} ({nombre_deseado}) no encontrada en CSV de {ciudad}")
+                        callback_log(f"❌ Frecuencia FM {freq_str_deseada} ({nombre_deseado}) no encontrada en CSV de {ciudad_en_archivos}")
         
         # Procesar TV (misma lógica que FM)
-        if ciudad in archivos_tv:
-            frecuencias_csv_tv = extraer_frecuencias_csv(archivos_tv[ciudad], "TV")
+        if ciudad_en_archivos in archivos_tv:
+            frecuencias_csv_tv = extraer_frecuencias_csv(archivos_tv[ciudad_en_archivos], "TV")
             
-            for freq_deseada in frecuencias_deseadas.get(ciudad, {}).get("TV", []):
+            for freq_deseada in frecuencias_deseadas.get(ciudad_original, {}).get("TV", []):
                 freq_str_deseada = freq_deseada["frecuencia"]
                 nombre_deseado = freq_deseada["nombre"]
                 
@@ -258,15 +279,15 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_
                             "frecuencia": freq_str_deseada,
                             "tipo": "TV"
                         }
-                        frecuencias_a_procesar[ciudad]["TV"].append(frecuencia_a_procesar)
+                        frecuencias_a_procesar[ciudad_en_archivos]["TV"].append(frecuencia_a_procesar)
                         
                     # Caso 2: Nombre en CSV es diferente al de config - ACTUALIZAR config
                     elif nombre_csv != nombre_deseado:
                         if callback_log:
-                            callback_log(f"⚠️  Actualizando nombre en {ciudad} TV {freq_str_deseada}: '{nombre_deseado}' -> '{nombre_csv}'")
+                            callback_log(f"⚠️  Actualizando nombre en {ciudad_en_archivos} TV {freq_str_deseada}: '{nombre_deseado}' -> '{nombre_csv}'")
                         
-                        # Actualizar config.json
-                        for emisora in config["emisoras_por_ciudad"][ciudad]["TV"]:
+                        # Actualizar config.json - usar ciudad original
+                        for emisora in config["emisoras_por_ciudad"][ciudad_original]["TV"]:
                             if str(emisora.get("frecuencia", "")) == freq_str_deseada:
                                 emisora["nombre"] = nombre_csv
                                 config_actualizada = True
@@ -277,7 +298,7 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_
                             "frecuencia": freq_str_deseada,
                             "tipo": "TV"
                         }
-                        frecuencias_a_procesar[ciudad]["TV"].append(frecuencia_a_procesar)
+                        frecuencias_a_procesar[ciudad_en_archivos]["TV"].append(frecuencia_a_procesar)
                     
                     # Caso 3: Nombres iguales - procesar normalmente
                     else:
@@ -286,12 +307,12 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_
                             "frecuencia": freq_str_deseada,
                             "tipo": "TV"
                         }
-                        frecuencias_a_procesar[ciudad]["TV"].append(frecuencia_a_procesar)
+                        frecuencias_a_procesar[ciudad_en_archivos]["TV"].append(frecuencia_a_procesar)
                 
                 else:
                     # Frecuencia deseada no encontrada en CSV
                     if callback_log:
-                        callback_log(f"❌ Frecuencia TV {freq_str_deseada} ({nombre_deseado}) no encontrada en CSV de {ciudad}")
+                        callback_log(f"❌ Frecuencia TV {freq_str_deseada} ({nombre_deseado}) no encontrada en CSV de {ciudad_en_archivos}")
     
     # Guardar configuración si hubo cambios
     if config_actualizada:
@@ -303,6 +324,34 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_
                 callback_log("❌ Error al guardar config.json actualizado")
     
     return frecuencias_a_procesar
+
+
+def limpiar_configuracion_duplicados(config):
+    """Une entradas duplicadas de ciudades en config.json"""
+    ciudades_normalizadas = {}
+    
+    for ciudad, datos in config.get("emisoras_por_ciudad", {}).items():
+        ciudad_norm = normalizar_nombre_ciudad(ciudad)
+        
+        if ciudad_norm not in ciudades_normalizadas:
+            ciudades_normalizadas[ciudad_norm] = datos
+        else:
+            # Unir datos duplicados
+            for tipo in ["FM", "TV"]:
+                if tipo in datos:
+                    if tipo not in ciudades_normalizadas[ciudad_norm]:
+                        ciudades_normalizadas[ciudad_norm][tipo] = []
+                    
+                    # Evitar duplicados por frecuencia
+                    frecuencias_existentes = {str(e["frecuencia"]) for e in ciudades_normalizadas[ciudad_norm][tipo]}
+                    for emisora in datos[tipo]:
+                        if str(emisora["frecuencia"]) not in frecuencias_existentes:
+                            ciudades_normalizadas[ciudad_norm][tipo].append(emisora)
+                            frecuencias_existentes.add(str(emisora["frecuencia"]))
+    
+    config["emisoras_por_ciudad"] = ciudades_normalizadas
+    return config
+
 
 def filtrar_dataframe_por_frecuencias(df, frecuencias_procesar, tipo, callback_log=None):
     """
@@ -353,6 +402,9 @@ ruta_tv = config.get("tv_path", "MedicionesTvCSV")
 ruta_salida = config.get("output_path", "ReportesUnificados")
 ruta_imagenes = "Img"
 fecha_actual = datetime.now().strftime("%d/%m/%Y")
+# Llamar esta función después de cargar la configuración
+
+
 
 # ------------------ FUNCIONES AUXILIARES ------------------
 
@@ -470,22 +522,46 @@ def normalizar_nombre_ciudad(nombre):
     
     nombre = nombre.lower().strip()
     
-    # Manejar todas las variantes de "cañar"
+    # Manejar todas las variantes de "cañar" de manera consistente
     if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
-        return "TAMBO"
+        return "cañar"  # ← DEVOLVER SIEMPRE LA MISMA CLAVE
     
-    # Mapeo de otras ciudades si es necesario
+    # Para otras ciudades, devolver en minúsculas para consistencia
     mapeo_ciudades = {
-        "zamora": "ZAMORA",
-        "loja": "LOJA", 
-        "macas": "MACAS",
-        "machala": "MACHALA",
-        "cuenca": "CUENCA"
+        "zamora": "zamora",
+        "loja": "loja", 
+        "macas": "macas",
+        "machala": "machala",
+        "cuenca": "cuenca"
     }
     
-    return mapeo_ciudades.get(nombre, nombre.upper())
+    return mapeo_ciudades.get(nombre, nombre.lower())
 
-
+def limpiar_configuracion_duplicados(config):
+    """Une entradas duplicadas de ciudades en config.json"""
+    ciudades_normalizadas = {}
+    
+    for ciudad, datos in config.get("emisoras_por_ciudad", {}).items():
+        ciudad_norm = normalizar_nombre_ciudad(ciudad)
+        
+        if ciudad_norm not in ciudades_normalizadas:
+            ciudades_normalizadas[ciudad_norm] = datos
+        else:
+            # Unir datos duplicados
+            for tipo in ["FM", "TV"]:
+                if tipo in datos:
+                    if tipo not in ciudades_normalizadas[ciudad_norm]:
+                        ciudades_normalizadas[ciudad_norm][tipo] = []
+                    
+                    # Evitar duplicados por frecuencia
+                    frecuencias_existentes = {str(e["frecuencia"]) for e in ciudades_normalizadas[ciudad_norm][tipo]}
+                    for emisora in datos[tipo]:
+                        if str(emisora["frecuencia"]) not in frecuencias_existentes:
+                            ciudades_normalizadas[ciudad_norm][tipo].append(emisora)
+                            frecuencias_existentes.add(str(emisora["frecuencia"]))
+    
+    config["emisoras_por_ciudad"] = ciudades_normalizadas
+    return config
 # ------------------ FUNCIÓN PARA COLOREAR CELDAS ------------------
 
 def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
@@ -1026,7 +1102,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
     
     # Cargar configuración actual
     config = cargar_configuracion()
-    
+    config = limpiar_configuracion_duplicados(config)
     if callback_log:
         callback_log("Iniciando procesamiento de datos...")
         callback_log(f"Ruta FM: {ruta_fm}")
