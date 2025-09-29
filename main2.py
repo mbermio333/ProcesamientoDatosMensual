@@ -1616,7 +1616,7 @@ def procesar_archivo_fm(ruta_archivo, base):
         
         # Buscar las columnas necesarias
         columna_ocupacion = buscar_columna_por_patron(df_filtrado, ['ocupaci'])
-        columna_level = buscar_columna_por_patron(df_filtrado, ['level', 'nivel'])
+        columna_level = buscar_columna_por_patron(df_filtrado, ['level_3', 'nivel'])
         columna_bandwidth = buscar_columna_por_patron(df_filtrado, ['bandwidth', 'ancho de banda'])
         columna_offset = buscar_columna_por_patron(df_filtrado, ['offset', 'desplazamiento'])
         columna_fm = buscar_columna_por_patron(df_filtrado, ['fm', 'frecuencia modulada'])
@@ -1739,7 +1739,7 @@ def procesar_archivo_tv(ruta_archivo, base):
         # Buscar las columnas necesarias
         columna_ocupacion = buscar_columna_por_patron(df_filtrado, ['ocupaci'])
         columna_canal = buscar_columna_por_patron(df_filtrado, ['canal', 'channel'])
-        columna_level = buscar_columna_por_patron(df_filtrado, ['level', 'nivel'])
+        columna_level = buscar_columna_por_patron(df_filtrado, ['level_3', 'nivel'])
         columna_bandwidth = buscar_columna_por_patron(df_filtrado, ['bandwidth', 'ancho de banda'])
         columna_offset = buscar_columna_por_patron(df_filtrado, ['offset', 'desplazamiento'])
         columna_am = buscar_columna_por_patron(df_filtrado, ['am', 'amplitud modulada'])
