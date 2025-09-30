@@ -219,10 +219,10 @@ class RegistroGeneralTab(QWidget):
         layout.setSpacing(10)
         
         # Título de la pestaña
-        titulo_label = QLabel("Registro General - Configuración Completa")
-        titulo_label.setStyleSheet("font-size: 16pt; font-weight: bold; color: #2c3e50; margin: 10px;")
-        titulo_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(titulo_label)
+        #titulo_label = QLabel("Registro General - Configuración Completa")
+        #titulo_label.setStyleSheet("font-size: 16pt; font-weight: bold; color: #2c3e50; margin: 10px;")
+        #titulo_label.setAlignment(Qt.AlignCenter)
+        #layout.addWidget(titulo_label)
         
         # Grupo de selección de ciudad
         ciudad_group = QGroupBox("Selección de Ciudad")
@@ -255,10 +255,10 @@ class RegistroGeneralTab(QWidget):
         layout.addWidget(ciudad_group)
         
         # Información de resultados
-        self.info_label = QLabel("Seleccione una ciudad para ver todas las frecuencias configuradas")
-        self.info_label.setAlignment(Qt.AlignCenter)
-        self.info_label.setStyleSheet("color: #666; font-size: 11pt; padding: 10px; background-color: #f8f8f8; border-radius: 4px;")
-        layout.addWidget(self.info_label)
+        #self.info_label = QLabel("Seleccione una ciudad para ver todas las frecuencias configuradas")
+        #self.info_label.setAlignment(Qt.AlignCenter)
+        #self.info_label.setStyleSheet("color: #666; font-size: 11pt; padding: 10px; background-color: #f8f8f8; border-radius: 4px;")
+        #layout.addWidget(self.info_label)
         
         # Botones de acción
         estados_group = QGroupBox("Gestión de Configuración")
@@ -319,12 +319,13 @@ class RegistroGeneralTab(QWidget):
         
         # Área de log
         log_group = QGroupBox("Log de Actividad")
+        log_group.setMaximumHeight(85)  # o el valor que necesites
         log_group.setStyleSheet(GROUP_BOX_STYLE)
         log_layout = QVBoxLayout()
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setStyleSheet(LOG_TEXT_STYLE)
-        self.log_text.setMaximumHeight(150)
+        self.log_text.setMaximumHeight(80)
         log_layout.addWidget(self.log_text)
         log_group.setLayout(log_layout)
         layout.addWidget(log_group)
@@ -360,7 +361,7 @@ class RegistroGeneralTab(QWidget):
             
             # Limpiar completamente los datos previos
             self.datos_actuales = {"FM": [], "TV": []}
-            self.info_label.setText("Actualizando datos...")
+            #self.info_label.setText("Actualizando datos...")
             
             # Limpiar las tablas visualmente
             self.tabla_fm.setRowCount(0)
@@ -388,7 +389,7 @@ class RegistroGeneralTab(QWidget):
             
             if not ciudad_real:
                 self.log_text.append(f"❌ No se encontró la ciudad '{ciudad}' en config.json")
-                self.info_label.setText(f"Ciudad '{ciudad}' no encontrada en config.json")
+                #self.info_label.setText(f"Ciudad '{ciudad}' no encontrada en config.json")
                 return
             
             # Obtener datos de la ciudad
@@ -443,10 +444,10 @@ class RegistroGeneralTab(QWidget):
             total_fm = len(datos_fm)
             total_tv = len(datos_tv)
             
-            self.info_label.setText(
-                f"📊 Encontradas {total_fm} frecuencias FM y {total_tv} frecuencias TV\n"
-                f"📁 Ciudad: {ciudad_real}"
-            )
+            #self.info_label.setText(
+            #    f"📊 Encontradas {total_fm} frecuencias FM y {total_tv} frecuencias TV\n"
+            #    f"📁 Ciudad: {ciudad_real}"
+            #)
             
             # Actualizar tablas
             self.actualizar_tabla_fm(datos_fm)
