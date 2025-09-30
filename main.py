@@ -214,14 +214,15 @@ def normalizar_nombre_ciudad(nombre):
     nombre = nombre.lower().strip()
     
     # Manejar todas las variantes de "cañar"
-    if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
-        return "TAMBO"
+    #if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
+    #    return "TAMBO"
     
     # Mapeo de otras ciudades si es necesario
     mapeo_ciudades = {
         "zamora": "ZAMORA",
         "loja": "LOJA", 
         "macas": "MACAS",
+        "tambo":"TAMBO",
         "machala": "MACHALA",
         "cuenca": "CUENCA"
     }
@@ -695,8 +696,9 @@ def obtener_codigo_base(base):
     correspondencia = {
         "zamora": "SCS-L01",
         "loja": "SCS-L02", 
-        "cañar": "SCS-L03",  # ñ normal
-        "cañar": "SCS-L03",  # ñ con tilde combinable (n + ˜)
+        #"cañar": "SCS-L03",  # ñ normal
+        #"cañar": "SCS-L03",  # ñ con tilde combinable (n + ˜)
+        "tambo": "SCS-L03",
         "macas": "SCS-L04",
         "machala": "SCC-L04",
         "cuenca": "SCS-L05"
@@ -706,11 +708,11 @@ def obtener_codigo_base(base):
     base_normalizada = base.lower().strip()
     
     # Manejar diferentes representaciones de "cañar"
-    if (base_normalizada == "cañar" or 
+    """ if (base_normalizada == "cañar" or 
         base_normalizada == "cañar" or  # ñ con tilde combinable
         base_normalizada == "canar" or   # sin tilde
         base_normalizada == "caÃ±ar"):   # posible encoding issue
-        base_normalizada = "cañar"
+        base_normalizada = "cañar" """
     
     return correspondencia.get(base_normalizada, f"SCS-{base.upper()}")
 
@@ -947,7 +949,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
                     "COORDINACIÓN ZONAL 6",
                     "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
                     titulo,
-                    "CIUDAD:" + ("TAMBO" if base == "cañar" or base == "cañar" or base == "canar" or base == "caÃ±ar"  or base == "cañar" else base.upper()),
+                    "CIUDAD:" + base.upper(),
                     f"PERIODO: {nombre_mes_es.upper()}",
                     f"FECHA PRESENTACIÓN: {fecha_actual}"
                 ] if tipo == "FM" else [
@@ -955,7 +957,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
                     "COORDINACIÓN ZONAL 6",
                     "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
                     titulo,
-                    "CIUDAD:" + ("TAMBO" if base == "cañar" or base == "cañar" or base == "canar" or base == "caÃ±ar"  or base == "cañar" else base.upper()),
+                    "CIUDAD:" + base.upper(),
                     f"PERIODO: {nombre_mes_es.upper()}",
                     f"FECHA PRESENTACIÓN: {fecha_actual}"
                 ]
@@ -992,7 +994,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
                     orden_hojas.remove(hoja)
             
             codigo_base = obtener_codigo_base(base)
-            nombre_ciudad = "TAMBO" if base.lower() == "cañar" else base.upper()
+            nombre_ciudad = base.upper()
             nombre_mes_completo = obtener_nombre_mes_es(mes_objetivo)
             nombre_salida = f"{codigo_base}_Procesamiento{nombre_ciudad}_{nombre_mes_completo}2025.xlsx"
             

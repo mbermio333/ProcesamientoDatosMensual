@@ -52,14 +52,15 @@ def normalizar_nombre_ciudad(nombre):
     nombre = nombre.lower().strip()
     
     # Manejar todas las variantes de "cañar" y "tambo"
-    if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
-        return "TAMBO"  # Mostrar "TAMBO" en la interfaz, pero guardar en "cañar"
+    #if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
+    #    return "TAMBO"  # Mostrar "TAMBO" en la interfaz, pero guardar en "cañar"
     
     # Mapeo de otras ciudades si es necesario
     mapeo_ciudades = {
         "zamora": "ZAMORA",
         "loja": "LOJA", 
         "macas": "MACAS",
+        "tambo":"TAMBO",
         "machala": "MACHALA",
         "cuenca": "CUENCA"
     }
@@ -783,10 +784,10 @@ class ObservacionTab(QWidget):
             
             # MAPEO ESPECIAL: Si la ciudad es "tambo", guardar en "cañar"
             ciudad_guardar = ciudad_normalizada
-            if ciudad_normalizada == "tambo":
+            """ if ciudad_normalizada == "tambo":
                 ciudad_guardar = "cañar"
                 self.log_text.append(f"🔀 Ciudad 'TAMBO' mapeada a 'CAÑAR' para guardado en configuración")
-            
+            """
             # Asegurarse de que la ciudad existe en la configuración
             if ciudad_guardar not in self.config_data.get('emisoras_por_ciudad', {}):
                 self.config_data['emisoras_por_ciudad'][ciudad_guardar] = {'FM': [], 'TV': []}
