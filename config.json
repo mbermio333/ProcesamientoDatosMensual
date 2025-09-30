@@ -946,6 +946,41 @@
                     "nombre": "INTERMODULACION RADIO MUNICIPAL 90.1_OBSERVACION",
                     "frecuencia": 89.7,
                     "tipo": "FM"
+                },
+                {
+                    "nombre": "Espuria Radio La Asamblea_OBSERVACION",
+                    "frecuencia": 89.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "Espuria Podocarpus_OBSERVACION",
+                    "frecuencia": 93.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "Espuria AUDIO TV CATOLICA LOS ENCUENTROS CH 5_OBSERVACION",
+                    "frecuencia": 93.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "Espuria de ROMANTICA_OBSERVACION",
+                    "frecuencia": 100.2,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "Espuria Radio Publica_OBSERVACION",
+                    "frecuencia": 105.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "Espuria PODOCARPUS FM_OBSERVACION",
+                    "frecuencia": 106.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "Radio Láser Stereo de Santa Bárbara_OBSERVACION",
+                    "frecuencia": 106.5,
+                    "tipo": "FM"
                 }
             ],
             "TV": [
