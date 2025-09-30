@@ -510,6 +510,211 @@
                     "nombre": "RADIO POSITIVA FM",
                     "frecuencia": 107.7,
                     "tipo": "FM"
+                },
+                {
+                    "nombre": "Espuria Semillas de Amor_OBSERVACION",
+                    "frecuencia": 91.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 88.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 88.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 90.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 90.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 91.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 91.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 91.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "Espuria RS Musical_OBSERVACION",
+                    "frecuencia": 91.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 92.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 92.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 92.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 93.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 93.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 94.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 94.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 95.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 95.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 96.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 96.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 97.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 98.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 98.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 99.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 99.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 99.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 99.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 100.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 100.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 101.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 101.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 101.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 102.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 104.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 104.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 105.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 105.5,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 106.3,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 106.7,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 107.1,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 108.0,
+                    "tipo": "FM"
                 }
             ],
             "TV": [
@@ -592,6 +797,86 @@
                     "nombre": "CANAL SUR - TELEVISION MUN",
                     "frecuencia": 621.25,
                     "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 61.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 83.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 193.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 205.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 211.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 483.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 513.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 615.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 633.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 651.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 663.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 669.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 675.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 681.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 687.25,
+                    "tipo": "TV"
+                },
+                {
+                    "nombre": "No identificada_OBSERVACION",
+                    "frecuencia": 693.25,
+                    "tipo": "TV"
                 }
             ]
         },
@@ -655,6 +940,11 @@
                 {
                     "nombre": "ZETA",
                     "frecuencia": 106.9,
+                    "tipo": "FM"
+                },
+                {
+                    "nombre": "INTERMODULACION RADIO MUNICIPAL 90.1_OBSERVACION",
+                    "frecuencia": 89.7,
                     "tipo": "FM"
                 }
             ],
