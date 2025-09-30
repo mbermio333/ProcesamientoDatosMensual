@@ -783,7 +783,7 @@ def crear_tabla_ocupacion_fm(ws, datos, umbral=60, ciudad=""):
             ws.cell(row=fila, column=4).fill = AMARILLO  # Ocupación
         
         # Caso 4: Frecuencias con ocupación 0% sin nombre
-        elif ocupacion_valor == 0 and not tiene_nombre:
+        if ocupacion_valor == 0:  # and not tiene_nombre: 
             # Se clasifican como libres
             frecuencias_libres += 1
             # No se pinta (queda con formato por defecto)
@@ -1105,7 +1105,7 @@ def crear_tablas_ocupacion_tv(ws, datos, ciudad=""):
                 ws.cell(row=fila, column=5).fill = AMARILLO  # Ocupación
             
             # Caso 4: Frecuencias con ocupación 0% sin nombre
-            elif ocupacion_valor == 0 and not tiene_nombre:
+            if ocupacion_valor == 0: # and not tiene_nombre:
                 # Se clasifican como libres
                 frecuencias_libres += 1
                 # No se pinta (queda con formato por defecto)
