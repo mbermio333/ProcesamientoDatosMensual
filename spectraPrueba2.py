@@ -11,15 +11,16 @@ def filtrar_datos_arcotel(archivo_excel, archivo_json):
         workbook = openpyxl.load_workbook(archivo_excel)
         sheet = workbook['descarga']  # Usar la hoja 'descarga'
         
-        # Definir los filtros (AHORA MÁS FLEXIBLES)
+        # Definir los filtros (ACTUALIZADO PARA MÚLTIPLES SERVICIOS)
         filtros = {
-            'PROVINCIA_A': 'CAÑAR',
-            'SERVICIO': 'FM - Frecuencia Modulada', 
-            'AREAS_OP_MR': 'TAMBO'  # Ahora busca cualquier campo que CONTENGA "ZAMORA"
+            'PROVINCIA_A': 'EL ORO',
+            'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],  # LISTA DE SERVICIOS
+            'AREAS_OP_MR': 'MACHALA'
         }
         
         # Mapeo de columnas a extraer
         columnas_extraer = {
+            'SERVICIO': 'B',
             'NOMBRES': 'C',
             'RED': 'E', 
             'FRECUENCIA': 'F',
@@ -55,15 +56,15 @@ def filtrar_datos_arcotel(archivo_excel, archivo_json):
             servicio = sheet[f'{col_servicio}{row}'].value
             areas_op = sheet[f'{col_areas_op}{row}'].value
             
-            # Aplicar filtros (FILTRO AREAS_OP_MR ACTUALIZADO)
+            # Aplicar filtros (FILTRO SERVICIO ACTUALIZADO)
             cumple_filtros = True
             
             # Filtro PROVINCIA_A (exacto)
             if provincia != filtros['PROVINCIA_A']:
                 cumple_filtros = False
             
-            # Filtro SERVICIO (exacto)
-            if servicio != filtros['SERVICIO']:
+            # FILTRO SERVICIO ACTUALIZADO - acepta múltiples servicios
+            if servicio not in filtros['SERVICIOS']:
                 cumple_filtros = False
             
             # FILTRO AREAS_OP_MR OPTIMIZADO - busca contenido en lugar de coincidencia exacta
@@ -96,9 +97,21 @@ def filtrar_datos_arcotel(archivo_excel, archivo_json):
         print(f"\nProceso completado. Se encontraron {len(resultados)} registros.")
         print(f"Resultados guardados en: {archivo_json}")
         
-        # Mostrar estadísticas de AREAS_OP_MR encontradas
+        # Mostrar estadísticas de SERVICIOS y AREAS_OP_MR encontradas
         if resultados:
-            areas_unicas = set(registro['_FILTRO_AREAS_OP_MR'] for registro in resultados)
+            # Estadísticas por servicio
+            servicios_encontrados = {}
+            areas_unicas = set()
+            
+            for registro in resultados:
+                servicio = registro.get('RED', '')  # Asumiendo que RED contiene el servicio
+                areas_unicas.add(registro['_FILTRO_AREAS_OP_MR'])
+                servicios_encontrados[servicio] = servicios_encontrados.get(servicio, 0) + 1
+            
+            print(f"\nDistribución por servicios:")
+            for servicio, cantidad in servicios_encontrados.items():
+                print(f"  - {servicio}: {cantidad} registros")
+            
             print(f"\nValores únicos de AREAS_OP_MR encontrados:")
             for area in sorted(areas_unicas):
                 print(f"  - {area}")
