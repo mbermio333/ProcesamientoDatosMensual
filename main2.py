@@ -1393,9 +1393,9 @@ def reducir_archivo_csv(ruta_archivo, tipo):
         # Filtrar según el tipo
         if tipo == "FM":
             # Para FM: rango desde 88.1 MHz, conservar primeras 95 filas
-            df_filtrado = df[(df["Frecuencia (MHz)"] >= 88.1)]
-            if len(df_filtrado) > 95:
-                df_filtrado = df_filtrado.head(95)
+            df_filtrado = df[(df["Frecuencia (MHz)"] >= 88.1) & (df["Frecuencia (MHz)"] <= 108)]
+            if len(df_filtrado) > 101:
+                df_filtrado = df_filtrado.head(101)
         else:  # TV
             # Para TV: rango 55.25-693.25 MHz, conservar primeras 45 filas
             df_filtrado = df[(df["Frecuencia (MHz)"] >= 55.25) & (df["Frecuencia (MHz)"] <= 693.25)]
