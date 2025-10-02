@@ -11,11 +11,11 @@ def filtrar_datos_arcotel(archivo_excel, archivo_json):
         workbook = openpyxl.load_workbook(archivo_excel)
         sheet = workbook['descarga']  # Usar la hoja 'descarga'
         
-        # Definir los filtros (ACTUALIZADO PARA MÚLTIPLES SERVICIOS)
+        # Definir los filtros
         filtros = {
-            'PROVINCIA_A': 'EL ORO',
-            'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],  # LISTA DE SERVICIOS
-            'AREAS_OP_MR': 'MACHALA'
+            'PROVINCIA_A': 'ZAMORA CHINCHIPE',
+            'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],
+            'AREAS_OP_MR': 'ZAMORA'
         }
         
         # Mapeo de columnas a extraer
@@ -36,8 +36,8 @@ def filtrar_datos_arcotel(archivo_excel, archivo_json):
         col_servicio = 'B'   # SERVICIO
         col_areas_op = 'I'   # AREAS_OP_MR
         
-        # Lista para almacenar los resultados
-        resultados = []
+        # Lista para almacenar los resultados iniciales
+        resultados_iniciales = []
         
         # Contadores para estadísticas
         total_filas = sheet.max_row - 1
@@ -56,18 +56,18 @@ def filtrar_datos_arcotel(archivo_excel, archivo_json):
             servicio = sheet[f'{col_servicio}{row}'].value
             areas_op = sheet[f'{col_areas_op}{row}'].value
             
-            # Aplicar filtros (FILTRO SERVICIO ACTUALIZADO)
+            # Aplicar filtros
             cumple_filtros = True
             
             # Filtro PROVINCIA_A (exacto)
             if provincia != filtros['PROVINCIA_A']:
                 cumple_filtros = False
             
-            # FILTRO SERVICIO ACTUALIZADO - acepta múltiples servicios
+            # FILTRO SERVICIO - acepta múltiples servicios
             if servicio not in filtros['SERVICIOS']:
                 cumple_filtros = False
             
-            # FILTRO AREAS_OP_MR OPTIMIZADO - busca contenido en lugar de coincidencia exacta
+            # FILTRO AREAS_OP_MR - busca contenido
             if areas_op is None or filtros['AREAS_OP_MR'].upper() not in str(areas_op).upper():
                 cumple_filtros = False
             
@@ -88,43 +88,26 @@ def filtrar_datos_arcotel(archivo_excel, archivo_json):
                 
                 # Agregar información de filtro para referencia
                 registro['_FILTRO_AREAS_OP_MR'] = areas_op
-                resultados.append(registro)
+                registro['_ROW_NUMBER'] = row  # Para debugging
+                resultados_iniciales.append(registro)
+        
+        print(f"\nFiltros básicos aplicados. Encontrados {len(resultados_iniciales)} registros.")
+        
+        # APLICAR FILTRO POR FRECUENCIA Y VIGENCIA
+        resultados_finales = filtrar_por_vigencia_mas_alta(resultados_iniciales)
         
         # Guardar resultados en archivo JSON
         with open(archivo_json, 'w', encoding='utf-8') as json_file:
-            json.dump(resultados, json_file, ensure_ascii=False, indent=2)
+            json.dump(resultados_finales, json_file, ensure_ascii=False, indent=2)
         
-        print(f"\nProceso completado. Se encontraron {len(resultados)} registros.")
+        print(f"Proceso completado. Se encontraron {len(resultados_finales)} registros únicos por frecuencia.")
         print(f"Resultados guardados en: {archivo_json}")
         
-        # Mostrar estadísticas de SERVICIOS y AREAS_OP_MR encontradas
-        if resultados:
-            # Estadísticas por servicio
-            servicios_encontrados = {}
-            areas_unicas = set()
-            
-            for registro in resultados:
-                servicio = registro.get('RED', '')  # Asumiendo que RED contiene el servicio
-                areas_unicas.add(registro['_FILTRO_AREAS_OP_MR'])
-                servicios_encontrados[servicio] = servicios_encontrados.get(servicio, 0) + 1
-            
-            print(f"\nDistribución por servicios:")
-            for servicio, cantidad in servicios_encontrados.items():
-                print(f"  - {servicio}: {cantidad} registros")
-            
-            print(f"\nValores únicos de AREAS_OP_MR encontrados:")
-            for area in sorted(areas_unicas):
-                print(f"  - {area}")
-            
-            print("\nPreview de los primeros registros:")
-            for i, registro in enumerate(resultados[:3], 1):
-                print(f"Registro {i}:")
-                for key, value in registro.items():
-                    if not key.startswith('_'):  # No mostrar campos internos
-                        print(f"  {key}: {value}")
-                print()
+        # Mostrar estadísticas
+        if resultados_finales:
+            mostrar_estadisticas(resultados_iniciales, resultados_finales)
         
-        return resultados
+        return resultados_finales
         
     except FileNotFoundError:
         print(f"Error: No se encontró el archivo {archivo_excel}")
@@ -132,6 +115,129 @@ def filtrar_datos_arcotel(archivo_excel, archivo_json):
     except Exception as e:
         print(f"Error durante el procesamiento: {str(e)}")
         return []
+
+def filtrar_por_vigencia_mas_alta(registros):
+    """
+    Filtra registros por frecuencia, manteniendo solo el registro con la vigencia más alta por cada frecuencia
+    """
+    # Agrupar registros por frecuencia
+    registros_por_frecuencia = {}
+    
+    for registro in registros:
+        frecuencia = registro.get('FRECUENCIA', '')
+        vigencia_str = registro.get('VIGENCIA', '')
+        
+        # Convertir vigencia a datetime para comparación
+        vigencia_dt = None
+        if vigencia_str:
+            try:
+                # Intentar diferentes formatos de fecha
+                if isinstance(vigencia_str, datetime):
+                    vigencia_dt = vigencia_str
+                else:
+                    # Probar diferentes formatos de fecha
+                    for fmt in ['%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y']:
+                        try:
+                            vigencia_dt = datetime.strptime(str(vigencia_str), fmt)
+                            break
+                        except ValueError:
+                            continue
+            except (ValueError, TypeError):
+                vigencia_dt = None
+        
+        # Si no tenemos frecuencia, mantener el registro
+        if not frecuencia:
+            frecuencia = f"sin_frecuencia_{id(registro)}"
+        
+        # Si es la primera vez que vemos esta frecuencia, o si encontramos una vigencia más alta
+        if frecuencia not in registros_por_frecuencia:
+            registros_por_frecuencia[frecuencia] = registro
+            registro['_VIGENCIA_DT'] = vigencia_dt
+        else:
+            registro_existente = registros_por_frecuencia[frecuencia]
+            vigencia_existente = registro_existente.get('_VIGENCIA_DT')
+            
+            # Comparar vigencias
+            if vigencia_dt and vigencia_existente:
+                if vigencia_dt > vigencia_existente:
+                    registros_por_frecuencia[frecuencia] = registro
+                    registro['_VIGENCIA_DT'] = vigencia_dt
+            elif vigencia_dt and not vigencia_existente:
+                # Si el nuevo tiene vigencia y el existente no, usar el nuevo
+                registros_por_frecuencia[frecuencia] = registro
+                registro['_VIGENCIA_DT'] = vigencia_dt
+            # Si ambos no tienen vigencia, mantener el primero
+    
+    # Crear lista final sin los campos internos
+    resultados_finales = []
+    for frecuencia, registro in registros_por_frecuencia.items():
+        # Remover campos internos antes de guardar
+        registro_final = {k: v for k, v in registro.items() if not k.startswith('_')}
+        resultados_finales.append(registro_final)
+    
+    return resultados_finales
+
+def mostrar_estadisticas(registros_iniciales, registros_finales):
+    """
+    Muestra estadísticas comparativas antes y después del filtro por vigencia
+    """
+    print(f"\n=== ESTADÍSTICAS ===")
+    print(f"Registros iniciales después de filtros básicos: {len(registros_iniciales)}")
+    print(f"Registros finales después de filtro por vigencia: {len(registros_finales)}")
+    print(f"Registros eliminados por duplicados de frecuencia: {len(registros_iniciales) - len(registros_finales)}")
+    
+    # Estadísticas por servicio
+    servicios_iniciales = {}
+    servicios_finales = {}
+    
+    for registro in registros_iniciales:
+        servicio = registro.get('RED', '')
+        servicios_iniciales[servicio] = servicios_iniciales.get(servicio, 0) + 1
+    
+    for registro in registros_finales:
+        servicio = registro.get('RED', '')
+        servicios_finales[servicio] = servicios_finales.get(servicio, 0) + 1
+    
+    print(f"\nDistribución por servicios (INICIAL):")
+    for servicio, cantidad in servicios_iniciales.items():
+        print(f"  - {servicio}: {cantidad} registros")
+    
+    print(f"\nDistribución por servicios (FINAL):")
+    for servicio, cantidad in servicios_finales.items():
+        print(f"  - {servicio}: {cantidad} registros")
+    
+    # Mostrar ejemplos de frecuencias con múltiples registros
+    frecuencias_duplicadas = {}
+    for registro in registros_iniciales:
+        frecuencia = registro.get('FRECUENCIA', 'sin_frecuencia')
+        frecuencias_duplicadas[frecuencia] = frecuencias_duplicadas.get(frecuencia, 0) + 1
+    
+    frecuencias_con_duplicados = {freq: count for freq, count in frecuencias_duplicadas.items() if count > 1}
+    
+    if frecuencias_con_duplicados:
+        print(f"\nFrecuencias con múltiples registros (antes del filtro):")
+        for frecuencia, count in list(frecuencias_con_duplicados.items())[:5]:  # Mostrar solo las primeras 5
+            print(f"  - {frecuencia}: {count} registros")
+        
+        # Mostrar un ejemplo detallado
+        print(f"\nEjemplo de filtrado para una frecuencia:")
+        frecuencia_ejemplo = list(frecuencias_con_duplicados.keys())[0]
+        registros_ejemplo = [r for r in registros_iniciales if r.get('FRECUENCIA') == frecuencia_ejemplo]
+        registro_elegido = [r for r in registros_finales if r.get('FRECUENCIA') == frecuencia_ejemplo]
+        
+        if registro_elegido:
+            print(f"Frecuencia: {frecuencia_ejemplo}")
+            print(f"Registros encontrados: {len(registros_ejemplo)}")
+            print(f"Registro elegido (mayor vigencia):")
+            print(f"  VIGENCIA: {registro_elegido[0].get('VIGENCIA', 'N/A')}")
+            print(f"  NOMBRES: {registro_elegido[0].get('NOMBRES', 'N/A')}")
+    
+    print("\nPreview de los primeros registros finales:")
+    for i, registro in enumerate(registros_finales[:3], 1):
+        print(f"Registro {i}:")
+        for key, value in registro.items():
+            print(f"  {key}: {value}")
+        print()
 
 # Función alternativa con filtros más avanzados
 def filtrar_datos_avanzado(archivo_excel, archivo_json, filtros_personalizados=None):
