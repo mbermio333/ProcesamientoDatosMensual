@@ -8,7 +8,7 @@ def normalizar_frecuencias_tv(archivo_json):
     Normaliza las frecuencias de TV en un archivo JSON y REEMPLAZA el archivo original:
     - Mantiene frecuencias decimales (que contienen ".")
     - A frecuencias enteras les resta 1.75
-    - Para REDES duplicadas, prioriza registros "Activos"
+    - Para FRECUENCIAS duplicadas, prioriza registros "Activos"
     """
     # Cargar datos
     with open(archivo_json, 'r', encoding='utf-8') as f:
@@ -43,8 +43,8 @@ def normalizar_frecuencias_tv(archivo_json):
                     print(f"Error procesando frecuencia: {frecuencia} para {registro.get('RED')}")
                     continue
     
-    # Ahora eliminar duplicados por RED y FRECUENCIA (después de la normalización)
-    registros_tv_sin_duplicados = eliminar_duplicados_por_red(registros_tv)
+    # Ahora eliminar duplicados por FRECUENCIA (después de la normalización)
+    registros_tv_sin_duplicados = eliminar_duplicados_por_frecuencia(registros_tv)
     
     print(f"Registros TV después de eliminar duplicados: {len(registros_tv_sin_duplicados)}")
     
@@ -59,33 +59,43 @@ def normalizar_frecuencias_tv(archivo_json):
     
     return datos_finales, archivo_json
 
-def eliminar_duplicados_por_red(registros_tv):
+def eliminar_duplicados_por_frecuencia(registros_tv):
     """
-    Elimina registros duplicados por RED, priorizando los que están "Activos"
+    Elimina registros duplicados por FRECUENCIA, priorizando los que están "Activos"
     """
-    registros_por_red = {}
+    registros_por_frecuencia = {}
     
     for registro in registros_tv:
-        red = registro.get('RED', 'Sin nombre')
         frecuencia = registro.get('FRECUENCIA')
         
-        # Crear clave única por RED y FRECUENCIA
-        clave = f"{red}_{frecuencia}"
+        if frecuencia is None:
+            # Si no tiene frecuencia, mantenerlo
+            continue
+            
+        # Crear clave única por FRECUENCIA
+        clave = f"{frecuencia}"
         
-        if clave not in registros_por_red:
-            registros_por_red[clave] = []
-        registros_por_red[clave].append(registro)
+        if clave not in registros_por_frecuencia:
+            registros_por_frecuencia[clave] = []
+        registros_por_frecuencia[clave].append(registro)
     
-    # Para cada grupo de registros con misma RED y FRECUENCIA, elegir el mejor
+    # Para cada grupo de registros con misma FRECUENCIA, elegir el mejor
     registros_unicos = []
     
-    for clave, registros in registros_por_red.items():
+    for clave, registros in registros_por_frecuencia.items():
         if len(registros) == 1:
             # Solo un registro, mantenerlo
             registros_unicos.append(registros[0])
         else:
-            # Múltiples registros, elegir el mejor
-            print(f"\nEncontrados {len(registros)} registros para: {clave}")
+            # Múltiples registros con misma frecuencia, elegir el mejor
+            print(f"\nEncontrados {len(registros)} registros para frecuencia: {clave} MHz")
+            
+            # Mostrar todos los registros encontrados
+            for i, r in enumerate(registros, 1):
+                estado_est = r.get('ESTADO_ESTACION', 'N/A')
+                estado_sol = r.get('ESTADO_SOLICITUD', 'N/A')
+                red = r.get('RED', 'N/A')
+                print(f"  {i}. {red} - Estados: {estado_est}/{estado_sol}")
             
             # Priorizar registros activos
             registros_activos = [r for r in registros if 
@@ -97,20 +107,20 @@ def eliminar_duplicados_por_red(registros_tv):
                 registro_elegido = max(registros_activos, 
                                      key=lambda x: convertir_vigencia_a_fecha(x.get('VIGENCIA', '')))
                 registros_unicos.append(registro_elegido)
-                print(f"✓ Elegido registro ACTIVO: {registro_elegido.get('NOMBRES')}")
+                print(f"✓ Elegido registro ACTIVO: {registro_elegido.get('RED')}")
                 
                 # Mostrar los descartados
                 for r in registros:
                     if r != registro_elegido:
                         estado_est = r.get('ESTADO_ESTACION', 'N/A')
                         estado_sol = r.get('ESTADO_SOLICITUD', 'N/A')
-                        print(f"  ✗ Descartado: {r.get('NOMBRES')} - Estados: {estado_est}/{estado_sol}")
+                        print(f"  ✗ Descartado: {r.get('RED')} - Estados: {estado_est}/{estado_sol}")
             else:
                 # Si no hay activos, elegir el de mayor vigencia entre todos
                 registro_elegido = max(registros, 
                                      key=lambda x: convertir_vigencia_a_fecha(x.get('VIGENCIA', '')))
                 registros_unicos.append(registro_elegido)
-                print(f"✓ Elegido registro por VIGENCIA: {registro_elegido.get('NOMBRES')}")
+                print(f"✓ Elegido registro por VIGENCIA: {registro_elegido.get('RED')}")
     
     return registros_unicos
 
@@ -167,81 +177,8 @@ def procesar_todos_los_archivos_en_carpeta(carpeta):
     
     return resultados
 
-# Función simplificada para un solo archivo
-def normalizacion_rapida(archivo_json):
-    """
-    Versión simplificada para normalizar un archivo específico (REEMPLAZA original)
-    """
-    return normalizar_frecuencias_tv(archivo_json)
-
-# Versión ultra-simplificada que reemplaza el original
-def normalizar_frecuencias_simple(archivo_json):
-    """
-    Versión ultra-simplificada que REEMPLAZA el archivo original
-    """
-    with open(archivo_json, 'r', encoding='utf-8') as f:
-        datos = json.load(f)
-    
-    # Diccionario para trackear las mejores opciones por RED
-    mejores_registros = {}
-    
-    for registro in datos:
-        if registro.get('SERVICIO') == 'TV - Televisión Abierta':
-            frecuencia = registro.get('FRECUENCIA')
-            red = registro.get('RED', '')
-            
-            # Aplicar regla de normalización
-            if frecuencia is not None:
-                freq_str = str(frecuencia)
-                if '.' not in freq_str:  # Si es entera
-                    try:
-                        registro['FRECUENCIA'] = float(frecuencia) - 1.75
-                        print(f"Ajustada: {red} - {frecuencia} -> {registro['FRECUENCIA']}")
-                    except:
-                        pass
-            
-            # Evaluar si es el mejor registro para esta RED
-            if red:
-                es_activo = (registro.get('ESTADO_ESTACION') == 'Activo' or 
-                            registro.get('ESTADO_SOLICITUD') == 'Activo')
-                
-                if red not in mejores_registros:
-                    mejores_registros[red] = registro
-                else:
-                    # Comparar con el registro actualmente guardado
-                    registro_actual = mejores_registros[red]
-                    actual_es_activo = (registro_actual.get('ESTADO_ESTACION') == 'Activo' or 
-                                      registro_actual.get('ESTADO_SOLICITUD') == 'Activo')
-                    
-                    # Prioridad: activos sobre no activos
-                    if es_activo and not actual_es_activo:
-                        mejores_registros[red] = registro
-                    elif es_activo == actual_es_activo:
-                        # Si ambos son activos o ambos no, comparar por vigencia
-                        vigencia_actual = registro_actual.get('VIGENCIA', '')
-                        vigencia_nueva = registro.get('VIGENCIA', '')
-                        if vigencia_nueva > vigencia_actual:  # Comparación simple de strings
-                            mejores_registros[red] = registro
-    
-    # Filtrar datos: mantener solo FM y los mejores registros de TV
-    datos_fm = [r for r in datos if r.get('SERVICIO') != 'TV - Televisión Abierta']
-    datos_tv_unicos = list(mejores_registros.values())
-    
-    datos_finales = datos_fm + datos_tv_unicos
-    
-    # GUARDAR SOBREESCRIBIENDO EL ARCHIVO ORIGINAL
-    with open(archivo_json, 'w', encoding='utf-8') as f:
-        json.dump(datos_finales, f, ensure_ascii=False, indent=2)
-    
-    print(f"Procesamiento completado. Archivo ORIGINAL actualizado: {archivo_json}")
-    return datos_finales
-
 # Ejemplo de uso
 if __name__ == "__main__":
-    # Opción 1: Procesar un archivo individual (REEMPLAZA original)
-    # archivo_individual = "zamora_spectra.json"
-    # datos_normalizados, archivo_salida = normalizacion_rapida(archivo_individual)
-    
-    # Opción 2: Procesar todos los archivos en una carpeta (REEMPLAZA originales)
-    carpeta_resultados = "SPECTRA_filtrado"  # La carpeta donde están tus JSON
+    # Procesar todos los archivos en una carpeta
+    carpeta_resultados = "SPECTRA_filtrado"
     resultados = procesar_todos_los_archivos_en_carpeta(carpeta_resultados)

@@ -650,14 +650,14 @@
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
-    "NOMBRES": "AMERICAVISION S.A.",
-    "RED": "CANAL INTIMAS",
+    "NOMBRES": "SISTEMAS GLOBALES DE COMUNICACION HCGLOBAL S.A.",
+    "RED": "OROMAR",
     "FRECUENCIA": 525.25,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-6-CANAL INTIMAS",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "2014-07-17 00:00:00",
-    "VIGENCIA": "2015-07-17 00:00:00"
+    "ESTADO_ESTACION": "Activo",
+    "ESTACION": "T-R-12-OROMAR",
+    "ESTADO_SOLICITUD": "Activo",
+    "SUSCRIPCION": "2009-07-07 00:00:00",
+    "VIGENCIA": "2019-07-07 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -790,17 +790,6 @@
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2015-08-26 00:00:00",
     "VIGENCIA": "2017-08-26 00:00:00"
-  },
-  {
-    "SERVICIO": "TV - Televisión Abierta",
-    "NOMBRES": "SISTEMAS GLOBALES DE COMUNICACION HCGLOBAL S.A.",
-    "RED": "OROMAR",
-    "FRECUENCIA": 525.25,
-    "ESTADO_ESTACION": "Activo",
-    "ESTACION": "T-R-12-OROMAR",
-    "ESTADO_SOLICITUD": "Activo",
-    "SUSCRIPCION": "2009-07-07 00:00:00",
-    "VIGENCIA": "2019-07-07 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
