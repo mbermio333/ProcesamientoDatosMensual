@@ -1,5 +1,5 @@
 {
-  "fecha_procesamiento": "2025-10-03 09:54:58",
+  "fecha_procesamiento": "2025-10-03 14:28:15",
   "total_ciudades": 6,
   "estadisticas_por_ciudad": {
     "ZAMORA": {
@@ -141,7 +141,7 @@
         "UCSG TELEVISION": 1
       }
     },
-    "MORONA": {
+    "MACAS": {
       "total_registros": 30,
       "servicios": {
         "LA RADIO DE LA ASAMBLEA NACIONAL": 1,

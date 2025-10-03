@@ -141,7 +141,10 @@ def procesar_multiple_ciudades(archivo_excel, directorio_salida, configuraciones
     
     for config in configuraciones_ciudades:
         ciudad = config['AREAS_OP_MR']
-        nombre_archivo = f"resultados_{ciudad.lower().replace(' ', '_')}.json"
+        if ciudad == 'MORONA':
+            ciudad = 'MACAS'
+
+        nombre_archivo = f"{ciudad.lower().replace(' ', '_')}_spectra.json"
         archivo_salida = os.path.join(directorio_salida, nombre_archivo)
         
         print(f"\n--- Procesando: {ciudad} ---")
