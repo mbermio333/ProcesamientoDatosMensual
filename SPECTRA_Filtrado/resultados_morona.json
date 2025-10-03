@@ -4,36 +4,11 @@
     "NOMBRES": "ASAMBLEA NACIONAL",
     "RED": "LA RADIO DE LA ASAMBLEA NACIONAL",
     "FRECUENCIA": 90.9,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-18-LA RADIO DE LA ASAMBLEA NACIONAL",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "2013-02-27 00:00:00",
-    "VIGENCIA": "2023-02-27 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-LOGROÑO-MORONA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "ASAMBLEA NACIONAL",
-    "RED": "LA RADIO DE LA ASAMBLEA NACIONAL",
-    "FRECUENCIA": 90.9,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-18-CERRO KILAMO",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "",
-    "VIGENCIA": "",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-LOGROÑO-MORONA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "ASAMBLEA NACIONAL",
-    "RED": "LA RADIO DE LA ASAMBLEA NACIONAL",
-    "FRECUENCIA": 90.9,
     "ESTADO_ESTACION": "Activo",
     "ESTACION": "T-R-14-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2024-08-20 00:00:00",
-    "VIGENCIA": "2039-08-20 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "MORONA-SUCUA-LOGROÑO"
+    "VIGENCIA": "2039-08-20 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -44,8 +19,7 @@
     "ESTACION": "T-R-2-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2021-03-04 00:00:00",
-    "VIGENCIA": "2036-03-04 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "LOGROÑO-MORONA-SUCUA"
+    "VIGENCIA": "2036-03-04 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -56,8 +30,7 @@
     "ESTACION": "T-R-21-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2015-11-27 00:00:00",
-    "VIGENCIA": "2030-11-27 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-LOGROÑO-MORONA"
+    "VIGENCIA": "2030-11-27 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -68,20 +41,7 @@
     "ESTACION": "T-M-1-LA VOZ DE ARUTAM",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2004-07-02 00:00:00",
-    "VIGENCIA": "2014-07-02 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-HUAMBOYA-MORONA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "FUNDACION RADIO MARIA",
-    "RED": "MARIA",
-    "FRECUENCIA": 98.9,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-4-MARIA",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "1998-07-08 00:00:00",
-    "VIGENCIA": "2018-07-08 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-HUAMBOYA-MORONA"
+    "VIGENCIA": "2014-07-02 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -92,8 +52,7 @@
     "ESTACION": "T-R06-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2021-01-07 00:00:00",
-    "VIGENCIA": "2036-01-07 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-LOGROÑO-MORONA"
+    "VIGENCIA": "2036-01-07 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -104,8 +63,7 @@
     "ESTACION": "T-M-1-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2017-11-22 00:00:00",
-    "VIGENCIA": "2032-11-22 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "MORONA-SUCUA-HUAMBOYA-LOGROÑO_Detailed"
+    "VIGENCIA": "2032-11-22 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -116,20 +74,7 @@
     "ESTACION": "T-M-1-BONITA FM",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2005-06-02 00:00:00",
-    "VIGENCIA": "2015-06-02 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-MORONA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "HERCONSLAC COMUNICACIONES CIA. LTDA.",
-    "RED": "MIA",
-    "FRECUENCIA": 92.9,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-2-MIA",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "1987-11-16 00:00:00",
-    "VIGENCIA": "2013-08-23 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-HUAMBOYA-MORONA"
+    "VIGENCIA": "2015-06-02 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -140,8 +85,7 @@
     "ESTACION": "T-R-2-CERRO KÍLAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2017-05-30 00:00:00",
-    "VIGENCIA": "2032-05-30 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "MORONA-HUAMBOYA-SUCUA-LOGROÑO-PABLO SEXTO"
+    "VIGENCIA": "2032-05-30 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -152,20 +96,7 @@
     "ESTACION": "T-M-1-CANAL JUVENIL FM",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "1998-05-12 00:00:00",
-    "VIGENCIA": "2018-05-12 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-MORONA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "KOMUNIKEST COMUNICACION ESTRATEGICA S.A.",
-    "RED": "CANELA ORIENTE",
-    "FRECUENCIA": 91.7,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R3-CERRO KILAMO",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "",
-    "VIGENCIA": "",
-    "_FILTRO_AREAS_OP_MR": "MORONA-SUCUA-LOGROÑO_Detailed"
+    "VIGENCIA": "2018-05-12 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -176,20 +107,7 @@
     "ESTACION": "T-M-1-LA RADIO FM DIGITAL",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2001-12-28 00:00:00",
-    "VIGENCIA": "2011-12-28 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-HUAMBOYA-MORONA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "LA RADIO FM DIGITAL CAMORAE CIA. LTDA.",
-    "RED": "LA RADIO FM DIGITAL 100.1",
-    "FRECUENCIA": 100.10000000000001,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-M-1-CERRO KILAMO",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "",
-    "VIGENCIA": "",
-    "_FILTRO_AREAS_OP_MR": "MORONA-SUCUA-LOGROÑO_Detailed"
+    "VIGENCIA": "2011-12-28 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -200,20 +118,7 @@
     "ESTACION": "T-M-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2021-03-03 00:00:00",
-    "VIGENCIA": "2036-03-03 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "MORONA-SUCUA-LOGRO¿O"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "NACIONALIDAD ACHUAR DEL ECUADOR NAE",
-    "RED": "LA VOZ DE LA NAE",
-    "FRECUENCIA": 89.7,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-M-1-LA VOZ DE LA NAE",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "2014-02-19 00:00:00",
-    "VIGENCIA": "2015-02-19 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "MORONA-SUCUA-HUAMBOYA-LOGROÑO"
+    "VIGENCIA": "2036-03-03 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -224,20 +129,7 @@
     "ESTACION": "T-M-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2021-09-08 00:00:00",
-    "VIGENCIA": "2036-09-08 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "MORONA-LOGRO¿O-HUAMBOYA-SUCUA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "NOGUERA MADERO BLANCA ELVIA",
-    "RED": "SHALOM",
-    "FRECUENCIA": 104.9,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-M-1-SHALOM",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "1999-12-12 00:00:00",
-    "VIGENCIA": "2019-12-12 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-HUAMBOYA-MORONA"
+    "VIGENCIA": "2036-09-08 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -248,8 +140,7 @@
     "ESTACION": "T-M-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2021-07-21 00:00:00",
-    "VIGENCIA": "2036-07-21 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "MORONA-SUCUA-LOGROÑO"
+    "VIGENCIA": "2036-07-21 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -260,8 +151,7 @@
     "ESTACION": "T-M-1-RADIO KIRUBA 102.5 FM - LA VOZ DE LA AMAZONÍA ECUATORI",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "1998-04-30 00:00:00",
-    "VIGENCIA": "2018-04-30 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-HUAMBOYA-MORONA"
+    "VIGENCIA": "2018-04-30 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -272,8 +162,7 @@
     "ESTACION": "T-M-1-SISTEMA RADIAL OLIMPICA",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2003-01-09 00:00:00",
-    "VIGENCIA": "2013-01-09 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-LOGROÑO-MORONA"
+    "VIGENCIA": "2013-01-09 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -284,8 +173,7 @@
     "ESTACION": "T-M-SAN LUIS MIRADOR",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2021-03-02 00:00:00",
-    "VIGENCIA": "2036-03-02 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "MORONA-SUCUA-LOGROÑO"
+    "VIGENCIA": "2036-03-02 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -296,8 +184,7 @@
     "ESTACION": "T-R-1- CERRO KILAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2021-03-02 00:00:00",
-    "VIGENCIA": "2036-03-02 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-MORONA-LOGROÑO"
+    "VIGENCIA": "2036-03-02 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -308,20 +195,7 @@
     "ESTACION": "T-R4-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2023-07-04 00:00:00",
-    "VIGENCIA": "2032-09-13 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "LOGROÑO-MORONA-SUCUA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "VALLEJO GARAY WASHINTON",
-    "RED": "MORONA",
-    "FRECUENCIA": 89.3,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-M-1-MORONA",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "1994-10-21 00:00:00",
-    "VIGENCIA": "2014-10-21 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-MORONA-HUAMBOYA"
+    "VIGENCIA": "2032-09-13 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -332,20 +206,7 @@
     "ESTACION": "T-M-1-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2021-03-04 00:00:00",
-    "VIGENCIA": "2036-03-04 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "LOGROÑO-MORONA-SUCUA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "VICARIATO APOSTOLICO DE MENDEZ -MISION SALESIANA DE ORIENTE",
-    "RED": "LA VOZ DEL UPANO",
-    "FRECUENCIA": 90.5,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-M-1-LA VOZ DEL UPANO",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "1986-08-07 00:00:00",
-    "VIGENCIA": "2012-04-02 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-HUAMBOYA-MORONA"
+    "VIGENCIA": "2036-03-04 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -356,8 +217,7 @@
     "ESTACION": "T-M-1-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2017-07-24 00:00:00",
-    "VIGENCIA": "2032-07-24 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "MORONA-HUAMBOYA-SUCUA-PABLO SEXTO-LOGROÑO"
+    "VIGENCIA": "2032-07-24 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -368,8 +228,7 @@
     "ESTACION": "T-R-15-TV LEGISLATIVA",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2015-02-04 00:00:00",
-    "VIGENCIA": "2017-02-04 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-MORONA"
+    "VIGENCIA": "2017-02-04 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -380,8 +239,7 @@
     "ESTACION": "T-R-16-CADENA ECUATORIANA DE TELEVISION",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "1988-08-04 00:00:00",
-    "VIGENCIA": "2014-03-14 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-MORONA"
+    "VIGENCIA": "2014-03-14 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -392,8 +250,7 @@
     "ESTACION": "T-R-12-TELEAMAZONAS",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "1994-07-27 00:00:00",
-    "VIGENCIA": "2014-07-27 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "MORONA"
+    "VIGENCIA": "2014-07-27 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -404,8 +261,7 @@
     "ESTACION": "T-R-25-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "1996-08-09 00:00:00",
-    "VIGENCIA": "2016-08-09 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-MORONA"
+    "VIGENCIA": "2016-08-09 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -416,8 +272,7 @@
     "ESTACION": "T-R-22-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2016-02-15 00:00:00",
-    "VIGENCIA": "2031-02-15 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-LOGROÑO-MORONA"
+    "VIGENCIA": "2031-02-15 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -428,8 +283,7 @@
     "ESTACION": "T-M-1-DIGITAL TV",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2009-05-07 00:00:00",
-    "VIGENCIA": "2019-05-07 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-MORONA"
+    "VIGENCIA": "2019-05-07 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -440,8 +294,7 @@
     "ESTACION": "T-R-21-TELEATAHUALPA (RTU)",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2004-01-07 00:00:00",
-    "VIGENCIA": "2014-01-07 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-MORONA"
+    "VIGENCIA": "2014-01-07 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -452,8 +305,7 @@
     "ESTACION": "T-R-37-EL CIUDADANO TV",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2015-08-26 00:00:00",
-    "VIGENCIA": "2017-08-26 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-MORONA"
+    "VIGENCIA": "2017-08-26 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -464,8 +316,7 @@
     "ESTACION": "T-R-4-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "1994-05-04 00:00:00",
-    "VIGENCIA": "2014-05-04 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-MORONA"
+    "VIGENCIA": "2014-05-04 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -476,7 +327,6 @@
     "ESTACION": "T-R-18-CERRO KILAMO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2007-01-11 00:00:00",
-    "VIGENCIA": "2017-01-11 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SUCUA-MORONA"
+    "VIGENCIA": "2017-01-11 00:00:00"
   }
 ]

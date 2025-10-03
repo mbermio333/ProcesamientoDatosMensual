@@ -8,20 +8,7 @@
     "ESTACION": "T-R-1-CERRO EL CONSUELO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2021-03-04 00:00:00",
-    "VIGENCIA": "2036-03-04 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "ANDRADE MINGA JAIME CESAR",
-    "RED": "LA RADIO DE MODA",
-    "FRECUENCIA": 94.5,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-2-CERRO EL CONSUELO",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "",
-    "VIGENCIA": "",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2036-03-04 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -32,32 +19,7 @@
     "ESTACION": "T-R-2-CERRO EL CONSUELO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2022-03-14 00:00:00",
-    "VIGENCIA": "2037-03-14 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "ASAMBLEA NACIONAL",
-    "RED": "LA RADIO DE LA ASAMBLEA NACIONAL",
-    "FRECUENCIA": 88.9,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-19-LA RADIO DE LA ASAMBLEA NACIONAL",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "2013-02-27 00:00:00",
-    "VIGENCIA": "2023-02-27 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "ASAMBLEA NACIONAL",
-    "RED": "LA RADIO DE LA ASAMBLEA NACIONAL",
-    "FRECUENCIA": 88.9,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-19-CERRO LOMA EL CUELLO",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "",
-    "VIGENCIA": "",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2037-03-14 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -68,8 +30,7 @@
     "ESTACION": "T-R-16-CERRO LOMA EL CUELLO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2024-08-20 00:00:00",
-    "VIGENCIA": "2039-08-20 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2039-08-20 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -80,8 +41,7 @@
     "ESTACION": "T-M-1-CUELLO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2021-02-25 00:00:00",
-    "VIGENCIA": "2036-02-25 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2036-02-25 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -92,8 +52,7 @@
     "ESTACION": "T-R-31-LOMA EL CUELLO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2015-11-27 00:00:00",
-    "VIGENCIA": "2030-11-27 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2030-11-27 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -104,20 +63,7 @@
     "ESTACION": "T-M-1-CERRO LIBANO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2018-02-07 00:00:00",
-    "VIGENCIA": "2033-02-07 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "GRANDA ORTIZ ROSA OBDULIA",
-    "RED": "AMAZONAS FM",
-    "FRECUENCIA": 92.10000000000001,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-1-AMAZONAS FM",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "1994-07-25 00:00:00",
-    "VIGENCIA": "2014-07-25 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2033-02-07 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -128,8 +74,7 @@
     "ESTACION": "T-R01-CERRO CONSUELO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2021-03-03 00:00:00",
-    "VIGENCIA": "2036-03-03 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2036-03-03 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -140,8 +85,7 @@
     "ESTACION": "T-R6-CERRO LOMA EL CUELLO",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "",
-    "VIGENCIA": "",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": ""
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -152,20 +96,7 @@
     "ESTACION": "T-M-CERRO EL LIBANO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2021-03-04 00:00:00",
-    "VIGENCIA": "2036-03-04 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "ROMERO CHIMBO DIANA LORENA",
-    "RED": "ROMANTICA FM",
-    "FRECUENCIA": 95.7,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-1-ROMANTICA FM",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "2004-07-14 00:00:00",
-    "VIGENCIA": "2014-07-14 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2036-03-04 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -176,20 +107,7 @@
     "ESTACION": "T-R-1-CERRO EL CUELLO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2017-07-14 00:00:00",
-    "VIGENCIA": "2032-07-14 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "SONORAMA S.A.",
-    "RED": "SONORAMA FM",
-    "FRECUENCIA": 88.5,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-16-LOMA EL CUELLO",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "1986-03-04 00:00:00",
-    "VIGENCIA": "2016-03-04 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2032-07-14 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -200,20 +118,7 @@
     "ESTACION": "T-R-14-CERRO EL CUELLO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2021-03-04 00:00:00",
-    "VIGENCIA": "2036-03-04 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "SOTOMAYOR VILLAVICENCIO PAQUITA JUDITH",
-    "RED": "PODOCARPUS FM",
-    "FRECUENCIA": 98.10000000000001,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-M-1-PODOCARPUS FM",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "2004-08-17 00:00:00",
-    "VIGENCIA": "2014-08-17 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA-NANGARITZA"
+    "VIGENCIA": "2036-03-04 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -224,56 +129,7 @@
     "ESTACION": "T-M-1-INTEGRACION FM",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "1994-10-17 00:00:00",
-    "VIGENCIA": "2014-03-17 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "TORRES MORA ROSA CECILIA",
-    "RED": "RADIO INTEGRACION",
-    "FRECUENCIA": 104.10000000000001,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-M-1-CERRO LIBANO",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "",
-    "VIGENCIA": "",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "VICARIATO APOSTOLICO DE ZAMORA CHINCHIPE",
-    "RED": "LA VOZ DE ZAMORA FM",
-    "FRECUENCIA": 102.9,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-M-1-LA VOZ DE ZAMORA FM",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "1996-08-07 00:00:00",
-    "VIGENCIA": "2016-08-07 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "VICARIATO APOSTOLICO DE ZAMORA CHINCHIPE",
-    "RED": "LA VOZ DE ZAMORA FM",
-    "FRECUENCIA": 1400,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-1-LA VOZ DE ZAMORA FM",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "1996-08-07 00:00:00",
-    "VIGENCIA": "2016-08-07 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
-  },
-  {
-    "SERVICIO": "FM - Frecuencia Modulada",
-    "NOMBRES": "VICARIATO APOSTOLICO DE ZAMORA CHINCHIPE",
-    "RED": "LA VOZ DE ZAMORA FM",
-    "FRECUENCIA": 3330,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-2-LA VOZ DE ZAMORA FM",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "1996-08-07 00:00:00",
-    "VIGENCIA": "2016-08-07 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2014-03-17 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -284,8 +140,29 @@
     "ESTACION": "T-M-1-CERRO LIBANO",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2021-02-26 00:00:00",
-    "VIGENCIA": "2036-02-26 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2036-02-26 00:00:00"
+  },
+  {
+    "SERVICIO": "FM - Frecuencia Modulada",
+    "NOMBRES": "VICARIATO APOSTOLICO DE ZAMORA CHINCHIPE",
+    "RED": "LA VOZ DE ZAMORA FM",
+    "FRECUENCIA": 1400,
+    "ESTADO_ESTACION": "Cancelado",
+    "ESTACION": "T-R-1-LA VOZ DE ZAMORA FM",
+    "ESTADO_SOLICITUD": "Cancelado",
+    "SUSCRIPCION": "1996-08-07 00:00:00",
+    "VIGENCIA": "2016-08-07 00:00:00"
+  },
+  {
+    "SERVICIO": "FM - Frecuencia Modulada",
+    "NOMBRES": "VICARIATO APOSTOLICO DE ZAMORA CHINCHIPE",
+    "RED": "LA VOZ DE ZAMORA FM",
+    "FRECUENCIA": 3330,
+    "ESTADO_ESTACION": "Cancelado",
+    "ESTACION": "T-R-2-LA VOZ DE ZAMORA FM",
+    "ESTADO_SOLICITUD": "Cancelado",
+    "SUSCRIPCION": "1996-08-07 00:00:00",
+    "VIGENCIA": "2016-08-07 00:00:00"
   },
   {
     "SERVICIO": "FM - Frecuencia Modulada",
@@ -296,8 +173,7 @@
     "ESTACION": "T-R-1-CERRO EL CUELLO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2021-03-01 00:00:00",
-    "VIGENCIA": "2036-03-01 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2036-03-01 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -308,8 +184,7 @@
     "ESTACION": "T-R-23-TV LEGISLATIVA",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2015-02-04 00:00:00",
-    "VIGENCIA": "2017-02-04 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2017-02-04 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -320,8 +195,7 @@
     "ESTACION": "T-R-20-CADENA ECUATORIANA DE TELEVISION",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "1988-08-04 00:00:00",
-    "VIGENCIA": "2014-03-14 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2014-03-14 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -332,8 +206,7 @@
     "ESTACION": "T-R-21-CERRO EL CONSUELO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "1994-07-27 00:00:00",
-    "VIGENCIA": "2014-07-27 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2014-07-27 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -344,8 +217,7 @@
     "ESTACION": "T-R-29-LOMA EL CUELLO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "1996-08-09 00:00:00",
-    "VIGENCIA": "2016-08-09 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2016-08-09 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -356,20 +228,7 @@
     "ESTACION": "T-R-91-SAN CARLOS DE LAS MINAS",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2016-02-15 00:00:00",
-    "VIGENCIA": "2031-02-15 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "SAN CARLOS DE LAS MINAS(ZAMORA)"
-  },
-  {
-    "SERVICIO": "TV - Televisión Abierta",
-    "NOMBRES": "EMPRESA PUBLICA DE COMUNICACION DEL ECUADOR EP",
-    "RED": "ECUADOR TV",
-    "FRECUENCIA": 175.25,
-    "ESTADO_ESTACION": "Activo",
-    "ESTACION": "T-R-23-LOMA EL CUELLO",
-    "ESTADO_SOLICITUD": "Activo",
-    "SUSCRIPCION": "2016-02-15 00:00:00",
-    "VIGENCIA": "2031-02-15 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2031-02-15 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -380,8 +239,7 @@
     "ESTACION": "T-R-23-ECUADOR TV",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2016-02-15 00:00:00",
-    "VIGENCIA": "2031-02-15 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2031-02-15 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -392,20 +250,7 @@
     "ESTACION": "T-R-17-EL CIUDADANO TV",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2015-08-26 00:00:00",
-    "VIGENCIA": "2017-08-26 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
-  },
-  {
-    "SERVICIO": "TV - Televisión Abierta",
-    "NOMBRES": "SECRETARIA NACIONAL DE COMUNICACION SECOM",
-    "RED": "TELECIUDADANA",
-    "FRECUENCIA": 683,
-    "ESTADO_ESTACION": "Cancelado",
-    "ESTACION": "T-R-17-TELECIUDADANA",
-    "ESTADO_SOLICITUD": "Cancelado",
-    "SUSCRIPCION": "",
-    "VIGENCIA": "",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2017-08-26 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -416,8 +261,7 @@
     "ESTACION": "T-R-17-OROMAR",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2009-07-07 00:00:00",
-    "VIGENCIA": "2019-07-07 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2019-07-07 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -428,8 +272,7 @@
     "ESTACION": "T-R-20-CERRO CONSUELO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "1994-05-04 00:00:00",
-    "VIGENCIA": "2014-05-04 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2014-05-04 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -440,8 +283,7 @@
     "ESTACION": "T-R-24-CERRO LOMA EL CUELLO",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "2007-01-11 00:00:00",
-    "VIGENCIA": "2017-01-11 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2017-01-11 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -452,8 +294,7 @@
     "ESTACION": "T-R-1-UV TELEVISION",
     "ESTADO_SOLICITUD": "Activo",
     "SUSCRIPCION": "1994-06-23 00:00:00",
-    "VIGENCIA": "2014-06-23 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2014-06-23 00:00:00"
   },
   {
     "SERVICIO": "TV - Televisión Abierta",
@@ -464,7 +305,6 @@
     "ESTACION": "T-R-1-TV CATOLICA LOS ENCUENTROS",
     "ESTADO_SOLICITUD": "Cancelado",
     "SUSCRIPCION": "2002-08-23 00:00:00",
-    "VIGENCIA": "2022-08-23 00:00:00",
-    "_FILTRO_AREAS_OP_MR": "ZAMORA"
+    "VIGENCIA": "2022-08-23 00:00:00"
   }
 ]
