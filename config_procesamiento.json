@@ -1,5 +1,6 @@
 {
     "fm_path": "/Users/mateobermeo/Downloads/Septiembre_csv/Procesamiento/FM",
     "tv_path": "/Users/mateobermeo/Downloads/Septiembre_csv/Procesamiento/TV",
+    "am_path":"/Users/mateobermeo/Downloads/Septiembre_csv/Procesamiento/AM",
     "output_path": "/Users/mateobermeo/Downloads/Septiembre_csv/ReportesProcesamientoSept"
 }

@@ -12,13 +12,14 @@ import time
 
 # ------------------ CONFIGURACIÓN GENERAL ------------------
 # Cargar configuración desde archivo
-CONFIG_FILE = "config.json"
+CONFIG_FILE = "config_procesamiento.json"
 
 def cargar_configuracion():
     """Cargar configuración desde archivo JSON"""
     config_default = {
         "fm_path": "MedicionesFmCSV",
         "tv_path": "MedicionesTvCSV", 
+        "am_path": "MedicionesAmCSV",  # ← NUEVA RUTA PARA AM
         "output_path": "ReportesUnificados",
         "emisoras_por_ciudad": {}
     }
@@ -95,9 +96,9 @@ def obtener_frecuencias_deseadas(emisoras_config):
     frecuencias_deseadas = {}
     
     for ciudad, tipos in emisoras_config.items():
-        frecuencias_deseadas[ciudad] = {"FM": [], "TV": []}
+        frecuencias_deseadas[ciudad] = {"FM": [], "TV": [], "AM": []}  # ← AGREGAR AM
         
-        for tipo in ["FM", "TV"]:
+        for tipo in ["FM", "TV", "AM"]:  # ← INCLUIR AM
             if tipo in tipos:
                 for emisora in tipos[tipo]:
                     # Excluir frecuencias con _OBSERVACION
@@ -158,13 +159,12 @@ def extraer_frecuencias_csv(ruta_archivo, tipo):
         print(f"Error al extraer frecuencias de {tipo} desde {ruta_archivo}: {e}")
         return []
 
-def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_log=None):
+def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, archivos_am, callback_log=None):
     """
-    Coteja las frecuencias entre config.json y los archivos CSV, actualizando config.json si es necesario
-    Retorna la lista final de frecuencias a procesar
+    Coteja las frecuencias entre config.json y los archivos CSV, pero NO actualiza config.json
+    Retorna la lista final de frecuencias a procesar respetando los nombres de config.json
     """
     frecuencias_a_procesar = {}
-    config_actualizada = False
     
     # Obtener frecuencias deseadas actuales (excluyendo _OBSERVACION)
     frecuencias_deseadas = obtener_frecuencias_deseadas(config.get("emisoras_por_ciudad", {}))
@@ -188,11 +188,18 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_
                     break
         
         if not ciudad_en_archivos:
+            # Intentar en archivos AM si no se encuentra en FM o TV
+            for archivo_ciudad in archivos_am.keys():
+                if normalizar_nombre_ciudad(archivo_ciudad) == ciudad_normalizada:
+                    ciudad_en_archivos = archivo_ciudad
+                    break
+        
+        if not ciudad_en_archivos:
             if callback_log:
                 callback_log(f"❌ Ciudad {ciudad_original} (normalizada: {ciudad_normalizada}) no encontrada en archivos CSV")
             continue
             
-        frecuencias_a_procesar[ciudad_en_archivos] = {"FM": [], "TV": []}
+        frecuencias_a_procesar[ciudad_en_archivos] = {"FM": [], "TV": [], "AM": []}
         
         # Procesar FM
         if ciudad_en_archivos in archivos_fm:
@@ -221,20 +228,14 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_
                         }
                         frecuencias_a_procesar[ciudad_en_archivos]["FM"].append(frecuencia_a_procesar)
                         
-                    # Caso 2: Nombre en CSV es diferente al de config - ACTUALIZAR config
+                    # Caso 2: Nombre en CSV es diferente al de config - RESPETAR CONFIG (NO ACTUALIZAR)
                     elif nombre_csv != nombre_deseado:
                         if callback_log:
-                            callback_log(f"⚠️  Actualizando nombre en {ciudad_en_archivos} FM {freq_str_deseada}: '{nombre_deseado}' -> '{nombre_csv}'")
+                            callback_log(f"⚠️  Diferencia encontrada en {ciudad_en_archivos} FM {freq_str_deseada}: Config='{nombre_deseado}' vs CSV='{nombre_csv}' - RESPETANDO CONFIG")
                         
-                        # Actualizar config.json - usar ciudad original
-                        for emisora in config["emisoras_por_ciudad"][ciudad_original]["FM"]:
-                            if str(emisora.get("frecuencia", "")) == freq_str_deseada:
-                                emisora["nombre"] = nombre_csv
-                                config_actualizada = True
-                                break
-                        
+                        # USAR SIEMPRE EL NOMBRE DE CONFIG (no actualizar el archivo)
                         frecuencia_a_procesar = {
-                            "nombre": nombre_csv,
+                            "nombre": nombre_deseado,  # ← Usar siempre el nombre de config
                             "frecuencia": freq_str_deseada,
                             "tipo": "FM"
                         }
@@ -281,20 +282,14 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_
                         }
                         frecuencias_a_procesar[ciudad_en_archivos]["TV"].append(frecuencia_a_procesar)
                         
-                    # Caso 2: Nombre en CSV es diferente al de config - ACTUALIZAR config
+                    # Caso 2: Nombre en CSV es diferente al de config - RESPETAR CONFIG (NO ACTUALIZAR)
                     elif nombre_csv != nombre_deseado:
                         if callback_log:
-                            callback_log(f"⚠️  Actualizando nombre en {ciudad_en_archivos} TV {freq_str_deseada}: '{nombre_deseado}' -> '{nombre_csv}'")
+                            callback_log(f"⚠️  Diferencia encontrada en {ciudad_en_archivos} TV {freq_str_deseada}: Config='{nombre_deseado}' vs CSV='{nombre_csv}' - RESPETANDO CONFIG")
                         
-                        # Actualizar config.json - usar ciudad original
-                        for emisora in config["emisoras_por_ciudad"][ciudad_original]["TV"]:
-                            if str(emisora.get("frecuencia", "")) == freq_str_deseada:
-                                emisora["nombre"] = nombre_csv
-                                config_actualizada = True
-                                break
-                        
+                        # USAR SIEMPRE EL NOMBRE DE CONFIG (no actualizar el archivo)
                         frecuencia_a_procesar = {
-                            "nombre": nombre_csv,
+                            "nombre": nombre_deseado,  # ← Usar siempre el nombre de config
                             "frecuencia": freq_str_deseada,
                             "tipo": "TV"
                         }
@@ -313,15 +308,63 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_
                     # Frecuencia deseada no encontrada en CSV
                     if callback_log:
                         callback_log(f"❌ Frecuencia TV {freq_str_deseada} ({nombre_deseado}) no encontrada en CSV de {ciudad_en_archivos}")
-    
-    # Guardar configuración si hubo cambios
-    if config_actualizada:
-        if guardar_configuracion(config):
-            if callback_log:
-                callback_log("✅ Config.json actualizado con nuevos nombres")
-        else:
-            if callback_log:
-                callback_log("❌ Error al guardar config.json actualizado")
+
+        # Procesar AM
+        if ciudad_en_archivos in archivos_am:
+            frecuencias_csv_am = extraer_frecuencias_csv(archivos_am[ciudad_en_archivos], "AM")
+            
+            for freq_deseada in frecuencias_deseadas.get(ciudad_original, {}).get("AM", []):
+                freq_str_deseada = freq_deseada["frecuencia"]
+                nombre_deseado = freq_deseada["nombre"]
+                
+                # Buscar esta frecuencia en el CSV
+                frecuencia_encontrada = None
+                for freq_csv in frecuencias_csv_am:
+                    if freq_csv["frecuencia"] == freq_str_deseada:
+                        frecuencia_encontrada = freq_csv
+                        break
+                
+                if frecuencia_encontrada:
+                    nombre_csv = frecuencia_encontrada["nombre"]
+                    
+                    # Caso 1: Nombre en CSV está en blanco, usar el de config
+                    if not nombre_csv or nombre_csv == "nan" or nombre_csv == "None":
+                        frecuencia_a_procesar = {
+                            "nombre": nombre_deseado,
+                            "frecuencia": freq_str_deseada,
+                            "tipo": "AM"
+                        }
+                        frecuencias_a_procesar[ciudad_en_archivos]["AM"].append(frecuencia_a_procesar)
+                        
+                    # Caso 2: Nombre en CSV es diferente al de config - RESPETAR CONFIG (NO ACTUALIZAR)
+                    elif nombre_csv != nombre_deseado:
+                        if callback_log:
+                            callback_log(f"⚠️  Diferencia encontrada en {ciudad_en_archivos} AM {freq_str_deseada}: Config='{nombre_deseado}' vs CSV='{nombre_csv}' - RESPETANDO CONFIG")
+                        
+                        # USAR SIEMPRE EL NOMBRE DE CONFIG (no actualizar el archivo)
+                        frecuencia_a_procesar = {
+                            "nombre": nombre_deseado,  # ← Usar siempre el nombre de config
+                            "frecuencia": freq_str_deseada,
+                            "tipo": "AM"
+                        }
+                        frecuencias_a_procesar[ciudad_en_archivos]["AM"].append(frecuencia_a_procesar)
+                    
+                    # Caso 3: Nombres iguales - procesar normalmente
+                    else:
+                        frecuencia_a_procesar = {
+                            "nombre": nombre_deseado,
+                            "frecuencia": freq_str_deseada,
+                            "tipo": "AM"
+                        }
+                        frecuencias_a_procesar[ciudad_en_archivos]["AM"].append(frecuencia_a_procesar)
+                
+                else:
+                    # Frecuencia deseada no encontrada en CSV
+                    if callback_log:
+                        callback_log(f"❌ Frecuencia AM {freq_str_deseada} ({nombre_deseado}) no encontrada en CSV de {ciudad_en_archivos}")
+
+    # ELIMINADO: No guardar configuración automáticamente
+    # El archivo config.json permanece sin cambios
     
     return frecuencias_a_procesar
 
@@ -336,8 +379,8 @@ def limpiar_configuracion_duplicados(config):
         if ciudad_norm not in ciudades_normalizadas:
             ciudades_normalizadas[ciudad_norm] = datos
         else:
-            # Unir datos duplicados
-            for tipo in ["FM", "TV"]:
+            # Unir datos duplicados para FM, TV y AM
+            for tipo in ["FM", "TV", "AM"]:  # ← AGREGAR AM
                 if tipo in datos:
                     if tipo not in ciudades_normalizadas[ciudad_norm]:
                         ciudades_normalizadas[ciudad_norm][tipo] = []
@@ -396,9 +439,11 @@ def filtrar_dataframe_por_frecuencias(df, frecuencias_procesar, tipo, callback_l
 
 
 # Cargar configuración al inicio
+# Agregar ruta AM a las variables globales
 config = cargar_configuracion()
 ruta_fm = config.get("fm_path", "MedicionesFmCSV")
 ruta_tv = config.get("tv_path", "MedicionesTvCSV")
+ruta_am = config.get("am_path", "MedicionesAmCSV")  # ← NUEVA VARIABLE
 ruta_salida = config.get("output_path", "ReportesUnificados")
 ruta_imagenes = "Img"
 fecha_actual = datetime.now().strftime("%d/%m/%Y")
@@ -413,6 +458,7 @@ def inicializar_directorios():
     os.makedirs(ruta_salida, exist_ok=True)
     os.makedirs(ruta_fm, exist_ok=True)
     os.makedirs(ruta_tv, exist_ok=True)
+    os.makedirs(ruta_am, exist_ok=True)  # ← NUEVO DIRECTORIO
     os.makedirs(ruta_imagenes, exist_ok=True)
 
 def combinar_observaciones_solo_en_tv(ws, fila_inicio_tabla, fila_fin_tabla, num_columnas, es_tv=True):
@@ -569,6 +615,7 @@ def limpiar_configuracion_duplicados(config):
 def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
     from openpyxl.styles import PatternFill
 
+    # DEFINIR TODOS LOS COLORES AL INICIO DE LA FUNCIÓN
     rojo = PatternFill(start_color="FFFC4A2C", end_color="FFFC4A2C", fill_type="solid")
     amarillo = PatternFill(start_color="FFFFFE9F", end_color="FFFFFE9F", fill_type="solid")
     verde = PatternFill(start_color="FFCDFECE", end_color="FFCDFECE", fill_type="solid")
@@ -706,6 +753,21 @@ def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
                                         altura = num_lineas * 15  # Puedes ajustar este valor según cómo se vea
                                         ws.row_dimensions[fila].height = altura
 
+            # NUEVO: Reglas para AM
+            elif tipo == "AM":
+                if nombre_normalizado == "Promedio (dBuV/m)":
+                    if valor < 62:
+                        celda.fill = rosa
+                    else:
+                        celda.fill = verde
+                elif nombre_normalizado in [str(d) for d in range(1, 32)]:
+                    if valor < 62:
+                        celda.fill = rosa
+                    else:
+                        celda.fill = verde
+
+
+
 def encontrar_columnas_numericas(ws, fila_encabezados):
     """
     Encuentra automáticamente las columnas que contienen valores numéricos
@@ -764,8 +826,8 @@ def crear_hoja_manual(wb, nombre_hoja):
         for col in range(1, len(encabezados) + 1):
             ws.cell(row=1, column=col).border = Border(top=thin, bottom=thin, left=thin, right=thin)
 
-def crear_hoja_observaciones(wb, datos_fm, datos_tv):
-    """Crea la hoja de observaciones con los datos de FM y TV ordenados por frecuencia"""
+def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None):
+    """Crea la hoja de observaciones con los datos de FM, TV y AM ordenados por frecuencia"""
     if "Observaciones" in wb.sheetnames:
         ws_obs = wb["Observaciones"]
     else:
@@ -778,12 +840,19 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv):
     thin = Side(border_style="thin")
     borde_grueso = Side(border_style="medium")
     
+    # DEFINIR COLORES AL INICIO
+    from openpyxl.styles import PatternFill
+    rojo = PatternFill(start_color="FFFC4A2C", end_color="FFFC4A2C", fill_type="solid")
+    amarillo = PatternFill(start_color="FFFFFE9F", end_color="FFFFFE9F", fill_type="solid")
+    verde = PatternFill(start_color="FFCDFECE", end_color="FFCDFECE", fill_type="solid")
+    rosa = PatternFill(start_color="FFFD9BCB", end_color="FFFD9BCB", fill_type="solid")
+    
     # Definir anchos específicos para columnas
     anchos_especificos = {
         "ESTACION": 25,
         "Frecuencia (MHz)": 18,
         "Promedio(dBuV/m)": 18,
-        "Ancho de Banda (KHz)": 20,  # Ancho específico para esta columna
+        "Ancho de Banda (KHz)": 20,
         "Medición Manual AB(KHz) o NIVEL (dBµV/m)": 20,
         "OBSERVACIONES": 35
     }
@@ -910,6 +979,77 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv):
                                  left=current_border.left, right=current_border.right)
         
         fila_fin_tv = fila_actual - 1
+
+    # Después de procesar TV, agregar AM
+    if datos_am is not None and not datos_am.empty:
+        # Ordenar datos AM por frecuencia (de menor a mayor)
+        datos_am_ordenados = datos_am.sort_values(by="Frecuencia (MHz)")
+        
+        # Encabezado para AM
+        ws_obs.cell(row=fila_actual, column=1, value="AM")
+        ws_obs.merge_cells(start_row=fila_actual, start_column=1, end_row=fila_actual, end_column=5)
+        celda = ws_obs.cell(row=fila_actual, column=1)
+        celda.font = Font(bold=True, size=14)
+        celda.alignment = Alignment(horizontal="center", vertical="center")
+        fila_actual += 1
+        
+        # Encabezados de columnas para AM (mismo formato que TV)
+        encabezados_am = ["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", 
+                         "Medición Manual AB(KHz)\no NIVEL (dBµV/m)", "OBSERVACIONES"]
+        
+        for col, encabezado in enumerate(encabezados_am, 1):
+            ws_obs.cell(row=fila_actual, column=col, value=encabezado)
+            celda = ws_obs.cell(row=fila_actual, column=col)
+            celda.font = Font(bold=True)
+            celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            # Borde grueso para encabezados
+            celda.border = Border(top=borde_grueso, bottom=thin, left=borde_grueso if col == 1 else thin, 
+                                 right=borde_grueso if col == len(encabezados_am) else thin)
+            
+            # Aplicar ancho específico si existe en el diccionario
+            if encabezado in anchos_especificos:
+                ws_obs.column_dimensions[get_column_letter(col)].width = anchos_especificos[encabezado]
+        
+        fila_inicio_am = fila_actual
+        fila_actual += 1
+        
+        # Datos de AM ordenados
+        for _, row in datos_am_ordenados.iterrows():
+            for col_idx, col_name in enumerate(["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", 
+                                              "Medición Manual", "OBSERVACIONES"], 1):
+                ws_obs.cell(row=fila_actual, column=col_idx, value=row[col_name])
+                # Aplicar alineación centrada a todas las celdas
+                ws_obs.cell(row=fila_actual, column=col_idx).alignment = Alignment(
+                    horizontal="center", vertical="center", wrap_text=True
+                )
+            
+            # Aplicar bordes a cada fila de datos
+            for col in range(1, 6):
+                celda = ws_obs.cell(row=fila_actual, column=col)
+                celda.border = Border(top=thin, bottom=thin, 
+                                     left=borde_grueso if col == 1 else thin,
+                                     right=borde_grueso if col == 5 else thin)
+            
+            fila_actual += 1
+        
+        # Borde inferior grueso para la tabla AM
+        for col in range(1, 6):
+            celda = ws_obs.cell(row=fila_actual-1, column=col)
+            current_border = celda.border
+            celda.border = Border(top=current_border.top, bottom=borde_grueso,
+                                 left=current_border.left, right=current_border.right)
+        
+        fila_fin_am = fila_actual - 1
+        
+        # Colorear tabla AM (usando criterio de 62 dBuV/m)
+        for fila in range(fila_inicio_am + 1, fila_fin_am + 1):
+            celda_promedio = ws_obs.cell(row=fila, column=3)
+            if celda_promedio.value and isinstance(celda_promedio.value, (int, float)):
+                valor = float(celda_promedio.value)
+                if valor < 62:
+                    celda_promedio.fill = rosa
+                else:
+                    celda_promedio.fill = verde
     
     # Ajustar anchos automáticamente para columnas sin ancho específico
     for col in range(1, ws_obs.max_column + 1):
@@ -1114,6 +1254,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         callback_log("Iniciando procesamiento de datos...")
         callback_log(f"Ruta FM: {ruta_fm}")
         callback_log(f"Ruta TV: {ruta_tv}")
+        callback_log(f"Ruta AM: {ruta_am}")  # ← NUEVO LOG
         callback_log(f"Ruta salida: {ruta_salida}")
     
     # Emitir progreso después de inicialización
@@ -1136,6 +1277,15 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
                 if base:  # Solo agregar si base no es None (filtra "global")
                     archivos_tv[base] = os.path.join(ruta_tv, f)
         
+    
+        # NUEVO: Archivos AM
+        archivos_am = {}
+        for f in os.listdir(ruta_am):
+            if f.endswith(".csv"):
+                base = obtener_base(f)
+                if base:  # Solo agregar si base no es None (filtra "global")
+                    archivos_am[base] = os.path.join(ruta_am, f)
+        
         if callback_log:
             callback_log(f"Encontrados {len(archivos_fm)} archivos FM y {len(archivos_tv)} archivos TV (filtrados)")
         
@@ -1152,7 +1302,8 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
     if callback_log:
         callback_log("🔍 Cotejando frecuencias entre config.json y archivos CSV...")
     
-    frecuencias_a_procesar = cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_log)
+        # En la función procesar_datos, busca esta línea y cámbiala:
+    frecuencias_a_procesar = cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, archivos_am, callback_log)  
     
     # Emitir progreso después del cotejo
     if callback_progreso:
@@ -1202,22 +1353,49 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         if callback_progreso:
             progreso_tv = 25 + (i / max(len(archivos_tv), 1)) * 10  # 25% a 35%
             callback_progreso(int(progreso_tv))
-    
-    # Actualizar configuración
-    config["emisoras_por_ciudad"] = emisoras_por_ciudad
+
+        # NUEVO: Procesar archivos AM
+    for i, (base, archivo) in enumerate(archivos_am.items()):
+        if not base or not base.strip():
+            continue
+        base_normalizada = normalizar_nombre_ciudad(base)
+        if not base_normalizada:
+            continue
+        emisoras_am = extraer_nombres_emisoras(archivo, "AM")
+        if base not in emisoras_por_ciudad:
+            emisoras_por_ciudad[base] = {"FM": [], "TV": [], "AM": []}
+        
+        # CORRECCIÓN: Asegurar que exista la clave 'AM'
+        if "AM" not in emisoras_por_ciudad[base]:
+            emisoras_por_ciudad[base]["AM"] = []
+        
+        # Limpiar duplicados y agregar
+        emisoras_existentes = {e["nombre"] for e in emisoras_por_ciudad[base]["AM"]}
+        for emisora in emisoras_am:
+            if emisora["nombre"] not in emisoras_existentes:
+                emisoras_por_ciudad[base]["AM"].append(emisora)
+        
+        # Emitir progreso incremental para AM
+        if callback_progreso:
+            progreso_am = 35 + (i / max(len(archivos_am), 1)) * 5  # 35% a 40%
+            callback_progreso(int(progreso_am))
+        
+        # Actualizar configuración
+        config["emisoras_por_ciudad"] = emisoras_por_ciudad
     
     # Guardar configuración actualizada
     if guardar_configuracion(config):
-        total_fm = sum(len(ciudad["FM"]) for ciudad in emisoras_por_ciudad.values())
-        total_tv = sum(len(ciudad["TV"]) for ciudad in emisoras_por_ciudad.values())
+        total_fm = sum(len(ciudad["FM"]) for ciudad in emisoras_por_ciudad.values() if "FM" in ciudad)
+        total_tv = sum(len(ciudad["TV"]) for ciudad in emisoras_por_ciudad.values() if "TV" in ciudad)
+        total_am = sum(len(ciudad["AM"]) for ciudad in emisoras_por_ciudad.values() if "AM" in ciudad)  # ← NUEVO
         if callback_log:
-            callback_log(f"Guardadas {total_fm} emisoras FM y {total_tv} emisoras TV por ciudad en config.json")
+            callback_log(f"Guardadas {total_fm} emisoras FM, {total_tv} emisoras TV y {total_am} emisoras AM por ciudad en config.json")
     
     # Emitir progreso después de guardar configuración
     if callback_progreso:
         callback_progreso(40)
     
-    nombres_bases = set(archivos_fm.keys()).union(archivos_tv.keys())
+    nombres_bases = set(archivos_fm.keys()).union(archivos_tv.keys()).union(archivos_am.keys())  # ← AGREGAR AM
     
     # Filtrar bases vacías o nulas
     nombres_bases = {base for base in nombres_bases if base and base.strip()}
@@ -1241,6 +1419,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         if callback_log:
             callback_log(f"Procesando base: {base_normalizada} (original: {base})")
 
+        # En el procesamiento de cada base, antes del bucle for tipo, archivos, titulo in [...]:
         try:
             # Emitir progreso al iniciar cada base
             if callback_progreso:
@@ -1255,10 +1434,42 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
             # Variables para almacenar datos para la hoja de observaciones
             datos_fm = None
             datos_tv = None
-
+            datos_am = None
+            
+            # NUEVO: Determinar mes_objetivo de manera global para la base
+            mes_objetivo = None
+            nombre_mes_es = ""
+            
+            # Buscar el mes objetivo en cualquier archivo disponible (FM, TV o AM)
+            for tipo, archivos in [("FM", archivos_fm), ("TV", archivos_tv), ("AM", archivos_am)]:
+                if base in archivos:
+                    try:
+                        df_temp = pd.read_csv(archivos[base], encoding="unicode_escape")
+                        df_temp["Tiempo"] = pd.to_datetime(df_temp["Tiempo"], format="%d/%m/%Y  %H:%M:%S,%f", errors='coerce').dt.date
+                        mes_temp = df_temp["Tiempo"].dropna().apply(lambda x: x.month).value_counts()
+                        if not mes_temp.empty:
+                            mes_objetivo = mes_temp.idxmax()
+                            nombre_mes_es = ["enero", "febrero", "marzo", "abril", "mayo", "junio", 
+                                            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"][mes_objetivo - 1]
+                            break  # Usar el primer mes objetivo encontrado
+                    except Exception as e:
+                        if callback_log:
+                            callback_log(f"⚠️  Error determinando mes para {base} {tipo}: {str(e)}")
+                        continue
+            
+            # Si no se pudo determinar el mes, usar el mes actual
+            if mes_objetivo is None:
+                mes_objetivo = datetime.now().month
+                nombre_mes_es = ["enero", "febrero", "marzo", "abril", "mayo", "junio", 
+                                "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"][mes_objetivo - 1]
+                if callback_log:
+                    callback_log(f"⚠️  No se pudo determinar el mes objetivo para {base}, usando mes actual: {nombre_mes_es}")
+            
+            # Ahora procesar cada tipo con el mes_objetivo ya definido
             for tipo, archivos, titulo in [
                 ("FM", archivos_fm, "FORMULARIO DE CONTROL MENSUAL DE FM"),
-                ("TV", archivos_tv, "FORMULARIO DE CONTROL MENSUAL DE TV")
+                ("TV", archivos_tv, "FORMULARIO DE CONTROL MENSUAL DE TV"),
+                ("AM", archivos_am, "FORMULARIO DE CONTROL MENSUAL DE AM")
             ]:
                 if base not in archivos:
                     continue
@@ -1266,7 +1477,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
                 ruta_archivo = archivos[base]
                 df = pd.read_csv(ruta_archivo, encoding="unicode_escape")
                 
-                # ✅ NUEVA FUNCIONALIDAD: Filtrar por frecuencias deseadas
+                # ✅ Filtrar por frecuencias deseadas
                 frecuencias_ciudad = frecuencias_a_procesar.get(base, {}).get(tipo, [])
                 df = filtrar_dataframe_por_frecuencias(df, frecuencias_ciudad, tipo, callback_log)
                 
@@ -1275,24 +1486,31 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
                         callback_log(f"⚠️  No hay datos para procesar en {base} {tipo}")
                     continue
 
+                # CORREGIDO: Renombrar columnas de manera consistente
+                if tipo in ["TV", "AM"]:  # ← AM usa el mismo formato que TV
+                    df = df.rename(columns={"Nombre de la estación": "ESTACION"})
+                
+                # CORREGIDO: Seleccionar columnas según el tipo
+                if tipo == "FM":
+                    df = df[df.columns[:9]]  # FM tiene más columnas
+                else:  # TV y AM tienen el mismo formato
+                    df = df[df.columns[:5]]
 
-
-                # ... (el resto del procesamiento se mantiene igual)
-                df = df.rename(columns={"Nombre de la estación": "ESTACION"}) if tipo == "TV" else df
-                df = df[df.columns[:9]] if tipo == "FM" else df[df.columns[:5]]
-
+                # Procesamiento común para todos los tipos
                 df["ESTACION"] = df["ESTACION"].astype(str).str.strip()
                 df = df[df["ESTACION"].notna() & (df["ESTACION"] != "")]
                 df["Tiempo"] = pd.to_datetime(df["Tiempo"], format="%d/%m/%Y  %H:%M:%S,%f", errors='coerce').dt.date
-                mes_objetivo = df["Tiempo"].dropna().apply(lambda x: x.month).value_counts().idxmax()
-
-                nombre_mes_es = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"][mes_objetivo - 1]
+                
+                # CORREGIDO: Usar el mes_objetivo ya definido globalmente
+                # Filtrar por mes objetivo
                 df = df[df["Tiempo"].apply(lambda x: x.month == mes_objetivo)]
                 df["DIA"] = pd.to_datetime(df["Tiempo"]).dt.day
 
+                # Resto del código sin cambios...
                 df["Frecuencia (MHz)"] = df["Frecuencia (Hz)"] / 1_000_000
                 df["Level (dBµV/m)"] = df["Level (dBµV/m)"].astype(str).str.replace(",", ".", regex=False).astype(float)
 
+                # Crear pivot table
                 agrupado = df.groupby(["ESTACION", "Frecuencia (MHz)", "DIA"])["Level (dBµV/m)"].mean().reset_index()
                 pivot = agrupado.pivot(index=["ESTACION", "Frecuencia (MHz)"], columns="DIA", values="Level (dBµV/m)")
                 todos_los_dias = list(range(1, 32))
@@ -1302,68 +1520,83 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
                 pivot_numeric = pivot[todos_los_dias].replace("-", pd.NA).apply(pd.to_numeric, errors="coerce")
                 pivot["Promedio(dBuV/m)"] = pivot_numeric.mean(axis=1, skipna=True).round(2)
 
+                # Resto del código sin cambios...
+
+                # CORREGIDO: Procesamiento específico por tipo
                 if tipo == "FM":
                     ancho_banda = (
                         df.groupby(["ESTACION", "Frecuencia (MHz)"])["Bandwidth (Hz)"].mean().reset_index()
                     )
                     ancho_banda["Ancho de Banda (KHz)"] = (ancho_banda["Bandwidth (Hz)"] / 1000).round(2)
                     pivot = pivot.reset_index().merge(ancho_banda.drop(columns=["Bandwidth (Hz)"]), on=["ESTACION", "Frecuencia (MHz)"], how="left")
-                else:
+                else:  # TV y AM
                     pivot = pivot.reset_index()
 
-                # Agregar columnas manuales y observaciones ANTES de guardar los datos
+                # Agregar columnas manuales y observaciones
                 pivot["Medición Manual"] = ""
                 pivot["OBSERVACIONES"] = ""
                 
-                # Guardar datos para hoja de observaciones después de agregar las columnas
+                # CORREGIDO: Guardar datos para hoja de observaciones de manera separada
                 if tipo == "FM":
                     datos_fm = pivot[["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", "Ancho de Banda (KHz)", "Medición Manual", "OBSERVACIONES"]].copy()
-                else:
+                elif tipo == "TV":
                     datos_tv = pivot[["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", "Medición Manual", "OBSERVACIONES"]].copy()
+                elif tipo == "AM":
+                    datos_am = pivot[["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", "Medición Manual", "OBSERVACIONES"]].copy()
 
+                # Ordenar y preparar datos para exportación
                 pivot = pivot.sort_values(by="Frecuencia (MHz)")
                 pivot = pivot.reset_index(drop=True)
 
+                # Redondear valores numéricos
                 for col in pivot.select_dtypes(include="number").columns:
                     pivot[col] = pivot[col].round(2)
 
+                # Escribir datos en la hoja
                 for i, row in enumerate(dataframe_to_rows(pivot, index=False, header=True)):
                     for j, val in enumerate(row, start=1):
                         ws.cell(row=fila_actual + i, column=j, value=val)
 
-                encabezado_fm = [
-                    "INFORME DE CONTROL TÉCNICO",
-                    "No. IT-CZ06-R-2025-00XX",
-                    "AGENCIA DE REGULACIÓN Y CONTROL DE LAS TELECOMUNICACIONES",
-                    "COORDINACIÓN ZONAL 6",
-                    "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
-                    titulo,
-                    "CIUDAD:" + base.upper(),
-                    f"PERIODO: {nombre_mes_es.upper()}",
-                    f"FECHA PRESENTACIÓN: {fecha_actual}"
-                ] if tipo == "FM" else [
-                    "AGENCIA DE REGULACIÓN Y CONTROL DE LAS TELECOMUNICACIONES",
-                    "COORDINACIÓN ZONAL 6",
-                    "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
-                    titulo,
-                    "CIUDAD:" + base.upper(),
-                    f"PERIODO: {nombre_mes_es.upper()}",
-                    f"FECHA PRESENTACIÓN: {fecha_actual}"
-                ]
-                
+                # CORREGIDO: Encabezados específicos por tipo
                 if tipo == "FM":
+                    encabezado = [
+                        "INFORME DE CONTROL TÉCNICO",
+                        "No. IT-CZ06-R-2025-00XX",
+                        "AGENCIA DE REGULACIÓN Y CONTROL DE LAS TELECOMUNICACIONES",
+                        "COORDINACIÓN ZONAL 6",
+                        "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
+                        titulo,
+                        "CIUDAD:" + base.upper(),
+                        f"PERIODO: {nombre_mes_es.upper()}",
+                        f"FECHA PRESENTACIÓN: {fecha_actual}"
+                    ]
                     insertar_imagenes(ws, fila_actual + 4, tipo="FM")
-                elif tipo == "TV":
-                    insertar_imagenes(ws, fila_actual + 2, tipo="TV")
+                else:  # TV y AM
+                    encabezado = [
+                        "AGENCIA DE REGULACIÓN Y CONTROL DE LAS TELECOMUNICACIONES",
+                        "COORDINACIÓN ZONAL 6",
+                        "ESTACIÓN DE COMPROBACIÓN TÉCNICA",
+                        titulo,
+                        "CIUDAD:" + base.upper(),
+                        f"PERIODO: {nombre_mes_es.upper()}",
+                        f"FECHA PRESENTACIÓN: {fecha_actual}"
+                    ]
+                    insertar_imagenes(ws, fila_actual + 2, tipo=tipo)  # ← Usar el tipo actual
 
-                formatear_hoja(ws, fila_actual, encabezado_fm)
+                # Aplicar formato
+                formatear_hoja(ws, fila_actual, encabezado)
 
                 # Colorear celdas
-                fila_encabezados_columnas = fila_actual + len(encabezado_fm)
+                fila_encabezados_columnas = fila_actual + len(encabezado)
                 fila_inicio_datos = fila_encabezados_columnas + 1
                 fila_fin_datos = fila_inicio_datos + len(pivot) - 1
 
-                columnas_colorear = ["Promedio (dBuV/m)", "Ancho de Banda\n(KHz)", *list(range(1, 32))]
+                # CORREGIDO: Columnas a colorear según el tipo
+                if tipo == "FM":
+                    columnas_colorear = ["Promedio (dBuV/m)", "Ancho de Banda\n(KHz)", *list(range(1, 32))]
+                else:  # TV y AM
+                    columnas_colorear = ["Promedio (dBuV/m)", *list(range(1, 32))]
+                
                 colorear_celdas_por_valor(ws, fila_inicio_datos, fila_fin_datos, tipo, columnas_colorear)
 
                 fila_actual = ws.max_row + 3
@@ -1371,7 +1604,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
             # Crear hojas adicionales
             wb.create_sheet("Manual FM")
             wb.create_sheet("Manual TV")
-            crear_hoja_observaciones(wb, datos_fm, datos_tv)
+            crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am)
             
             # Reordenar hojas
             orden_hojas = ["Informe", "Manual FM", "Manual TV", "Observaciones"]
