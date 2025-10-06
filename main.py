@@ -45,7 +45,7 @@ def guardar_configuracion(config):
     except Exception as e:
         print(f"Error al guardar configuración: {e}")
         return False
-    
+
 def extraer_nombres_emisoras(ruta_archivo, tipo):
     """Extraer nombres únicos de emisoras de un archivo CSV con sus frecuencias"""
     try:
@@ -88,6 +88,312 @@ def extraer_nombres_emisoras(ruta_archivo, tipo):
         print(f"Error al extraer nombres de {tipo} desde {ruta_archivo}: {e}")
         return []
 
+def obtener_frecuencias_deseadas(emisoras_config):
+    """
+    Obtiene las frecuencias deseadas (autorizadas y no autorizadas) excluyendo las con _OBSERVACION
+    """
+    frecuencias_deseadas = {}
+    
+    for ciudad, tipos in emisoras_config.items():
+        frecuencias_deseadas[ciudad] = {"FM": [], "TV": []}
+        
+        for tipo in ["FM", "TV"]:
+            if tipo in tipos:
+                for emisora in tipos[tipo]:
+                    # Excluir frecuencias con _OBSERVACION
+                    if "_OBSERVACION" not in emisora.get("nombre", "").upper():
+                        # Usar string para la frecuencia para consistencia
+                        frecuencia_str = str(emisora.get("frecuencia", ""))
+                        if frecuencia_str and frecuencia_str != "nan":
+                            frecuencias_deseadas[ciudad][tipo].append({
+                                "nombre": emisora.get("nombre", ""),
+                                "frecuencia": frecuencia_str,
+                                "tipo": tipo
+                            })
+    
+    return frecuencias_deseadas
+
+def extraer_frecuencias_csv(ruta_archivo, tipo):
+    """
+    Extrae todas las frecuencias de un archivo CSV (incluyendo nombres en blanco)
+    """
+    try:
+        df = pd.read_csv(ruta_archivo, encoding="unicode_escape")
+        frecuencias_csv = []
+
+        columnas_posibles_nombre = ["ESTACION", "Estación", "Station", "STATION", "Nombre de la estación"]
+        columna_nombre = None
+
+        for col in columnas_posibles_nombre:
+            if col in df.columns:
+                columna_nombre = col
+                break
+
+        if columna_nombre is None:
+            print(f"No se encontró columna de nombre en {ruta_archivo}")
+            return []
+
+        if "Frecuencia (Hz)" not in df.columns:
+            print(f"No se encontró columna 'Frecuencia (Hz)' en {ruta_archivo}")
+            return []
+
+        # Obtener todos los pares únicos estación + frecuencia
+        grouped = df[[columna_nombre, "Frecuencia (Hz)"]].drop_duplicates()
+
+        for _, row in grouped.iterrows():
+            nombre_csv = str(row[columna_nombre]).strip() if pd.notna(row[columna_nombre]) else ""
+            frecuencia = row["Frecuencia (Hz)"] / 1_000_000  # Convertir a MHz
+            frecuencia_str = str(round(frecuencia, 2))
+
+            # Incluir todas las frecuencias, incluso las con nombres en blanco
+            frecuencias_csv.append({
+                "nombre": nombre_csv,
+                "frecuencia": frecuencia_str,
+                "tipo": tipo
+            })
+
+        return frecuencias_csv
+
+    except Exception as e:
+        print(f"Error al extraer frecuencias de {tipo} desde {ruta_archivo}: {e}")
+        return []
+
+def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_log=None):
+    """
+    Coteja las frecuencias entre config.json y los archivos CSV, actualizando config.json si es necesario
+    Retorna la lista final de frecuencias a procesar
+    """
+    frecuencias_a_procesar = {}
+    config_actualizada = False
+    
+    # Obtener frecuencias deseadas actuales (excluyendo _OBSERVACION)
+    frecuencias_deseadas = obtener_frecuencias_deseadas(config.get("emisoras_por_ciudad", {}))
+    
+    # Procesar cada ciudad NORMALIZANDO el nombre
+    for ciudad_original in config.get("emisoras_por_ciudad", {}).keys():
+        ciudad_normalizada = normalizar_nombre_ciudad(ciudad_original)
+        
+        # Buscar la ciudad normalizada en los archivos
+        ciudad_en_archivos = None
+        for archivo_ciudad in archivos_fm.keys():
+            if normalizar_nombre_ciudad(archivo_ciudad) == ciudad_normalizada:
+                ciudad_en_archivos = archivo_ciudad
+                break
+        
+        if not ciudad_en_archivos:
+            # Intentar en archivos TV si no se encuentra en FM
+            for archivo_ciudad in archivos_tv.keys():
+                if normalizar_nombre_ciudad(archivo_ciudad) == ciudad_normalizada:
+                    ciudad_en_archivos = archivo_ciudad
+                    break
+        
+        if not ciudad_en_archivos:
+            if callback_log:
+                callback_log(f"❌ Ciudad {ciudad_original} (normalizada: {ciudad_normalizada}) no encontrada en archivos CSV")
+            continue
+            
+        frecuencias_a_procesar[ciudad_en_archivos] = {"FM": [], "TV": []}
+        
+        # Procesar FM
+        if ciudad_en_archivos in archivos_fm:
+            frecuencias_csv_fm = extraer_frecuencias_csv(archivos_fm[ciudad_en_archivos], "FM")
+            
+            for freq_deseada in frecuencias_deseadas.get(ciudad_original, {}).get("FM", []):
+                freq_str_deseada = freq_deseada["frecuencia"]
+                nombre_deseado = freq_deseada["nombre"]
+                
+                # Buscar esta frecuencia en el CSV
+                frecuencia_encontrada = None
+                for freq_csv in frecuencias_csv_fm:
+                    if freq_csv["frecuencia"] == freq_str_deseada:
+                        frecuencia_encontrada = freq_csv
+                        break
+                
+                if frecuencia_encontrada:
+                    nombre_csv = frecuencia_encontrada["nombre"]
+                    
+                    # Caso 1: Nombre en CSV está en blanco, usar el de config
+                    if not nombre_csv or nombre_csv == "nan" or nombre_csv == "None":
+                        frecuencia_a_procesar = {
+                            "nombre": nombre_deseado,
+                            "frecuencia": freq_str_deseada,
+                            "tipo": "FM"
+                        }
+                        frecuencias_a_procesar[ciudad_en_archivos]["FM"].append(frecuencia_a_procesar)
+                        
+                    # Caso 2: Nombre en CSV es diferente al de config - ACTUALIZAR config
+                    elif nombre_csv != nombre_deseado:
+                        if callback_log:
+                            callback_log(f"⚠️  Actualizando nombre en {ciudad_en_archivos} FM {freq_str_deseada}: '{nombre_deseado}' -> '{nombre_csv}'")
+                        
+                        # Actualizar config.json - usar ciudad original
+                        for emisora in config["emisoras_por_ciudad"][ciudad_original]["FM"]:
+                            if str(emisora.get("frecuencia", "")) == freq_str_deseada:
+                                emisora["nombre"] = nombre_csv
+                                config_actualizada = True
+                                break
+                        
+                        frecuencia_a_procesar = {
+                            "nombre": nombre_csv,
+                            "frecuencia": freq_str_deseada,
+                            "tipo": "FM"
+                        }
+                        frecuencias_a_procesar[ciudad_en_archivos]["FM"].append(frecuencia_a_procesar)
+                    
+                    # Caso 3: Nombres iguales - procesar normalmente
+                    else:
+                        frecuencia_a_procesar = {
+                            "nombre": nombre_deseado,
+                            "frecuencia": freq_str_deseada,
+                            "tipo": "FM"
+                        }
+                        frecuencias_a_procesar[ciudad_en_archivos]["FM"].append(frecuencia_a_procesar)
+                
+                else:
+                    # Frecuencia deseada no encontrada en CSV
+                    if callback_log:
+                        callback_log(f"❌ Frecuencia FM {freq_str_deseada} ({nombre_deseado}) no encontrada en CSV de {ciudad_en_archivos}")
+        
+        # Procesar TV (misma lógica que FM)
+        if ciudad_en_archivos in archivos_tv:
+            frecuencias_csv_tv = extraer_frecuencias_csv(archivos_tv[ciudad_en_archivos], "TV")
+            
+            for freq_deseada in frecuencias_deseadas.get(ciudad_original, {}).get("TV", []):
+                freq_str_deseada = freq_deseada["frecuencia"]
+                nombre_deseado = freq_deseada["nombre"]
+                
+                # Buscar esta frecuencia en el CSV
+                frecuencia_encontrada = None
+                for freq_csv in frecuencias_csv_tv:
+                    if freq_csv["frecuencia"] == freq_str_deseada:
+                        frecuencia_encontrada = freq_csv
+                        break
+                
+                if frecuencia_encontrada:
+                    nombre_csv = frecuencia_encontrada["nombre"]
+                    
+                    # Caso 1: Nombre en CSV está en blanco, usar el de config
+                    if not nombre_csv or nombre_csv == "nan" or nombre_csv == "None":
+                        frecuencia_a_procesar = {
+                            "nombre": nombre_deseado,
+                            "frecuencia": freq_str_deseada,
+                            "tipo": "TV"
+                        }
+                        frecuencias_a_procesar[ciudad_en_archivos]["TV"].append(frecuencia_a_procesar)
+                        
+                    # Caso 2: Nombre en CSV es diferente al de config - ACTUALIZAR config
+                    elif nombre_csv != nombre_deseado:
+                        if callback_log:
+                            callback_log(f"⚠️  Actualizando nombre en {ciudad_en_archivos} TV {freq_str_deseada}: '{nombre_deseado}' -> '{nombre_csv}'")
+                        
+                        # Actualizar config.json - usar ciudad original
+                        for emisora in config["emisoras_por_ciudad"][ciudad_original]["TV"]:
+                            if str(emisora.get("frecuencia", "")) == freq_str_deseada:
+                                emisora["nombre"] = nombre_csv
+                                config_actualizada = True
+                                break
+                        
+                        frecuencia_a_procesar = {
+                            "nombre": nombre_csv,
+                            "frecuencia": freq_str_deseada,
+                            "tipo": "TV"
+                        }
+                        frecuencias_a_procesar[ciudad_en_archivos]["TV"].append(frecuencia_a_procesar)
+                    
+                    # Caso 3: Nombres iguales - procesar normalmente
+                    else:
+                        frecuencia_a_procesar = {
+                            "nombre": nombre_deseado,
+                            "frecuencia": freq_str_deseada,
+                            "tipo": "TV"
+                        }
+                        frecuencias_a_procesar[ciudad_en_archivos]["TV"].append(frecuencia_a_procesar)
+                
+                else:
+                    # Frecuencia deseada no encontrada en CSV
+                    if callback_log:
+                        callback_log(f"❌ Frecuencia TV {freq_str_deseada} ({nombre_deseado}) no encontrada en CSV de {ciudad_en_archivos}")
+    
+    # Guardar configuración si hubo cambios
+    if config_actualizada:
+        if guardar_configuracion(config):
+            if callback_log:
+                callback_log("✅ Config.json actualizado con nuevos nombres")
+        else:
+            if callback_log:
+                callback_log("❌ Error al guardar config.json actualizado")
+    
+    return frecuencias_a_procesar
+
+
+def limpiar_configuracion_duplicados(config):
+    """Une entradas duplicadas de ciudades en config.json"""
+    ciudades_normalizadas = {}
+    
+    for ciudad, datos in config.get("emisoras_por_ciudad", {}).items():
+        ciudad_norm = normalizar_nombre_ciudad(ciudad)
+        
+        if ciudad_norm not in ciudades_normalizadas:
+            ciudades_normalizadas[ciudad_norm] = datos
+        else:
+            # Unir datos duplicados
+            for tipo in ["FM", "TV"]:
+                if tipo in datos:
+                    if tipo not in ciudades_normalizadas[ciudad_norm]:
+                        ciudades_normalizadas[ciudad_norm][tipo] = []
+                    
+                    # Evitar duplicados por frecuencia
+                    frecuencias_existentes = {str(e["frecuencia"]) for e in ciudades_normalizadas[ciudad_norm][tipo]}
+                    for emisora in datos[tipo]:
+                        if str(emisora["frecuencia"]) not in frecuencias_existentes:
+                            ciudades_normalizadas[ciudad_norm][tipo].append(emisora)
+                            frecuencias_existentes.add(str(emisora["frecuencia"]))
+    
+    config["emisoras_por_ciudad"] = ciudades_normalizadas
+    return config
+
+
+def filtrar_dataframe_por_frecuencias(df, frecuencias_procesar, tipo, callback_log=None):
+    """
+    Filtra el DataFrame para incluir solo las frecuencias deseadas
+    """
+    try:
+        # Convertir frecuencia a string para comparación consistente
+        df["Frecuencia (MHz)"] = (df["Frecuencia (Hz)"] / 1_000_000).round(2)
+        df["Frecuencia_Str"] = df["Frecuencia (MHz)"].astype(str)
+        
+        # Obtener lista de frecuencias a incluir
+        frecuencias_incluir = [f["frecuencia"] for f in frecuencias_procesar]
+        
+        # Filtrar DataFrame
+        df_filtrado = df[df["Frecuencia_Str"].isin(frecuencias_incluir)].copy()
+        
+        # Asignar nombres correctos desde la configuración
+        for frecuencia_info in frecuencias_procesar:
+            freq_str = frecuencia_info["frecuencia"]
+            nombre_correcto = frecuencia_info["nombre"]
+            
+            # Actualizar nombres en el DataFrame
+            mask = df_filtrado["Frecuencia_Str"] == freq_str
+            if mask.any():
+                # Usar la columna correcta para el nombre
+                columna_nombre = "ESTACION" if "ESTACION" in df_filtrado.columns else "Nombre de la estación"
+                if columna_nombre in df_filtrado.columns:
+                    df_filtrado.loc[mask, columna_nombre] = nombre_correcto
+        
+        # Eliminar columna temporal
+        df_filtrado = df_filtrado.drop(columns=["Frecuencia_Str"])
+        
+        if callback_log:
+            callback_log(f"✅ DataFrame {tipo} filtrado: {len(df_filtrado)} registros de {len(frecuencias_incluir)} frecuencias")
+        
+        return df_filtrado
+        
+    except Exception as e:
+        if callback_log:
+            callback_log(f"❌ Error filtrando DataFrame {tipo}: {str(e)}")
+        return df
+
 
 # Cargar configuración al inicio
 config = cargar_configuracion()
@@ -96,6 +402,9 @@ ruta_tv = config.get("tv_path", "MedicionesTvCSV")
 ruta_salida = config.get("output_path", "ReportesUnificados")
 ruta_imagenes = "Img"
 fecha_actual = datetime.now().strftime("%d/%m/%Y")
+# Llamar esta función después de cargar la configuración
+
+
 
 # ------------------ FUNCIONES AUXILIARES ------------------
 
@@ -213,23 +522,48 @@ def normalizar_nombre_ciudad(nombre):
     
     nombre = nombre.lower().strip()
     
-    # Manejar todas las variantes de "cañar"
-    #if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
-    #    return "TAMBO"
+    # Manejar todas las variantes de "cañar" de manera consistente
+    ##if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
+    #    return "cañar"  # ← DEVOLVER SIEMPRE LA MISMA CLAVE
     
-    # Mapeo de otras ciudades si es necesario
+    # Para otras ciudades, devolver en minúsculas para consistencia
     mapeo_ciudades = {
-        "zamora": "ZAMORA",
-        "loja": "LOJA", 
-        "macas": "MACAS",
-        "tambo":"TAMBO",
-        "machala": "MACHALA",
-        "cuenca": "CUENCA"
+        "zamora": "zamora",
+        "loja": "loja", 
+        "macas": "macas",
+        "tambo":"tambo",
+        "machala": "machala",
+        "cuenca": "cuenca"
+        
     }
     
-    return mapeo_ciudades.get(nombre, nombre.upper())
+    return mapeo_ciudades.get(nombre, nombre.lower())
 
-
+def limpiar_configuracion_duplicados(config):
+    """Une entradas duplicadas de ciudades en config.json"""
+    ciudades_normalizadas = {}
+    
+    for ciudad, datos in config.get("emisoras_por_ciudad", {}).items():
+        ciudad_norm = normalizar_nombre_ciudad(ciudad)
+        
+        if ciudad_norm not in ciudades_normalizadas:
+            ciudades_normalizadas[ciudad_norm] = datos
+        else:
+            # Unir datos duplicados
+            for tipo in ["FM", "TV"]:
+                if tipo in datos:
+                    if tipo not in ciudades_normalizadas[ciudad_norm]:
+                        ciudades_normalizadas[ciudad_norm][tipo] = []
+                    
+                    # Evitar duplicados por frecuencia
+                    frecuencias_existentes = {str(e["frecuencia"]) for e in ciudades_normalizadas[ciudad_norm][tipo]}
+                    for emisora in datos[tipo]:
+                        if str(emisora["frecuencia"]) not in frecuencias_existentes:
+                            ciudades_normalizadas[ciudad_norm][tipo].append(emisora)
+                            frecuencias_existentes.add(str(emisora["frecuencia"]))
+    
+    config["emisoras_por_ciudad"] = ciudades_normalizadas
+    return config
 # ------------------ FUNCIÓN PARA COLOREAR CELDAS ------------------
 
 def colorear_celdas_por_valor(ws, fila_inicio, fila_fin, tipo, col_names):
@@ -698,7 +1032,7 @@ def obtener_codigo_base(base):
         "loja": "SCS-L02", 
         #"cañar": "SCS-L03",  # ñ normal
         #"cañar": "SCS-L03",  # ñ con tilde combinable (n + ˜)
-        "tambo": "SCS-L03",
+        "tambo":"SCS-L03",
         "macas": "SCS-L04",
         "machala": "SCC-L04",
         "cuenca": "SCS-L05"
@@ -708,7 +1042,7 @@ def obtener_codigo_base(base):
     base_normalizada = base.lower().strip()
     
     # Manejar diferentes representaciones de "cañar"
-    """ if (base_normalizada == "cañar" or 
+    """if (base_normalizada == "cañar" or 
         base_normalizada == "cañar" or  # ñ con tilde combinable
         base_normalizada == "canar" or   # sin tilde
         base_normalizada == "caÃ±ar"):   # posible encoding issue
@@ -761,7 +1095,7 @@ def obtener_base(nombre_archivo):
 
 def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=False):
     """
-    Función principal que procesa todos los datos
+    Función principal que procesa todos los datos con la nueva lógica de cotejo
     """
     # Inicializar directorios
     inicializar_directorios()
@@ -775,7 +1109,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
     
     # Cargar configuración actual
     config = cargar_configuracion()
-    
+    config = limpiar_configuracion_duplicados(config)
     if callback_log:
         callback_log("Iniciando procesamiento de datos...")
         callback_log(f"Ruta FM: {ruta_fm}")
@@ -814,7 +1148,17 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
             callback_log(f"Error al leer archivos: {str(e)}")
         return False
 
-    # Extraer nombres de emisoras de todos los archivos por ciudad
+    # ✅ NUEVA FUNCIONALIDAD: Cotejar y actualizar frecuencias
+    if callback_log:
+        callback_log("🔍 Cotejando frecuencias entre config.json y archivos CSV...")
+    
+    frecuencias_a_procesar = cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, callback_log)
+    
+    # Emitir progreso después del cotejo
+    if callback_progreso:
+        callback_progreso(15)
+    
+    # Extraer nombres de emisoras de todos los archivos por ciudad (mantener para referencia)
     emisoras_por_ciudad = config.get("emisoras_por_ciudad", {})
 
     # Procesar archivos FM
@@ -835,7 +1179,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         
         # Emitir progreso incremental para FM
         if callback_progreso:
-            progreso_fm = 10 + (i / max(len(archivos_fm), 1)) * 10  # 10% a 20%
+            progreso_fm = 15 + (i / max(len(archivos_fm), 1)) * 10  # 15% a 25%
             callback_progreso(int(progreso_fm))
 
     # Procesar archivos TV
@@ -856,7 +1200,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         
         # Emitir progreso incremental para TV
         if callback_progreso:
-            progreso_tv = 20 + (i / max(len(archivos_tv), 1)) * 10  # 20% a 30%
+            progreso_tv = 25 + (i / max(len(archivos_tv), 1)) * 10  # 25% a 35%
             callback_progreso(int(progreso_tv))
     
     # Actualizar configuración
@@ -868,13 +1212,10 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         total_tv = sum(len(ciudad["TV"]) for ciudad in emisoras_por_ciudad.values())
         if callback_log:
             callback_log(f"Guardadas {total_fm} emisoras FM y {total_tv} emisoras TV por ciudad en config.json")
-    else:
-        if callback_log:
-            callback_log("Error al guardar nombres de emisoras en config.json")
     
     # Emitir progreso después de guardar configuración
     if callback_progreso:
-        callback_progreso(35)
+        callback_progreso(40)
     
     nombres_bases = set(archivos_fm.keys()).union(archivos_tv.keys())
     
@@ -903,7 +1244,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         try:
             # Emitir progreso al iniciar cada base
             if callback_progreso:
-                progreso_base = 35 + (i / max(total_bases, 1)) * 60  # 35% a 95%
+                progreso_base = 40 + (i / max(total_bases, 1)) * 55  # 40% a 95%
                 callback_progreso(int(progreso_base))
             
             wb = Workbook()
@@ -924,6 +1265,19 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
 
                 ruta_archivo = archivos[base]
                 df = pd.read_csv(ruta_archivo, encoding="unicode_escape")
+                
+                # ✅ NUEVA FUNCIONALIDAD: Filtrar por frecuencias deseadas
+                frecuencias_ciudad = frecuencias_a_procesar.get(base, {}).get(tipo, [])
+                df = filtrar_dataframe_por_frecuencias(df, frecuencias_ciudad, tipo, callback_log)
+                
+                if df.empty:
+                    if callback_log:
+                        callback_log(f"⚠️  No hay datos para procesar en {base} {tipo}")
+                    continue
+
+
+
+                # ... (el resto del procesamiento se mantiene igual)
                 df = df.rename(columns={"Nombre de la estación": "ESTACION"}) if tipo == "TV" else df
                 df = df[df.columns[:9]] if tipo == "FM" else df[df.columns[:5]]
 
@@ -1118,4 +1472,3 @@ if __name__ == "__main__":
         print(f"Ciudades encontradas: {ciudades}")
     else:
         print("Ocurrieron errores durante el procesamiento")
-
