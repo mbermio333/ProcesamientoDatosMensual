@@ -58,5 +58,17 @@
                 "Banda IV-V": 65.0
             }
         }
+    },
+    "CUENCA": {
+        "FM": 60.0,
+        "TV": {
+            "tipo": "bandas",
+            "valor": 45.0,
+            "valores": {
+                "Banda I-III": 45.0,
+                "Banda III": 60.0,
+                "Banda IV-V": 60.0
+            }
+        }
     }
 }

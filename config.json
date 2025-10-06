@@ -12,7 +12,7 @@
         },
         {
           "nombre": "SUSCAL RADIO DIGITAL FM",
-          "frecuencia": 88.10000000000001,
+          "frecuencia": 88.1,
           "tipo": "FM"
         },
         {
@@ -37,7 +37,7 @@
         },
         {
           "nombre": "GCG MAGGICA FM",
-          "frecuencia": 92.10000000000001,
+          "frecuencia": 92.1,
           "tipo": "FM"
         },
         {
@@ -57,7 +57,7 @@
         },
         {
           "nombre": "RADIOHIT FM",
-          "frecuencia": 98.10000000000001,
+          "frecuencia": 98.1,
           "tipo": "FM"
         },
         {
@@ -87,7 +87,7 @@
         },
         {
           "nombre": "RADIO VISION CUENCA 106.1 FM",
-          "frecuencia": 106.10000000000001,
+          "frecuencia": 106.1,
           "tipo": "FM"
         },
         {
@@ -97,7 +97,7 @@
         },
         {
           "nombre": "RADIO QUITUMBE 94.1 FM (NO AUTORIZADA)",
-          "frecuencia": 94.10000000000001,
+          "frecuencia": 94.1,
           "tipo": "FM"
         },
         {
@@ -132,7 +132,7 @@
         },
         {
           "nombre": "W RADIO",
-          "frecuencia": 90.10000000000001,
+          "frecuencia": 90.1,
           "tipo": "FM"
         },
         {
@@ -349,7 +349,7 @@
         },
         {
           "nombre": "RADIO ECUASUR",
-          "frecuencia": 102.10000000000001,
+          "frecuencia": 102.1,
           "tipo": "FM"
         },
         {
@@ -379,12 +379,12 @@
         },
         {
           "nombre": "MATOVELLE FM",
-          "frecuencia": 100.10000000000001,
+          "frecuencia": 100.1,
           "tipo": "FM"
         },
         {
           "nombre": "RADIO LUZ Y VIDA",
-          "frecuencia": 88.10000000000001,
+          "frecuencia": 88.1,
           "tipo": "FM"
         },
         {
@@ -394,7 +394,7 @@
         },
         {
           "nombre": "SELECTA FM",
-          "frecuencia": 96.10000000000001,
+          "frecuencia": 96.1,
           "tipo": "FM"
         },
         {
@@ -409,7 +409,7 @@
         },
         {
           "nombre": "LA LUNA FM",
-          "frecuencia": 104.10000000000001,
+          "frecuencia": 104.1,
           "tipo": "FM"
         },
         {
@@ -444,12 +444,12 @@
         },
         {
           "nombre": "ONDAS DE ESPERANZA",
-          "frecuencia": 94.10000000000001,
+          "frecuencia": 94.1,
           "tipo": "FM"
         },
         {
           "nombre": "AMAZONAS FM",
-          "frecuencia": 92.10000000000001,
+          "frecuencia": 92.1,
           "tipo": "FM"
         },
         {
@@ -459,7 +459,7 @@
         },
         {
           "nombre": "EKOOS 98.1 FM",
-          "frecuencia": 98.10000000000001,
+          "frecuencia": 98.1,
           "tipo": "FM"
         },
         {
@@ -469,7 +469,7 @@
         },
         {
           "nombre": "RADIO MUNICIPAL",
-          "frecuencia": 90.10000000000001,
+          "frecuencia": 90.1,
           "tipo": "FM"
         },
         {
@@ -539,7 +539,7 @@
         },
         {
           "nombre": "PLANETA F.M. STEREO",
-          "frecuencia": 106.10000000000001,
+          "frecuencia": 106.1,
           "tipo": "FM"
         },
         {
@@ -926,22 +926,22 @@
         },
         {
           "nombre": "RADIO ONDA MUNICIPAL FM",
-          "frecuencia": 90.10000000000001,
+          "frecuencia": 90.1,
           "tipo": "FM"
         },
         {
           "nombre": "AMAZONAS FM",
-          "frecuencia": 92.10000000000001,
+          "frecuencia": 92.1,
           "tipo": "FM"
         },
         {
           "nombre": "CANELA ORIENTE (NO AUTORIZADA)",
-          "frecuencia": 106.10000000000001,
+          "frecuencia": 106.1,
           "tipo": "FM"
         },
         {
           "nombre": "RADIO PODOCARPUS",
-          "frecuencia": 98.10000000000001,
+          "frecuencia": 98.1,
           "tipo": "FM"
         },
         {
@@ -956,7 +956,7 @@
         },
         {
           "nombre": "INTEGRACION FM",
-          "frecuencia": 104.10000000000001,
+          "frecuencia": 104.1,
           "tipo": "FM"
         },
         {
@@ -1038,7 +1038,7 @@
         },
         {
           "nombre": "RADIO INTEROCEANICA",
-          "frecuencia": 96.10000000000001,
+          "frecuencia": 96.1,
           "tipo": "FM"
         },
         {
@@ -1073,12 +1073,12 @@
         },
         {
           "nombre": "CANAL JUVENIL FM",
-          "frecuencia": 94.10000000000001,
+          "frecuencia": 94.1,
           "tipo": "FM"
         },
         {
           "nombre": "LA RADIO FM DIGITAL",
-          "frecuencia": 100.10000000000001,
+          "frecuencia": 100.1,
           "tipo": "FM"
         },
         {
@@ -1410,7 +1410,7 @@
         },
         {
           "nombre": "LA RADIO DE LA ASAMBLEA NACIONAL",
-          "frecuencia": 93.10000000000001,
+          "frecuencia": 93.1,
           "tipo": "FM"
         },
         {
@@ -1440,7 +1440,7 @@
         },
         {
           "nombre": "LA PROPIA",
-          "frecuencia": 97.10000000000001,
+          "frecuencia": 97.1,
           "tipo": "FM"
         },
         {
@@ -1465,7 +1465,7 @@
         },
         {
           "nombre": "GAVIOTA FM STEREO",
-          "frecuencia": 105.10000000000001,
+          "frecuencia": 105.1,
           "tipo": "FM"
         },
         {
@@ -1500,7 +1500,7 @@
         },
         {
           "nombre": "JC RADIO",
-          "frecuencia": 103.10000000000001,
+          "frecuencia": 103.1,
           "tipo": "FM"
         },
         {
@@ -1570,7 +1570,7 @@
         },
         {
           "nombre": "OVACION INTERNACIONAL FM",
-          "frecuencia": 89.10000000000001,
+          "frecuencia": 89.1,
           "tipo": "FM"
         },
         {
@@ -1580,7 +1580,7 @@
         },
         {
           "nombre": "RADIO SONORAMA FM",
-          "frecuencia": 101.10000000000001,
+          "frecuencia": 101.1,
           "tipo": "FM"
         },
         {
@@ -1610,7 +1610,7 @@
         },
         {
           "nombre": "VIVA FM",
-          "frecuencia": 91.10000000000001,
+          "frecuencia": 91.1,
           "tipo": "FM"
         }
       ],
@@ -1712,7 +1712,7 @@
         },
         {
           "nombre": "LA VOZ DE TOMEBAMBA",
-          "frecuencia": 102.10000000000001,
+          "frecuencia": 102.1,
           "tipo": "FM"
         },
         {
@@ -1727,12 +1727,12 @@
         },
         {
           "nombre": "RADIO CATOLICA CUENCA",
-          "frecuencia": 98.10000000000001,
+          "frecuencia": 98.1,
           "tipo": "FM"
         },
         {
           "nombre": "96.1 FM \"LA SUPREMA ESTACIÓN¿",
-          "frecuencia": 96.10000000000001,
+          "frecuencia": 96.1,
           "tipo": "FM"
         },
         {
@@ -1742,7 +1742,7 @@
         },
         {
           "nombre": "GCG MAGGICA FM",
-          "frecuencia": 92.10000000000001,
+          "frecuencia": 92.1,
           "tipo": "FM"
         },
         {
@@ -1807,7 +1807,7 @@
         },
         {
           "nombre": "LAEX FM 100.1",
-          "frecuencia": 100.10000000000001,
+          "frecuencia": 100.1,
           "tipo": "FM"
         },
         {
@@ -1817,7 +1817,7 @@
         },
         {
           "nombre": "RADIO VISION CUENCA 106.1 FM",
-          "frecuencia": 106.10000000000001,
+          "frecuencia": 106.1,
           "tipo": "FM"
         },
         {
@@ -1837,7 +1837,7 @@
         },
         {
           "nombre": "RADIO QUITUMBE 94.1 FM (NO AUTORIZADA)",
-          "frecuencia": 94.10000000000001,
+          "frecuencia": 94.1,
           "tipo": "FM"
         },
         {
@@ -1862,7 +1862,7 @@
         },
         {
           "nombre": "LA CHISMOSA FM",
-          "frecuencia": 104.10000000000001,
+          "frecuencia": 104.1,
           "tipo": "FM"
         },
         {
@@ -1902,7 +1902,7 @@
         },
         {
           "nombre": "W RADIO",
-          "frecuencia": 90.10000000000001,
+          "frecuencia": 90.1,
           "tipo": "FM"
         }
       ],
