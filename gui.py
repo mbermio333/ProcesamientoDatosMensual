@@ -24,6 +24,7 @@ from PyQt5.QtGui import QFont, QDoubleValidator
 CONFIG_PROCESAMIENTO_FILE = "config_procesamiento.json"
 CONFIG_OCUPACION_FILE = "config_ocupacion.json"
 CIUDADES_UMBRALES_FILE = "config_umbrales_ciudades.json"
+CONFIG_SPECTRA_FILE = "config_spectra.json"  # ← NUEVA CONSTANTE
 
 # Configuraciones por defecto para cada pestaña
 DEFAULT_PATHS_PROCESAMIENTO = {
@@ -37,7 +38,9 @@ DEFAULT_PATHS_OCUPACION = {
     "tv_path": "MedicionesTvCSV", 
     "ocupacion_output_path": "ReportesOcupacion"
 }
-
+DEFAULT_PATHS_SPECTRA = {  # ← NUEVA CONFIGURACIÓN POR DEFECTO
+    "spectra_path": ""
+}
 # Umbrales por defecto para ciudades
 # Umbrales por defecto para ciudades - ELIMINAR "global"
 DEFAULT_UMBRALES_CIUDADES = {
@@ -834,10 +837,230 @@ class RegistroGeneralTab(QWidget):
             QMessageBox.critical(self, "Error", error_msg)
 
 # =========================== FIN NUEVA PESTAÑA ===========================
+class SpectraWorker(QThread):
+    progress_signal = pyqtSignal(int)
+    log_signal = pyqtSignal(str)
+    finished_signal = pyqtSignal(bool)
+    
+    def __init__(self, spectra_path):
+        super().__init__()
+        self.spectra_path = spectra_path
+        self.running = True
+    
+    def run(self):
+        try:
+            import SPECTRA_Filtro
+            import normalizarTV
+            import actualizarConfig
+
+            self.log_signal.emit("🔄 Iniciando procesamiento SPECTRA...")
+            
+            # 1. Ejecutar SPECTRA_Filtro.py
+            self.log_signal.emit("📊 Ejecutando SPECTRA_Filtro.py...")
+            self.progress_signal.emit(10)
+            
+            result1 = SPECTRA_Filtro.procesar_spectra_desde_gui(
+                self.spectra_path, 
+                callback_log=self.log_signal.emit,
+                callback_progress=self.progress_signal.emit
+            )
+            
+            if not self.running:
+                return False
+                
+            # 2. Ejecutar normalizarTV.py
+            self.log_signal.emit("📺 Ejecutando normalizarTV.py...")
+            self.progress_signal.emit(40)
+            
+            result2 = normalizarTV.procesar_normalizacion_tv_desde_gui(
+                callback_log=self.log_signal.emit,
+                callback_progress=self.progress_signal.emit
+            )
+            
+            if not self.running:
+                return False
+                
+            # 3. Ejecutar actualizarConfig.py
+            self.log_signal.emit("⚙️ Ejecutando actualizarConfig.py...")
+            self.progress_signal.emit(70)
+            
+            result3 = actualizarConfig.actualizar_config_desde_gui(
+                callback_log=self.log_signal.emit,
+                callback_progress=self.progress_signal.emit
+            )
+            
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(result1 and result2 and result3)
+            
+        except Exception as e:
+            self.log_signal.emit(f"❌ Error en el procesamiento SPECTRA: {str(e)}")
+            self.finished_signal.emit(False)
+    
+    def stop(self):
+        self.running = False
 
 
 
+class SpectraTab(QWidget):
+    """Pestaña para procesamiento de datos SPECTRA"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.config = self.parent.load_config("spectra")  # ← Asegurar que usa "spectra"
+        self.spectra_worker = None  # ← Añadir esta línea
+        self.initUI()
+    
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        
+        # Título de la pestaña
+        titulo_label = QLabel("Procesamiento SPECTRA")
+        titulo_label.setStyleSheet("font-size: 16pt; font-weight: bold; color: #2c3e50; margin: 10px;")
+        titulo_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(titulo_label)
+        
+        # Grupo de configuración
+        config_group = QGroupBox("Configuración de Archivo SPECTRA")
+        config_group.setStyleSheet(GROUP_BOX_STYLE)
+        config_layout = QVBoxLayout()
+        config_layout.setSpacing(8)
+        
+        # Ruta del archivo Excel SPECTRA
+        path_layout = QHBoxLayout()
+        path_layout.setSpacing(5)
+        
+        path_label = QLabel("Archivo SPECTRA:")
+        path_label.setMinimumWidth(100)
+        path_label.setStyleSheet("font-weight: bold;")
+        
+        self.spectra_path_label = QLabel(self.parent.truncar_texto(self.config.get("spectra_path", "")))
+        self.spectra_path_label.setStyleSheet(PATH_LABEL_STYLE)
+        self.spectra_path_label.setMinimumWidth(300)
+        self.spectra_path_label.setToolTip(self.config.get("spectra_path", ""))
+        
+        btn_change = QPushButton("...")
+        btn_change.setFixedSize(30, 30)
+        btn_change.setStyleSheet(CHANGE_BUTTON_STYLE)
+        btn_change.clicked.connect(self.seleccionar_archivo_spectra)
+        
+        path_layout.addWidget(path_label)
+        path_layout.addWidget(self.spectra_path_label)
+        path_layout.addWidget(btn_change)
+        path_layout.addStretch(1)
+        config_layout.addLayout(path_layout)
+        
+        config_group.setLayout(config_layout)
+        layout.addWidget(config_group)
+        
+        # Botones de acción
+        action_layout = QHBoxLayout()
+        action_layout.setSpacing(10)
+        
+        self.btn_actualizar = QPushButton("Actualizar desde SPECTRA")
+        self.btn_actualizar.setStyleSheet(BUTTON_STYLE)
+        self.btn_actualizar.clicked.connect(self.ejecutar_actualizacion_spectra)
+        
+        self.btn_limpiar_log = QPushButton("Limpiar Log")
+        self.btn_limpiar_log.setStyleSheet(CHANGE_BUTTON_STYLE)
+        self.btn_limpiar_log.clicked.connect(self.limpiar_log)
+        
+        action_layout.addWidget(self.btn_actualizar)
+        action_layout.addWidget(self.btn_limpiar_log)
+        action_layout.addStretch(1)
+        layout.addLayout(action_layout)
+        
+        # Barra de progreso
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setStyleSheet(PROGRESS_BAR_STYLE)
+        layout.addWidget(self.progress_bar)
+        
+        # Área de log
+        log_group = QGroupBox("Log de Actividad - SPECTRA")
+        log_group.setStyleSheet(GROUP_BOX_STYLE)
+        log_layout = QVBoxLayout()
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setStyleSheet(LOG_TEXT_STYLE)
+        log_layout.addWidget(self.log_text)
+        log_group.setLayout(log_layout)
+        layout.addWidget(log_group)
+        
+        # Estado
+        self.status_label = QLabel("Listo para actualizar desde SPECTRA")
+        self.status_label.setStyleSheet(STATUS_LABEL_STYLE)
+        layout.addWidget(self.status_label)
+        
+        # Mensaje inicial
+        self.log_text.append("Seleccione el archivo Excel SPECTRA y presione 'Actualizar desde SPECTRA'")
+        self.log_text.append("Este proceso actualizará la base de datos con la información más reciente")
+    
+    def seleccionar_archivo_spectra(self):
+        """Seleccionar archivo Excel SPECTRA"""
+        current_path = self.spectra_path_label.toolTip()
+        if not current_path:
+            current_path = os.getcwd()
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, 
+            "Seleccionar archivo Excel SPECTRA", 
+            current_path, 
+            "Excel Files (*.xlsx *.xls)"
+        )
+        
+        if file_path:
+            self.spectra_path_label.setText(self.parent.truncar_texto(file_path))
+            self.spectra_path_label.setToolTip(file_path)
+            
+            # Guardar configuración EN EL ARCHIVO CORRECTO
+            config = self.parent.load_config("spectra")  # ← Usar "spectra"
+            config["spectra_path"] = file_path
+            self.parent.save_config(config, "spectra")  # ← Guardar en config_spectra.json
+            
+            self.log_text.append(f"Archivo SPECTRA seleccionado: {file_path}")
+    
+    def ejecutar_actualizacion_spectra(self):
+        """Ejecutar el proceso completo de actualización desde SPECTRA"""
+        spectra_path = self.spectra_path_label.toolTip()
+        
+        if not spectra_path or not os.path.exists(spectra_path):
+            self.log_text.append("❌ Error: No se ha seleccionado un archivo SPECTRA válido")
+            QMessageBox.warning(self, "Error", "Seleccione un archivo Excel SPECTRA válido")
+            return
+        
+        # Deshabilitar botón durante el procesamiento
+        self.btn_actualizar.setEnabled(False)
+        self.status_label.setText("Procesando SPECTRA...")
+        self.progress_bar.setValue(0)
+        
+        # Crear y configurar worker
+        self.spectra_worker = SpectraWorker(spectra_path)
+        self.spectra_worker.progress_signal.connect(self.progress_bar.setValue)
+        self.spectra_worker.log_signal.connect(self.log_text.append)
+        self.spectra_worker.finished_signal.connect(self.procesamiento_finalizado)
+        
+        # Iniciar worker
+        self.spectra_worker.start()
 
+    def procesamiento_finalizado(self, exito):
+        """Manejar la finalización del procesamiento SPECTRA"""
+        if exito:
+            self.log_text.append("✅ Procesamiento SPECTRA completado exitosamente")
+            self.status_label.setText("Procesamiento completado")
+            QMessageBox.information(self, "Éxito", "Procesamiento SPECTRA completado exitosamente")
+        else:
+            self.log_text.append("❌ Procesamiento SPECTRA falló")
+            self.status_label.setText("Procesamiento con errores")
+            QMessageBox.warning(self, "Error", "Procesamiento SPECTRA falló")
+    
+        # Rehabilitar botón
+        self.btn_actualizar.setEnabled(True)
+
+
+    def limpiar_log(self):
+        """Limpiar el área de log"""
+        self.log_text.clear()
+        self.log_text.append("Log limpiado - Listo para procesamiento SPECTRA")
 
 
 
@@ -2373,8 +2596,18 @@ class MainWindow(QMainWindow):
         
     def load_config(self, mode):
         """Cargar configuración desde archivo JSON específico"""
-        config_file = CONFIG_PROCESAMIENTO_FILE if mode == "procesamiento" else CONFIG_OCUPACION_FILE
-        default_paths = DEFAULT_PATHS_PROCESAMIENTO if mode == "procesamiento" else DEFAULT_PATHS_OCUPACION
+        if mode == "procesamiento":
+            config_file = CONFIG_PROCESAMIENTO_FILE
+            default_paths = DEFAULT_PATHS_PROCESAMIENTO
+        elif mode == "ocupacion":
+            config_file = CONFIG_OCUPACION_FILE
+            default_paths = DEFAULT_PATHS_OCUPACION
+        elif mode == "spectra":
+            config_file = CONFIG_SPECTRA_FILE  # ← CORREGIDO
+            default_paths = DEFAULT_PATHS_SPECTRA
+        else:
+            config_file = CONFIG_PROCESAMIENTO_FILE
+            default_paths = DEFAULT_PATHS_PROCESAMIENTO
         
         if os.path.exists(config_file):
             try:
@@ -2412,7 +2645,15 @@ class MainWindow(QMainWindow):
     
     def save_config(self, config, mode):
         """Guardar configuración en archivo JSON específico"""
-        config_file = CONFIG_PROCESAMIENTO_FILE if mode == "procesamiento" else CONFIG_OCUPACION_FILE
+        if mode == "procesamiento":
+            config_file = CONFIG_PROCESAMIENTO_FILE
+        elif mode == "ocupacion":
+            config_file = CONFIG_OCUPACION_FILE
+        elif mode == "spectra":  # ← NUEVO CASO AÑADIDO
+            config_file = CONFIG_SPECTRA_FILE
+        else:
+            config_file = CONFIG_PROCESAMIENTO_FILE
+        
         try:
             with open(config_file, 'w') as f:
                 json.dump(config, f, indent=4)
@@ -2453,12 +2694,13 @@ class MainWindow(QMainWindow):
         self.ocupacion_tab = OcupacionTab(self)
         self.observacion_tab = ObservacionTab(self)  # Nueva pestaña
         self.registro_general_tab = RegistroGeneralTab(self)  # NUEVA PESTAÑA
-        
+        self.spectra_tab = SpectraTab(self)  # ← NUEVA PESTAÑA
         # Agregar pestañas
         self.tabs.addTab(self.procesamiento_tab, "Procesamiento")
         self.tabs.addTab(self.ocupacion_tab, "Ocupación")
         self.tabs.addTab(self.observacion_tab, "Frecuencias en Observación")  # Nueva pestaña
         self.tabs.addTab(self.registro_general_tab, "Registro General")  # NUEVA PESTAÑA
+        self.tabs.addTab(self.spectra_tab, "SPECTRA")  # ← NUEVA PESTAÑA
         
         # Conectar señal de cambio de pestaña
         self.tabs.currentChanged.connect(self.cambiar_pestana)
@@ -2476,12 +2718,12 @@ class MainWindow(QMainWindow):
             self.current_tab = "ocupacion"
         elif index == 2:
             self.current_tab = "observacion"
-            # Actualizar la lista de ciudades cuando se cambie a esta pestaña
             self.observacion_tab.cargar_ciudades()
-        elif index == 3:  # NUEVA PESTAÑA
+        elif index == 3:
             self.current_tab = "registro_general"
-            # Actualizar la lista de ciudades cuando se cambie a esta pestaña
             self.registro_general_tab.cargar_ciudades()
+        elif index == 4:  # ← NUEVA PESTAÑA
+            self.current_tab = "spectra"
 
 
     

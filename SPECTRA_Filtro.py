@@ -4,7 +4,7 @@ from datetime import datetime
 import os
 from pathlib import Path
 
-def filtrar_datos_arcotel(archivo_excel, archivo_salida, filtros_personalizados=None):
+def filtrar_datos_arcotel(archivo_excel, archivo_salida, filtros_personalizados=None, callback_log=None):
     """
     Filtra datos de la base de datos ARCOTEL según criterios específicos y guarda en JSON
     
@@ -12,15 +12,24 @@ def filtrar_datos_arcotel(archivo_excel, archivo_salida, filtros_personalizados=
         archivo_excel (str): Ruta del archivo Excel de entrada
         archivo_salida (str): Ruta completa del archivo JSON de salida
         filtros_personalizados (dict): Diccionario con filtros personalizados
+        callback_log (function): Función para enviar mensajes de log
     """
+    
+    def log_message(message):
+        if callback_log:
+            callback_log(message)
+        else:
+            print(message)
+    
     try:
         # Crear directorio si no existe
         directorio_salida = os.path.dirname(archivo_salida)
         if directorio_salida and not os.path.exists(directorio_salida):
             os.makedirs(directorio_salida)
-            print(f"Directorio creado: {directorio_salida}")
+            log_message(f"📁 Directorio creado: {directorio_salida}")
         
         # Cargar el archivo Excel
+        log_message(f"📊 Cargando archivo Excel: {os.path.basename(archivo_excel)}")
         workbook = openpyxl.load_workbook(archivo_excel)
         sheet = workbook['descarga']
         
@@ -28,7 +37,7 @@ def filtrar_datos_arcotel(archivo_excel, archivo_salida, filtros_personalizados=
         if filtros_personalizados is None:
             filtros = {
                 'PROVINCIA_A': 'ZAMORA CHINCHIPE',
-                'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Television Abierta'],
+                'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],
                 'AREAS_OP_MR': 'ZAMORA'
             }
         else:
@@ -55,13 +64,13 @@ def filtrar_datos_arcotel(archivo_excel, archivo_salida, filtros_personalizados=
         filas_procesadas = 0
         
         ciudad = filtros.get('AREAS_OP_MR', 'DESCONOCIDA')
-        print(f"Procesando {total_filas} filas para ciudad: {ciudad}...")
+        log_message(f"🔍 Procesando {total_filas} filas para ciudad: {ciudad}...")
         
         # Iterar sobre las filas
         for row in range(2, sheet.max_row + 1):
             filas_procesadas += 1
             if filas_procesadas % 1000 == 0:
-                print(f"Procesadas {filas_procesadas}/{total_filas} filas...")
+                log_message(f"📝 Procesadas {filas_procesadas}/{total_filas} filas...")
             
             # Obtener valores de las columnas de filtro
             provincia = sheet[f'A{row}'].value
@@ -100,7 +109,7 @@ def filtrar_datos_arcotel(archivo_excel, archivo_salida, filtros_personalizados=
                 registro['_ROW_NUMBER'] = row
                 resultados_iniciales.append(registro)
         
-        print(f"Filtros básicos aplicados. Encontrados {len(resultados_iniciales)} registros para {ciudad}.")
+        log_message(f"✅ Filtros básicos aplicados. Encontrados {len(resultados_iniciales)} registros para {ciudad}.")
         
         # Aplicar filtro por vigencia
         resultados_finales = filtrar_por_vigencia_mas_alta(resultados_iniciales)
@@ -109,23 +118,25 @@ def filtrar_datos_arcotel(archivo_excel, archivo_salida, filtros_personalizados=
         with open(archivo_salida, 'w', encoding='utf-8') as json_file:
             json.dump(resultados_finales, json_file, ensure_ascii=False, indent=2)
         
-        print(f"Proceso completado para {ciudad}. Registros únicos: {len(resultados_finales)}")
-        print(f"Archivo guardado en: {archivo_salida}")
+        log_message(f"💾 Proceso completado para {ciudad}. Registros únicos: {len(resultados_finales)}")
+        log_message(f"📄 Archivo guardado en: {archivo_salida}")
         
         # Mostrar estadísticas
         if resultados_finales:
-            mostrar_estadisticas(resultados_iniciales, resultados_finales, ciudad)
+            mostrar_estadisticas(resultados_iniciales, resultados_finales, ciudad, callback_log)
         
         return resultados_finales
         
     except FileNotFoundError:
-        print(f"Error: No se encontró el archivo {archivo_excel}")
+        error_msg = f"❌ Error: No se encontró el archivo {archivo_excel}"
+        log_message(error_msg)
         return []
     except Exception as e:
-        print(f"Error durante el procesamiento para {filtros.get('AREAS_OP_MR', 'ciudad desconocida')}: {str(e)}")
+        error_msg = f"❌ Error durante el procesamiento para {filtros.get('AREAS_OP_MR', 'ciudad desconocida')}: {str(e)}"
+        log_message(error_msg)
         return []
 
-def procesar_multiple_ciudades(archivo_excel, directorio_salida, configuraciones_ciudades):
+def procesar_multiple_ciudades(archivo_excel, directorio_salida, configuraciones_ciudades, callback_log=None):
     """
     Procesa múltiples ciudades y guarda los resultados en una misma carpeta
     
@@ -133,9 +144,17 @@ def procesar_multiple_ciudades(archivo_excel, directorio_salida, configuraciones
         archivo_excel (str): Ruta del archivo Excel
         directorio_salida (str): Directorio donde guardar los archivos JSON
         configuraciones_ciudades (list): Lista de diccionarios con configuraciones por ciudad
+        callback_log (function): Función para enviar mensajes de log
     """
-    print(f"=== INICIANDO PROCESAMIENTO PARA {len(configuraciones_ciudades)} CIUDADES ===")
-    print(f"Directorio de salida: {directorio_salida}")
+    
+    def log_message(message):
+        if callback_log:
+            callback_log(message)
+        else:
+            print(message)
+    
+    log_message(f"🚀 INICIANDO PROCESAMIENTO PARA {len(configuraciones_ciudades)} CIUDADES")
+    log_message(f"📁 Directorio de salida: {directorio_salida}")
     
     resultados_totales = {}
     
@@ -147,18 +166,25 @@ def procesar_multiple_ciudades(archivo_excel, directorio_salida, configuraciones
         nombre_archivo = f"{ciudad.lower().replace(' ', '_')}_spectra.json"
         archivo_salida = os.path.join(directorio_salida, nombre_archivo)
         
-        print(f"\n--- Procesando: {ciudad} ---")
+        log_message(f"\n📍 Procesando: {ciudad}")
         
-        resultados = filtrar_datos_arcotel(archivo_excel, archivo_salida, config)
+        resultados = filtrar_datos_arcotel(archivo_excel, archivo_salida, config, callback_log)
         resultados_totales[ciudad] = resultados
     
     # Generar resumen general
-    generar_resumen_general(directorio_salida, resultados_totales)
+    generar_resumen_general(directorio_salida, resultados_totales, callback_log)
     
     return resultados_totales
 
-def generar_resumen_general(directorio_salida, resultados_totales):
+def generar_resumen_general(directorio_salida, resultados_totales, callback_log=None):
     """Genera un archivo de resumen con estadísticas de todas las ciudades"""
+    
+    def log_message(message):
+        if callback_log:
+            callback_log(message)
+        else:
+            print(message)
+    
     resumen = {
         'fecha_procesamiento': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'total_ciudades': len(resultados_totales),
@@ -187,18 +213,17 @@ def generar_resumen_general(directorio_salida, resultados_totales):
     with open(archivo_resumen, 'w', encoding='utf-8') as f:
         json.dump(resumen, f, ensure_ascii=False, indent=2)
     
-    print(f"\n=== RESUMEN GENERAL ===")
-    print(f"Total de ciudades procesadas: {len(resultados_totales)}")
-    print(f"Total de registros únicos: {total_registros}")
-    print(f"Resumen guardado en: {archivo_resumen}")
+    log_message(f"\n📊 RESUMEN GENERAL")
+    log_message(f"🏙️ Total de ciudades procesadas: {len(resultados_totales)}")
+    log_message(f"📈 Total de registros únicos: {total_registros}")
+    log_message(f"💾 Resumen guardado en: {archivo_resumen}")
     
     for ciudad, stats in resumen['estadisticas_por_ciudad'].items():
-        print(f"\n{ciudad}:")
-        print(f"  - Registros: {stats['total_registros']}")
+        log_message(f"\n{ciudad}:")
+        log_message(f"  - Registros: {stats['total_registros']}")
         for servicio, cantidad in stats['servicios'].items():
-            print(f"  - {servicio}: {cantidad}")
+            log_message(f"  - {servicio}: {cantidad}")
 
-# Las funciones filtrar_por_vigencia_mas_alta y mostrar_estadisticas se mantienen igual
 def filtrar_por_vigencia_mas_alta(registros):
     """Filtra registros por frecuencia, manteniendo solo el registro con la vigencia más alta"""
     registros_por_frecuencia = {}
@@ -247,58 +272,99 @@ def filtrar_por_vigencia_mas_alta(registros):
     
     return resultados_finales
 
-def mostrar_estadisticas(registros_iniciales, registros_finales, ciudad):
+def mostrar_estadisticas(registros_iniciales, registros_finales, ciudad, callback_log=None):
     """Muestra estadísticas comparativas"""
-    print(f"\n=== ESTADÍSTICAS PARA {ciudad} ===")
-    print(f"Registros iniciales: {len(registros_iniciales)}")
-    print(f"Registros finales: {len(registros_finales)}")
-    print(f"Registros eliminados: {len(registros_iniciales) - len(registros_finales)}")
+    
+    def log_message(message):
+        if callback_log:
+            callback_log(message)
+        else:
+            print(message)
+    
+    log_message(f"\n📈 ESTADÍSTICAS PARA {ciudad}")
+    log_message(f"📋 Registros iniciales: {len(registros_iniciales)}")
+    log_message(f"✅ Registros finales: {len(registros_finales)}")
+    log_message(f"🗑️ Registros eliminados: {len(registros_iniciales) - len(registros_finales)}")
+
+# Función principal para usar desde la GUI
+def procesar_spectra_desde_gui(archivo_excel, callback_log=None, callback_progress=None):
+    """
+    Función principal para procesar SPECTRA desde la GUI
+    
+    Args:
+        archivo_excel (str): Ruta del archivo Excel SPECTRA
+        callback_log (function): Función para enviar mensajes de log
+        callback_progress (function): Función para actualizar progreso
+    """
+    
+    def log_message(message):
+        if callback_log:
+            callback_log(message)
+        else:
+            print(message)
+    
+    def update_progress(value):
+        if callback_progress:
+            callback_progress(value)
+    
+    try:
+        log_message("🎯 INICIANDO PROCESAMIENTO SPECTRA")
+        
+        # Configuración
+        directorio_base = "SPECTRA_Filtrado"
+        
+        # Definir las ciudades a procesar
+        configuraciones_ciudades = [
+            {
+                'PROVINCIA_A': 'ZAMORA CHINCHIPE',
+                'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],
+                'AREAS_OP_MR': 'ZAMORA'
+            },
+            {
+                'PROVINCIA_A': 'LOJA',
+                'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],
+                'AREAS_OP_MR': 'LOJA'
+            },
+            {
+                'PROVINCIA_A': 'CAÑAR', 
+                'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],
+                'AREAS_OP_MR': 'TAMBO'
+            },
+            {
+                'PROVINCIA_A': 'MORONA SANTIAGO',
+                'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],
+                'AREAS_OP_MR': 'MORONA'
+            },
+            {
+                'PROVINCIA_A': 'EL ORO',
+                'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],
+                'AREAS_OP_MR': 'MACHALA'
+            },
+            {
+                'PROVINCIA_A': 'AZUAY',
+                'SERVICIOS': ['FM - Frecuencia Modulada','AM - Amplitud Modulada','TV - Televisión Abierta'],
+                'AREAS_OP_MR': 'CUENCA'
+            }
+        ]
+        
+        update_progress(10)
+        
+        # Procesar múltiples ciudades
+        resultados = procesar_multiple_ciudades(archivo_excel, directorio_base, configuraciones_ciudades, callback_log)
+        
+        update_progress(80)
+        
+        log_message("✅ PROCESAMIENTO SPECTRA COMPLETADO")
+        update_progress(100)
+        
+        return True
+        
+    except Exception as e:
+        error_msg = f"❌ ERROR en procesamiento SPECTRA: {str(e)}"
+        log_message(error_msg)
+        return False
 
 if __name__ == "__main__":
-    # Configuración principal
+    # Para uso directo del script
     archivo_excel = "9. SPECTRA_10sep2025.xlsx"
-    directorio_base = "SPECTRA_Filtrado"  # Carpeta donde se guardarán todos los archivos
-    
-    # Definir las ciudades a procesar
-    configuraciones_ciudades = [
-        {
-            'PROVINCIA_A': 'ZAMORA CHINCHIPE',
-            'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],
-            'AREAS_OP_MR': 'ZAMORA'
-        },
-        {
-            'PROVINCIA_A': 'LOJA',
-            'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],
-            'AREAS_OP_MR': 'LOJA'
-        },
-        {
-            'PROVINCIA_A': 'CAÑAR', 
-            'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],
-            'AREAS_OP_MR': 'TAMBO'
-        },
-        {
-            'PROVINCIA_A': 'MORONA SANTIAGO',
-            'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],
-            'AREAS_OP_MR': 'MORONA'
-        },
-        {
-            'PROVINCIA_A': 'EL ORO',
-            'SERVICIOS': ['FM - Frecuencia Modulada', 'TV - Televisión Abierta'],
-            'AREAS_OP_MR': 'MACHALA'
-        },
-        {
-            'PROVINCIA_A': 'AZUAY',
-            'SERVICIOS': ['FM - Frecuencia Modulada','AM - Amplitud Modulada','TV - Televisión Abierta'],
-            'AREAS_OP_MR': 'CUENCA'
-        }
-
-
-        # Puedes agregar más ciudades aquí
-    ]
-    
-    # Opción 1: Procesar múltiples ciudades
-    resultados = procesar_multiple_ciudades(archivo_excel, directorio_base, configuraciones_ciudades)
-    
-    # Opción 2: Procesar una sola ciudad (manteniendo compatibilidad)
-    # archivo_salida = os.path.join(directorio_base, "resultados_zamora.json")
-    # resultados = filtrar_datos_arcotel(archivo_excel, archivo_salida)
+    procesar_spectra_desde_gui(archivo_excel)
