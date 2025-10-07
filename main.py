@@ -19,7 +19,7 @@ def cargar_configuracion():
     config_default = {
         "fm_path": "MedicionesFmCSV",
         "tv_path": "MedicionesTvCSV", 
-        "am_path": "MedicionesAmCSV",  # ← NUEVA RUTA PARA AM
+        "am_path": "MedicionesAmCSV",
         "output_path": "ReportesUnificados",
         "emisoras_por_ciudad": {}
     }
@@ -28,7 +28,6 @@ def cargar_configuracion():
         try:
             with open(CONFIG_FILE, 'r') as f:
                 config = json.load(f)
-                # Asegurarse de que exista la clave para emisoras por ciudad
                 if "emisoras_por_ciudad" not in config:
                     config["emisoras_por_ciudad"] = {}
                 return config
@@ -47,7 +46,7 @@ def cargar_configuracion():
         print(f"Error al guardar configuración: {e}")
         return False """
 
-def extraer_nombres_emisoras(ruta_archivo, tipo):
+def extraer_nombres_emisoras(ruta_archivo, tipo, callback_log=None):
     """Extraer nombres únicos de emisoras de un archivo CSV con sus frecuencias"""
     try:
         df = pd.read_csv(ruta_archivo, encoding="unicode_escape")
@@ -62,11 +61,13 @@ def extraer_nombres_emisoras(ruta_archivo, tipo):
                 break
 
         if columna_nombre is None:
-            print(f"No se encontró columna de nombre en {ruta_archivo}")
+            if callback_log:
+                callback_log(f"No se encontró columna de nombre en {ruta_archivo}")
             return []
 
         if "Frecuencia (Hz)" not in df.columns:
-            print(f"No se encontró columna 'Frecuencia (Hz)' en {ruta_archivo}")
+            if callback_log:
+                callback_log(f"No se encontró columna 'Frecuencia (Hz)' en {ruta_archivo}")
             return []
 
         # Obtener pares únicos estación + frecuencia, sin usar groupby
@@ -86,7 +87,8 @@ def extraer_nombres_emisoras(ruta_archivo, tipo):
         return emisoras_con_frecuencia
 
     except Exception as e:
-        print(f"Error al extraer nombres de {tipo} desde {ruta_archivo}: {e}")
+        if callback_log:
+            callback_log(f"Error al extraer nombres de {tipo} desde {ruta_archivo}: {e}")
         return []
 
 def obtener_frecuencias_deseadas(emisoras_config):
@@ -96,9 +98,9 @@ def obtener_frecuencias_deseadas(emisoras_config):
     frecuencias_deseadas = {}
     
     for ciudad, tipos in emisoras_config.items():
-        frecuencias_deseadas[ciudad] = {"FM": [], "TV": [], "AM": []}  # ← AGREGAR AM
+        frecuencias_deseadas[ciudad] = {"FM": [], "TV": [], "AM": []}
         
-        for tipo in ["FM", "TV", "AM"]:  # ← INCLUIR AM
+        for tipo in ["FM", "TV", "AM"]:
             if tipo in tipos:
                 for emisora in tipos[tipo]:
                     # Excluir frecuencias con _OBSERVACION
@@ -114,7 +116,7 @@ def obtener_frecuencias_deseadas(emisoras_config):
     
     return frecuencias_deseadas
 
-def extraer_frecuencias_csv(ruta_archivo, tipo):
+def extraer_frecuencias_csv(ruta_archivo, tipo, callback_log=None):
     """
     Extrae todas las frecuencias de un archivo CSV (incluyendo nombres en blanco)
     """
@@ -131,11 +133,13 @@ def extraer_frecuencias_csv(ruta_archivo, tipo):
                 break
 
         if columna_nombre is None:
-            print(f"No se encontró columna de nombre en {ruta_archivo}")
+            if callback_log:
+                callback_log(f"No se encontró columna de nombre en {ruta_archivo}")
             return []
 
         if "Frecuencia (Hz)" not in df.columns:
-            print(f"No se encontró columna 'Frecuencia (Hz)' en {ruta_archivo}")
+            if callback_log:
+                callback_log(f"No se encontró columna 'Frecuencia (Hz)' en {ruta_archivo}")
             return []
 
         # Obtener todos los pares únicos estación + frecuencia
@@ -156,54 +160,64 @@ def extraer_frecuencias_csv(ruta_archivo, tipo):
         return frecuencias_csv
 
     except Exception as e:
-        print(f"Error al extraer frecuencias de {tipo} desde {ruta_archivo}: {e}")
+        if callback_log:
+            callback_log(f"Error al extraer frecuencias de {tipo} desde {ruta_archivo}: {e}")
         return []
 
-def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, archivos_am, callback_log=None):
+def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, archivos_am, callback_log=None, callback_progress=None):
     """
     Coteja las frecuencias entre config.json y los archivos CSV, pero NO actualiza config.json
     Retorna la lista final de frecuencias a procesar respetando los nombres de config.json
     """
     frecuencias_a_procesar = {}
     
+    if callback_log:
+        callback_log("🔍 Iniciando cotejo de frecuencias...")
+    
     # Obtener frecuencias deseadas actuales (excluyendo _OBSERVACION)
     frecuencias_deseadas = obtener_frecuencias_deseadas(config.get("emisoras_por_ciudad", {}))
     
-    # Procesar cada ciudad NORMALIZANDO el nombre
+    # Procesar cada ciudad
+    ciudades_procesadas = 0
+    total_ciudades = len(config.get("emisoras_por_ciudad", {}))
+    
     for ciudad_original in config.get("emisoras_por_ciudad", {}).keys():
+        ciudades_procesadas += 1
+        if callback_progress:
+            # Actualizar progreso durante el cotejo (0-20%)
+            progreso = int(20 * ciudades_procesadas / total_ciudades)
+            callback_progress(progreso)
+            
         ciudad_normalizada = normalizar_nombre_ciudad(ciudad_original)
         
-        # Buscar la ciudad normalizada en los archivos
+        # DEBUG: Log para ver qué ciudades se están procesando
+        if callback_log:
+            callback_log(f"🔍 Procesando ciudad: '{ciudad_original}' (normalizada: '{ciudad_normalizada}')")
+        
+        # Buscar la ciudad normalizada en los archivos - MEJORADO
         ciudad_en_archivos = None
-        for archivo_ciudad in archivos_fm.keys():
+        
+        # Buscar en todos los archivos con coincidencia flexible
+        todas_las_bases = list(archivos_fm.keys()) + list(archivos_tv.keys()) + list(archivos_am.keys())
+        
+        for archivo_ciudad in todas_las_bases:
             if normalizar_nombre_ciudad(archivo_ciudad) == ciudad_normalizada:
                 ciudad_en_archivos = archivo_ciudad
+                if callback_log:
+                    callback_log(f"✅ Ciudad encontrada en archivos: '{archivo_ciudad}'")
                 break
-        
-        if not ciudad_en_archivos:
-            # Intentar en archivos TV si no se encuentra en FM
-            for archivo_ciudad in archivos_tv.keys():
-                if normalizar_nombre_ciudad(archivo_ciudad) == ciudad_normalizada:
-                    ciudad_en_archivos = archivo_ciudad
-                    break
-        
-        if not ciudad_en_archivos:
-            # Intentar en archivos AM si no se encuentra en FM o TV
-            for archivo_ciudad in archivos_am.keys():
-                if normalizar_nombre_ciudad(archivo_ciudad) == ciudad_normalizada:
-                    ciudad_en_archivos = archivo_ciudad
-                    break
         
         if not ciudad_en_archivos:
             if callback_log:
                 callback_log(f"❌ Ciudad {ciudad_original} (normalizada: {ciudad_normalizada}) no encontrada en archivos CSV")
+                callback_log(f"   Bases disponibles: {list(set(todas_las_bases))}")
             continue
             
         frecuencias_a_procesar[ciudad_en_archivos] = {"FM": [], "TV": [], "AM": []}
         
         # Procesar FM
         if ciudad_en_archivos in archivos_fm:
-            frecuencias_csv_fm = extraer_frecuencias_csv(archivos_fm[ciudad_en_archivos], "FM")
+            frecuencias_csv_fm = extraer_frecuencias_csv(archivos_fm[ciudad_en_archivos], "FM", callback_log)
             
             for freq_deseada in frecuencias_deseadas.get(ciudad_original, {}).get("FM", []):
                 freq_str_deseada = freq_deseada["frecuencia"]
@@ -231,7 +245,7 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, archivos_
                     # Caso 2: Nombre en CSV es diferente al de config - RESPETAR CONFIG (NO ACTUALIZAR)
                     elif nombre_csv != nombre_deseado:
                         if callback_log:
-                            callback_log(f"⚠️  Diferencia encontrada en {ciudad_en_archivos} FM {freq_str_deseada}: Config='{nombre_deseado}' vs CSV='{nombre_csv}' - RESPETANDO CONFIG")
+                            callback_log(f"Diferencia encontrada en {ciudad_en_archivos} FM {freq_str_deseada}: Config='{nombre_deseado}' vs CSV='{nombre_csv}' - RESPETANDO CONFIG")
                         
                         # USAR SIEMPRE EL NOMBRE DE CONFIG (no actualizar el archivo)
                         frecuencia_a_procesar = {
@@ -257,7 +271,7 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, archivos_
         
         # Procesar TV (misma lógica que FM)
         if ciudad_en_archivos in archivos_tv:
-            frecuencias_csv_tv = extraer_frecuencias_csv(archivos_tv[ciudad_en_archivos], "TV")
+            frecuencias_csv_tv = extraer_frecuencias_csv(archivos_tv[ciudad_en_archivos], "TV", callback_log)
             
             for freq_deseada in frecuencias_deseadas.get(ciudad_original, {}).get("TV", []):
                 freq_str_deseada = freq_deseada["frecuencia"]
@@ -285,7 +299,7 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, archivos_
                     # Caso 2: Nombre en CSV es diferente al de config - RESPETAR CONFIG (NO ACTUALIZAR)
                     elif nombre_csv != nombre_deseado:
                         if callback_log:
-                            callback_log(f"⚠️  Diferencia encontrada en {ciudad_en_archivos} TV {freq_str_deseada}: Config='{nombre_deseado}' vs CSV='{nombre_csv}' - RESPETANDO CONFIG")
+                            callback_log(f"Diferencia encontrada en {ciudad_en_archivos} TV {freq_str_deseada}: Config='{nombre_deseado}' vs CSV='{nombre_csv}' - RESPETANDO CONFIG")
                         
                         # USAR SIEMPRE EL NOMBRE DE CONFIG (no actualizar el archivo)
                         frecuencia_a_procesar = {
@@ -311,7 +325,7 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, archivos_
 
         # Procesar AM
         if ciudad_en_archivos in archivos_am:
-            frecuencias_csv_am = extraer_frecuencias_csv(archivos_am[ciudad_en_archivos], "AM")
+            frecuencias_csv_am = extraer_frecuencias_csv(archivos_am[ciudad_en_archivos], "AM", callback_log)
             
             for freq_deseada in frecuencias_deseadas.get(ciudad_original, {}).get("AM", []):
                 freq_str_deseada = freq_deseada["frecuencia"]
@@ -339,7 +353,7 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, archivos_
                     # Caso 2: Nombre en CSV es diferente al de config - RESPETAR CONFIG (NO ACTUALIZAR)
                     elif nombre_csv != nombre_deseado:
                         if callback_log:
-                            callback_log(f"⚠️  Diferencia encontrada en {ciudad_en_archivos} AM {freq_str_deseada}: Config='{nombre_deseado}' vs CSV='{nombre_csv}' - RESPETANDO CONFIG")
+                            callback_log(f"Diferencia encontrada en {ciudad_en_archivos} AM {freq_str_deseada}: Config='{nombre_deseado}' vs CSV='{nombre_csv}' - RESPETANDO CONFIG")
                         
                         # USAR SIEMPRE EL NOMBRE DE CONFIG (no actualizar el archivo)
                         frecuencia_a_procesar = {
@@ -363,8 +377,8 @@ def cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, archivos_
                     if callback_log:
                         callback_log(f"❌ Frecuencia AM {freq_str_deseada} ({nombre_deseado}) no encontrada en CSV de {ciudad_en_archivos}")
 
-    # ELIMINADO: No guardar configuración automáticamente
-    # El archivo config.json permanece sin cambios
+    if callback_log:
+        callback_log("✅ Cotejo de frecuencias completado")
     
     return frecuencias_a_procesar
 
@@ -568,19 +582,14 @@ def normalizar_nombre_ciudad(nombre):
     
     nombre = nombre.lower().strip()
     
-    # Manejar todas las variantes de "cañar" de manera consistente
-    ##if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
-    #    return "cañar"  # ← DEVOLVER SIEMPRE LA MISMA CLAVE
-    
-    # Para otras ciudades, devolver en minúsculas para consistencia
+    # Mapeo completo de ciudades
     mapeo_ciudades = {
         "zamora": "zamora",
         "loja": "loja", 
         "macas": "macas",
-        "tambo":"tambo",
+        "tambo": "tambo",
         "machala": "machala",
-        "cuenca": "cuenca"
-        
+        "cuenca": "cuenca"  # ← AGREGAR CUENCA EXPLÍCITAMENTE
     }
     
     return mapeo_ciudades.get(nombre, nombre.lower())
@@ -1254,7 +1263,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         callback_log("Iniciando procesamiento de datos...")
         callback_log(f"Ruta FM: {ruta_fm}")
         callback_log(f"Ruta TV: {ruta_tv}")
-        callback_log(f"Ruta AM: {ruta_am}")  # ← NUEVO LOG
+        callback_log(f"Ruta AM: {ruta_am}")
         callback_log(f"Ruta salida: {ruta_salida}")
     
     # Emitir progreso después de inicialización
@@ -1277,8 +1286,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
                 if base:  # Solo agregar si base no es None (filtra "global")
                     archivos_tv[base] = os.path.join(ruta_tv, f)
         
-    
-        # NUEVO: Archivos AM
+        # Archivos AM
         archivos_am = {}
         for f in os.listdir(ruta_am):
             if f.endswith(".csv"):
@@ -1287,7 +1295,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
                     archivos_am[base] = os.path.join(ruta_am, f)
         
         if callback_log:
-            callback_log(f"Encontrados {len(archivos_fm)} archivos FM y {len(archivos_tv)} archivos TV (filtrados)")
+            callback_log(f"Encontrados {len(archivos_fm)} archivos FM, {len(archivos_tv)} archivos TV y {len(archivos_am)} archivos AM (filtrados)")
         
         # Emitir progreso después de leer archivos
         if callback_progreso:
@@ -1302,9 +1310,12 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
     if callback_log:
         callback_log("🔍 Cotejando frecuencias entre config.json y archivos CSV...")
     
-        # En la función procesar_datos, busca esta línea y cámbiala:
-    frecuencias_a_procesar = cotejar_y_actualizar_frecuencias(config, archivos_fm, archivos_tv, archivos_am, callback_log)  
-    
+    # Pasar ambos callbacks a la función de cotejo
+    frecuencias_a_procesar = cotejar_y_actualizar_frecuencias(
+        config, archivos_fm, archivos_tv, archivos_am, 
+        callback_log=callback_log, 
+        callback_progress=callback_progreso
+    )
     # Emitir progreso después del cotejo
     if callback_progreso:
         callback_progreso(15)
@@ -1312,14 +1323,14 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
     # Extraer nombres de emisoras de todos los archivos por ciudad (mantener para referencia)
     emisoras_por_ciudad = config.get("emisoras_por_ciudad", {})
 
-    # Procesar archivos FM
+     # Procesar archivos FM
     for i, (base, archivo) in enumerate(archivos_fm.items()):
         if not base or not base.strip():
             continue
         base_normalizada = normalizar_nombre_ciudad(base)
         if not base_normalizada:
             continue
-        emisoras_fm = extraer_nombres_emisoras(archivo, "FM")
+        emisoras_fm = extraer_nombres_emisoras(archivo, "FM", callback_log)
         if base not in emisoras_por_ciudad:
             emisoras_por_ciudad[base] = {"FM": [], "TV": []}
         # Limpiar duplicados y agregar
@@ -1330,7 +1341,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         
         # Emitir progreso incremental para FM
         if callback_progreso:
-            progreso_fm = 15 + (i / max(len(archivos_fm), 1)) * 10  # 15% a 25%
+            progreso_fm = 20 + (i / max(len(archivos_fm), 1)) * 15  # 20% a 35%
             callback_progreso(int(progreso_fm))
 
     # Procesar archivos TV
@@ -1340,7 +1351,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         base_normalizada = normalizar_nombre_ciudad(base)
         if not base_normalizada:
             continue
-        emisoras_tv = extraer_nombres_emisoras(archivo, "TV")
+        emisoras_tv = extraer_nombres_emisoras(archivo, "TV", callback_log)
         if base not in emisoras_por_ciudad:
             emisoras_por_ciudad[base] = {"FM": [], "TV": []}
         # Limpiar duplicados y agregar
@@ -1351,17 +1362,17 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         
         # Emitir progreso incremental para TV
         if callback_progreso:
-            progreso_tv = 25 + (i / max(len(archivos_tv), 1)) * 10  # 25% a 35%
+            progreso_tv = 35 + (i / max(len(archivos_tv), 1)) * 15  # 35% a 50%
             callback_progreso(int(progreso_tv))
 
-        # NUEVO: Procesar archivos AM
+    # Procesar archivos AM
     for i, (base, archivo) in enumerate(archivos_am.items()):
         if not base or not base.strip():
             continue
         base_normalizada = normalizar_nombre_ciudad(base)
         if not base_normalizada:
             continue
-        emisoras_am = extraer_nombres_emisoras(archivo, "AM")
+        emisoras_am = extraer_nombres_emisoras(archivo, "AM", callback_log)
         if base not in emisoras_por_ciudad:
             emisoras_por_ciudad[base] = {"FM": [], "TV": [], "AM": []}
         
@@ -1377,7 +1388,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         
         # Emitir progreso incremental para AM
         if callback_progreso:
-            progreso_am = 35 + (i / max(len(archivos_am), 1)) * 5  # 35% a 40%
+            progreso_am = 50 + (i / max(len(archivos_am), 1)) * 10  # 50% a 60%
             callback_progreso(int(progreso_am))
         
         # Actualizar configuración
@@ -1423,8 +1434,9 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         try:
             # Emitir progreso al iniciar cada base
             if callback_progreso:
-                progreso_base = 40 + (i / max(total_bases, 1)) * 55  # 40% a 95%
+                progreso_base = 60 + (i / max(total_bases, 1)) * 35  # 60% a 95%
                 callback_progreso(int(progreso_base))
+
             
             wb = Workbook()
             ws = wb.active
@@ -1674,12 +1686,12 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
             if callback_log:
                 callback_log(f"❌ Error procesando base {base}: {str(e)}")
     
-    # Emitir progreso final
+   # Emitir progreso final
     if callback_progreso:
         callback_progreso(100)
         
     if callback_log:
-        callback_log("Procesamiento completado")
+        callback_log("✅ Procesamiento completado exitosamente")
     
     # Devolver resultado y lista de ciudades si se solicitó
     if obtener_ciudades:
