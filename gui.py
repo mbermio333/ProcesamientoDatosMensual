@@ -2037,14 +2037,15 @@ class OcupacionTab(QWidget):
         self.ciudad_actual = self.obtener_primera_ciudad() or ""
         self.tv_umbral_general = None
         self.tv_umbrales_bandas = {}
+        self.am_umbral = None  # ← NUEVO: Campo para umbral AM
         self.initUI()
 
     def obtener_primera_ciudad(self):
-            """Obtener la primera ciudad disponible (excluyendo 'global')"""
-            ciudades = [ciudad for ciudad in self.umbrales_ciudades.keys() 
-                    if ciudad != "global" and ciudad.strip()]
-            return ciudades[0] if ciudades else ""
-    
+        """Obtener la primera ciudad disponible (excluyendo 'global')"""
+        ciudades = [ciudad for ciudad in self.umbrales_ciudades.keys() 
+                if ciudad != "global" and ciudad.strip()]
+        return ciudades[0] if ciudades else ""
+
     def initUI(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
@@ -2067,7 +2068,7 @@ class OcupacionTab(QWidget):
         paths = [
             ("Ruta FM:", self.config.get("fm_path", "MedicionesFmCSV"), "fm_path_label_ocup"),
             ("Ruta TV:", self.config.get("tv_path", "MedicionesTvCSV"), "tv_path_label_ocup"), 
-            ("Ruta AM:", self.config.get("am_path", "MedicionesAmCSV"), "am_path_label_ocup"),  # ← NUEVA RUTA AM
+            ("Ruta AM:", self.config.get("am_path", "MedicionesAmCSV"), "am_path_label_ocup"),
             ("Ruta Salida:", self.config.get("ocupacion_output_path", "ReportesOcupacion"), "output_path_label_ocup")
         ]
         
@@ -2097,7 +2098,7 @@ class OcupacionTab(QWidget):
                 btn_change.clicked.connect(lambda: self.parent.change_path("fm", self, "ocupacion"))
             elif "tv" in attr_name:
                 btn_change.clicked.connect(lambda: self.parent.change_path("tv", self, "ocupacion"))
-            elif "am" in attr_name:  # ← NUEVO: Manejar ruta AM
+            elif "am" in attr_name:
                 btn_change.clicked.connect(lambda: self.parent.change_path("am", self, "ocupacion"))
             elif "output" in attr_name:
                 btn_change.clicked.connect(lambda: self.parent.change_path("ocupacion_output", self, "ocupacion"))
@@ -2111,7 +2112,6 @@ class OcupacionTab(QWidget):
         config_group.setLayout(config_layout)
         left_column.addWidget(config_group)
         left_column.addStretch(1)
-        
         
         # Columna derecha - Umbrales (50% del ancho)
         right_column = QVBoxLayout()
@@ -2134,14 +2134,8 @@ class OcupacionTab(QWidget):
         self.ciudad_combo.setStyleSheet("padding: 3px;")
         self.ciudad_combo.currentTextChanged.connect(self.cambiar_ciudad)
         
-        # ELIMINAR BOTÓN ACTUALIZAR CIUDADES
-        # self.actualizar_ciudades_btn = QPushButton("Actualizar Ciudades")
-        # self.actualizar_ciudades_btn.setStyleSheet(CHANGE_BUTTON_STYLE)
-        # self.actualizar_ciudades_btn.clicked.connect(self.actualizar_lista_ciudades)
-        
         ciudad_layout.addWidget(ciudad_label)
         ciudad_layout.addWidget(self.ciudad_combo)
-        # ciudad_layout.addWidget(self.actualizar_ciudades_btn)  # ELIMINAR ESTA LÍNEA
         ciudad_layout.addStretch(1)
         umbrales_layout.addLayout(ciudad_layout)
         
@@ -2177,7 +2171,35 @@ class OcupacionTab(QWidget):
         separator.setStyleSheet("color: #e0e0e0;")
         umbrales_layout.addWidget(separator)
         
-        # Campo para TV
+        # NUEVO: Campo para AM (solo visible para Cuenca)
+        self.am_layout = QHBoxLayout()
+        self.am_layout.setSpacing(5)
+        self.am_label = QLabel("AM:")
+        self.am_label.setMinimumWidth(40)
+        self.am_label.setStyleSheet("font-weight: bold;")
+        self.am_umbral = QLineEdit()
+        self.am_umbral.setValidator(QDoubleValidator(0, 1000, 2))
+        self.am_umbral.setText("30")  # Valor por defecto para AM
+        self.am_umbral.setMaximumWidth(60)
+        self.am_umbral.setStyleSheet("padding: 3px;")
+        self.am_umbral.textChanged.connect(self.guardar_umbral_actual)
+        self.am_layout.addWidget(self.am_label)
+        self.am_layout.addWidget(self.am_umbral)
+        self.am_layout.addWidget(QLabel("dBµV/m"))
+        self.am_layout.addStretch(1)
+        umbrales_layout.addLayout(self.am_layout)
+        
+        # Ocultar campo AM inicialmente
+        self.am_label.setVisible(False)
+        self.am_umbral.setVisible(False)
+        
+        # Separador
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        separator.setStyleSheet("color: #e0e0e0;")
+        umbrales_layout.addWidget(separator)
+        
         # Campo para TV
         tv_layout = QHBoxLayout()
         tv_layout.setSpacing(5)
@@ -2189,7 +2211,6 @@ class OcupacionTab(QWidget):
         self.tv_tipo_umbral.currentIndexChanged.connect(self.actualizar_campos_tv)
         self.tv_tipo_umbral.setMaximumWidth(150)
         self.tv_tipo_umbral.setStyleSheet("padding: 3px;")
-        # Eliminé la conexión a currentTextChanged para evitar conflictos
         tv_layout.addWidget(tv_label)
         tv_layout.addWidget(self.tv_tipo_umbral)
         tv_layout.addStretch(1)
@@ -2265,8 +2286,9 @@ class OcupacionTab(QWidget):
         self.log_text.append("Aplicación iniciada correctamente")
         self.log_text.append("1. Verifique las rutas de los directorios")
         self.log_text.append("2. Configure los umbrales para cada ciudad")
-        self.log_text.append("3. Presione 'Iniciar Análisis de Ocupación' para comenzar")
-    
+        self.log_text.append("3. Para CUENCA, configure también el umbral AM")
+        self.log_text.append("4. Presione 'Iniciar Análisis de Ocupación' para comenzar")
+
     def cargar_ciudades(self):
         """Cargar la lista de ciudades desde el procesamiento anterior"""
         self.ciudad_combo.clear()
@@ -2285,58 +2307,6 @@ class OcupacionTab(QWidget):
         else:
             # Cargar configuración de la ciudad actual
             self.cargar_configuracion_ciudad()
-    
-    def actualizar_lista_ciudades(self):
-        """Actualizar la lista de ciudades desde los archivos de salida del procesamiento"""
-        try:
-            output_path = self.output_path_label_ocup.toolTip() or self.output_path_label_ocup.text().replace("...", "")
-            if not os.path.exists(output_path):
-                self.parent.log_message("La carpeta de salida no existe para buscar ciudades", "ocupacion")
-                return
-            
-            # Buscar archivos CSV en la carpeta de salida
-            archivos = [f for f in os.listdir(output_path) if f.endswith('.csv')]
-            ciudades_encontradas = set()
-            
-            for archivo in archivos:
-                # Extraer nombre de ciudad del archivo (ej: "Quito_FM.csv" -> "Quito")
-                nombre_base = os.path.splitext(archivo)[0]
-                if '_' in nombre_base:
-                    ciudad = nombre_base.split('_')[0].strip()
-                    ciudad_normalizada = normalizar_nombre_ciudad(ciudad)
-                    if ciudad_normalizada and ciudad_normalizada != "GLOBAL":  # Excluir "GLOBAL"
-                        ciudades_encontradas.add(ciudad_normalizada)
-            
-            # Actualizar combo box - ELIMINAR "global"
-            self.ciudad_combo.clear()
-            
-            for ciudad in sorted(ciudades_encontradas):
-                if ciudad and ciudad.strip():  # Filtrar nombres vacíos
-                    self.ciudad_combo.addItem(ciudad)
-                    if ciudad not in self.umbrales_ciudades:
-                        # Crear entrada por defecto para nueva ciudad
-                        self.umbrales_ciudades[ciudad] = {
-                            "FM": 60.0,
-                            "TV": {
-                                "tipo": "general",
-                                "valor": 45.0,
-                                "valores": {
-                                    "Banda I-III": 47.0,
-                                    "Banda III": 56.0,
-                                    "Banda IV-V": 64.0
-                                }
-                            }
-                        }
-            
-            # Filtrar "global" antes de guardar
-            if "global" in self.umbrales_ciudades:
-                del self.umbrales_ciudades["global"]
-                
-            self.parent.guardar_umbrales_ciudades(self.umbrales_ciudades)
-            self.parent.log_message(f"Lista de ciudades actualizada: {len(ciudades_encontradas)} ciudades encontradas", "ocupacion")
-            
-        except Exception as e:
-            self.parent.log_message(f"Error al actualizar lista de ciudades: {str(e)}", "ocupacion")
 
     def cambiar_ciudad(self, ciudad):
         """Cambiar la ciudad actual y cargar su configuración"""
@@ -2351,8 +2321,20 @@ class OcupacionTab(QWidget):
             self.ciudad_actual = ciudad
             self.cargar_configuracion_ciudad()
             
+            # Mostrar/ocultar campo AM según la ciudad
+            self.actualizar_visibilidad_am(ciudad)
+            
             self.parent.log_message(f"Ciudad cambiada a: {ciudad}", "ocupacion")
-# ... (código anterior sin cambios)
+
+    def actualizar_visibilidad_am(self, ciudad):
+        """Mostrar u ocultar el campo AM según la ciudad seleccionada"""
+        if ciudad.upper() == "CUENCA":
+            self.am_label.setVisible(True)
+            self.am_umbral.setVisible(True)
+            self.parent.log_message("Campo AM habilitado para Cuenca", "ocupacion")
+        else:
+            self.am_label.setVisible(False)
+            self.am_umbral.setVisible(False)
 
     def cargar_configuracion_ciudad(self):
         """Cargar la configuración de umbrales para la ciudad actual"""
@@ -2363,6 +2345,7 @@ class OcupacionTab(QWidget):
             # Crear configuración por defecto si no existe
             self.umbrales_ciudades[self.ciudad_actual] = {
                 "FM": 60.0,
+                "AM": 30.0,  # ← NUEVO: Valor por defecto para AM
                 "TV": {
                     "tipo": "general",
                     "valor": 45.0,
@@ -2379,6 +2362,10 @@ class OcupacionTab(QWidget):
         # Cargar FM
         self.fm_umbral.setText(str(config["FM"]))
         
+        # Cargar AM si existe
+        if "AM" in config and self.am_umbral:
+            self.am_umbral.setText(str(config["AM"]))
+        
         # Cargar TV
         tv_config = config["TV"]
         if tv_config["tipo"] == "general":
@@ -2390,6 +2377,8 @@ class OcupacionTab(QWidget):
             for banda, edit in self.tv_umbrales_bandas.items():
                 if edit and banda in tv_config["valores"]:
                     edit.setText(str(tv_config["valores"][banda]))
+
+
 
     def actualizar_campos_tv(self):
         """Actualiza los campos de TV según la selección del tipo de umbral"""
@@ -2502,6 +2491,14 @@ class OcupacionTab(QWidget):
         except:
             fm_valor = 60.0
         
+        # Obtener valor AM si está visible (solo para Cuenca)
+        am_valor = 30.0  # Valor por defecto
+        if self.ciudad_actual.upper() == "CUENCA" and self.am_umbral and self.am_umbral.text():
+            try:
+                am_valor = float(self.am_umbral.text())
+            except:
+                am_valor = 30.0
+        
         tv_config = {
             "tipo": "general" if self.tv_tipo_umbral.currentText() == "Umbral General" else "bandas",
             "valor": 45.0,
@@ -2525,17 +2522,16 @@ class OcupacionTab(QWidget):
                     except:
                         tv_config["valores"][banda] = 0.0
         
-        # Guardar en diccionario
+        # Guardar en diccionario - INCLUIR AM
         self.umbrales_ciudades[self.ciudad_actual] = {
             "FM": fm_valor,
+            "AM": am_valor,  # ← NUEVO: Guardar valor AM
             "TV": tv_config
         }
         
         # Guardar en archivo
         self.parent.guardar_umbrales_ciudades(self.umbrales_ciudades)
 
-    
-    
     def obtener_umbrales_todos(self):
         """Obtener todos los umbrales configurados por ciudad"""
         # Filtrar ciudades con nombres vacíos y excluir "global"
@@ -2544,7 +2540,7 @@ class OcupacionTab(QWidget):
             if ciudad and ciudad.strip() and ciudad != "global":  # Excluir "global"
                 umbrales_filtrados[ciudad] = config
         return umbrales_filtrados
-    
+
     def obtener_umbrales_ciudad(self, ciudad):
         """Obtener umbrales para una ciudad específica"""
         if ciudad in self.umbrales_ciudades:
@@ -2553,6 +2549,7 @@ class OcupacionTab(QWidget):
             # Devolver umbrales por defecto (sin "global")
             return {
                 "FM": 60.0,
+                "AM": 30.0,  # ← NUEVO: Valor por defecto para AM
                 "TV": {
                     "tipo": "general",
                     "valor": 45.0,
@@ -2563,7 +2560,6 @@ class OcupacionTab(QWidget):
                     }
                 }
             }
-
 # ... (el resto del código MainWindow y main() permanece igual)
 
 class MainWindow(QMainWindow):
