@@ -14,6 +14,77 @@ import time
 # Cargar configuración desde archivo
 CONFIG_FILE = "config.json"
 
+# Agregar esta función al inicio del código, después de las importaciones
+def cargar_datos_spectra(ruta_spectra="SPECTRA_filtrado", callback_log=None):
+    """
+    Carga todos los archivos JSON del directorio SPECTRA_filtrado
+    y organiza los datos por ciudad y frecuencia
+    """
+    datos_spectra = {}
+    
+    if not os.path.exists(ruta_spectra):
+        if callback_log:
+            callback_log(f"⚠️ Directorio {ruta_spectra} no encontrado")
+        return datos_spectra
+    
+    try:
+        for archivo in os.listdir(ruta_spectra):
+            if archivo.endswith(".json"):
+                ciudad = archivo.replace("_spectra.json", "").replace(".json", "").lower()
+                ruta_completa = os.path.join(ruta_spectra, archivo)
+                
+                with open(ruta_completa, 'r', encoding='utf-8') as f:
+                    datos = json.load(f)
+                
+                datos_spectra[ciudad] = datos
+                if callback_log:
+                    callback_log(f"✅ Cargado archivo SPECTRA: {archivo} para ciudad: {ciudad}")
+        
+        return datos_spectra
+    
+    except Exception as e:
+        if callback_log:
+            callback_log(f"❌ Error cargando datos SPECTRA: {str(e)}")
+        return {}
+
+def obtener_estados_spectra(datos_spectra, ciudad, frecuencia, tipo_servicio, callback_log=None):
+    """
+    Obtiene los estados (ESTADO_ESTACION y ESTADO_SOLICITUD) desde los datos SPECTRA
+    basándose en la ciudad, frecuencia y tipo de servicio
+    """
+    ciudad_normalizada = normalizar_nombre_ciudad(ciudad)
+    
+    if ciudad_normalizada not in datos_spectra:
+        if callback_log:
+            callback_log(f"⚠️ Ciudad {ciudad_normalizada} no encontrada en datos SPECTRA")
+        return "No disponible", "No disponible"
+    
+    # Buscar coincidencia por frecuencia y tipo de servicio
+    for registro in datos_spectra[ciudad_normalizada]:
+        # Comparar frecuencia (tolerancia de 0.01 para manejar diferencias de redondeo)
+        freq_registro = registro.get("FRECUENCIA", 0)
+        freq_buscada = float(frecuencia)
+        
+        # Para FM, las frecuencias en SPECTRA están en el rango 88-108, igual que nuestros datos
+        # Para AM, están en el rango 0.5-1.6
+        if abs(freq_registro - freq_buscada) < 0.01:
+            servicio_registro = registro.get("SERVICIO", "")
+            
+            # Mapear tipos de servicio
+            if tipo_servicio == "FM" and "FM - Frecuencia Modulada" in servicio_registro:
+                return registro.get("ESTADO_ESTACION", "No disponible"), registro.get("ESTADO_SOLICITUD", "No disponible")
+            elif tipo_servicio == "AM" and "AM - Amplitud Modulada" in servicio_registro:
+                return registro.get("ESTADO_ESTACION", "No disponible"), registro.get("ESTADO_SOLICITUD", "No disponible")
+            elif tipo_servicio == "TV" and "TV - Televisión Abierta" in servicio_registro:
+                return registro.get("ESTADO_ESTACION", "No disponible"), registro.get("ESTADO_SOLICITUD", "No disponible")
+    
+    if callback_log:
+        callback_log(f"⚠️ No se encontró registro en SPECTRA para {ciudad}, frecuencia {frecuencia}, tipo {tipo_servicio}")
+    
+    return "No encontrado", "No encontrado"
+
+
+
 def cargar_configuracion():
     """Cargar configuración desde archivo JSON"""
     config_default = {
@@ -835,8 +906,8 @@ def crear_hoja_manual(wb, nombre_hoja):
         for col in range(1, len(encabezados) + 1):
             ws.cell(row=1, column=col).border = Border(top=thin, bottom=thin, left=thin, right=thin)
 
-def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None):
-    """Crea la hoja de observaciones con los datos de FM, TV y AM ordenados por frecuencia"""
+def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None, datos_spectra=None, ciudad=None):
+    """Crea la hoja de observaciones con los datos de FM, TV y AM ordenados por frecuencia, incluyendo estados SPECTRA"""
     if "Observaciones" in wb.sheetnames:
         ws_obs = wb["Observaciones"]
     else:
@@ -856,32 +927,70 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None):
     verde = PatternFill(start_color="FFCDFECE", end_color="FFCDFECE", fill_type="solid")
     rosa = PatternFill(start_color="FFFD9BCB", end_color="FFFD9BCB", fill_type="solid")
     
-    # Definir anchos específicos para columnas
+    # Actualizar anchos específicos para incluir las nuevas columnas
     anchos_especificos = {
         "ESTACION": 25,
         "Frecuencia (MHz)": 18,
         "Promedio(dBuV/m)": 18,
         "Ancho de Banda (KHz)": 20,
         "Medición Manual AB(KHz) o NIVEL (dBµV/m)": 20,
-        "OBSERVACIONES": 35
+        "OBSERVACIONES": 35,
+        "ESTADO_ESTACION": 18,
+        "ESTADO_SOLICITUD": 18
     }
+    
+    # Función auxiliar para agregar estados SPECTRA
+    def agregar_estados_spectra(datos, tipo, ciudad_normalizada):
+        """Agrega columnas de estado SPECTRA a los datos"""
+        if datos is None or datos.empty:
+            return datos
+            
+        # Crear copia para no modificar el original
+        datos_con_estados = datos.copy()
+        
+        # Agregar columnas para estados (inicialmente vacías)
+        datos_con_estados["ESTADO_ESTACION"] = ""
+        datos_con_estados["ESTADO_SOLICITUD"] = ""
+        
+        # Buscar en datos SPECTRA si están disponibles
+        if datos_spectra and ciudad_normalizada in datos_spectra:
+            for idx, row in datos_con_estados.iterrows():
+                frecuencia = row["Frecuencia (MHz)"]
+                nombre_estacion = row["ESTACION"]
+                
+                # Buscar coincidencia en SPECTRA
+                estado_estacion, estado_solicitud = obtener_estados_spectra(
+                    datos_spectra, ciudad_normalizada, frecuencia, tipo
+                )
+                
+                # Asignar valores encontrados
+                datos_con_estados.at[idx, "ESTADO_ESTACION"] = estado_estacion
+                datos_con_estados.at[idx, "ESTADO_SOLICITUD"] = estado_solicitud
+        
+        return datos_con_estados
+
+    # Normalizar nombre de ciudad
+    ciudad_normalizada = normalizar_nombre_ciudad(ciudad) if ciudad else ""
     
     # Agregar datos de FM (ordenados por frecuencia)
     if datos_fm is not None and not datos_fm.empty:
+        # Agregar estados SPECTRA
+        datos_fm_con_estados = agregar_estados_spectra(datos_fm, "FM", ciudad_normalizada)
+        
         # Ordenar datos FM por frecuencia (de menor a mayor)
-        datos_fm_ordenados = datos_fm.sort_values(by="Frecuencia (MHz)")
+        datos_fm_ordenados = datos_fm_con_estados.sort_values(by="Frecuencia (MHz)")
         
         # Encabezado para FM
         ws_obs.cell(row=fila_actual, column=1, value="FM")
-        ws_obs.merge_cells(start_row=fila_actual, start_column=1, end_row=fila_actual, end_column=6)
+        ws_obs.merge_cells(start_row=fila_actual, start_column=1, end_row=fila_actual, end_column=8)
         celda = ws_obs.cell(row=fila_actual, column=1)
         celda.font = Font(bold=True, size=14)
         celda.alignment = Alignment(horizontal="center", vertical="center")
         fila_actual += 1
         
-        # Encabezados de columnas para FM
+        # Encabezados de columnas para FM (agregar las nuevas columnas)
         encabezados_fm = ["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", "Ancho de Banda (KHz)", 
-                         "Medición Manual AB(KHz)\no NIVEL (dBµV/m)", "OBSERVACIONES"]
+                         "Medición Manual AB(KHz)\no NIVEL (dBµV/m)", "OBSERVACIONES", "ESTADO_ESTACION", "ESTADO_SOLICITUD"]
         
         for col, encabezado in enumerate(encabezados_fm, 1):
             ws_obs.cell(row=fila_actual, column=col, value=encabezado)
@@ -899,27 +1008,28 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None):
         fila_inicio_fm = fila_actual
         fila_actual += 1
         
-        # Datos de FM ordenados
+        # Datos de FM ordenados (incluir las nuevas columnas)
         for _, row in datos_fm_ordenados.iterrows():
             for col_idx, col_name in enumerate(["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", 
-                                              "Ancho de Banda (KHz)", "Medición Manual", "OBSERVACIONES"], 1):
+                                              "Ancho de Banda (KHz)", "Medición Manual", "OBSERVACIONES", 
+                                              "ESTADO_ESTACION", "ESTADO_SOLICITUD"], 1):
                 ws_obs.cell(row=fila_actual, column=col_idx, value=row[col_name])
                 # Aplicar alineación centrada a todas las celdas
                 ws_obs.cell(row=fila_actual, column=col_idx).alignment = Alignment(
                     horizontal="center", vertical="center", wrap_text=True
                 )
             
-            # Aplicar bordes a cada fila de datos
-            for col in range(1, 7):
+            # Aplicar bordes a cada fila de datos (ahora 8 columnas)
+            for col in range(1, 9):
                 celda = ws_obs.cell(row=fila_actual, column=col)
                 celda.border = Border(top=thin, bottom=thin, 
                                      left=borde_grueso if col == 1 else thin,
-                                     right=borde_grueso if col == 6 else thin)
+                                     right=borde_grueso if col == 8 else thin)
             
             fila_actual += 1
         
-        # Borde inferior grueso para la tabla FM
-        for col in range(1, 7):
+        # Borde inferior grueso para la tabla FM (8 columnas)
+        for col in range(1, 9):
             celda = ws_obs.cell(row=fila_actual-1, column=col)
             current_border = celda.border
             celda.border = Border(top=current_border.top, bottom=borde_grueso,
@@ -930,12 +1040,15 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None):
     
     # Agregar datos de TV (ordenados por frecuencia)
     if datos_tv is not None and not datos_tv.empty:
+        # Agregar estados SPECTRA
+        datos_tv_con_estados = agregar_estados_spectra(datos_tv, "TV", ciudad_normalizada)
+        
         # Ordenar datos TV por frecuencia (de menor a mayor)
-        datos_tv_ordenados = datos_tv.sort_values(by="Frecuencia (MHz)")
+        datos_tv_ordenados = datos_tv_con_estados.sort_values(by="Frecuencia (MHz)")
         
         # Encabezado para TV
         ws_obs.cell(row=fila_actual, column=1, value="TV")
-        ws_obs.merge_cells(start_row=fila_actual, start_column=1, end_row=fila_actual, end_column=5)
+        ws_obs.merge_cells(start_row=fila_actual, start_column=1, end_row=fila_actual, end_column=7)
         celda = ws_obs.cell(row=fila_actual, column=1)
         celda.font = Font(bold=True, size=14)
         celda.alignment = Alignment(horizontal="center", vertical="center")
@@ -943,7 +1056,7 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None):
         
         # Encabezados de columnas para TV
         encabezados_tv = ["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", 
-                         "Medición Manual AB(KHz)\no NIVEL (dBµV/m)", "OBSERVACIONES"]
+                         "Medición Manual AB(KHz)\no NIVEL (dBµV/m)", "OBSERVACIONES", "ESTADO_ESTACION", "ESTADO_SOLICITUD"]
         
         for col, encabezado in enumerate(encabezados_tv, 1):
             ws_obs.cell(row=fila_actual, column=col, value=encabezado)
@@ -964,7 +1077,7 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None):
         # Datos de TV ordenados
         for _, row in datos_tv_ordenados.iterrows():
             for col_idx, col_name in enumerate(["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", 
-                                              "Medición Manual", "OBSERVACIONES"], 1):
+                                              "Medición Manual", "OBSERVACIONES", "ESTADO_ESTACION", "ESTADO_SOLICITUD"], 1):
                 ws_obs.cell(row=fila_actual, column=col_idx, value=row[col_name])
                 # Aplicar alineación centrada a todas las celdas
                 ws_obs.cell(row=fila_actual, column=col_idx).alignment = Alignment(
@@ -972,31 +1085,35 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None):
                 )
             
             # Aplicar bordes a cada fila de datos
-            for col in range(1, 6):
+            for col in range(1, 8):
                 celda = ws_obs.cell(row=fila_actual, column=col)
                 celda.border = Border(top=thin, bottom=thin, 
                                      left=borde_grueso if col == 1 else thin,
-                                     right=borde_grueso if col == 5 else thin)
+                                     right=borde_grueso if col == 7 else thin)
             
             fila_actual += 1
         
         # Borde inferior grueso para la tabla TV
-        for col in range(1, 6):
+        for col in range(1, 8):
             celda = ws_obs.cell(row=fila_actual-1, column=col)
             current_border = celda.border
             celda.border = Border(top=current_border.top, bottom=borde_grueso,
                                  left=current_border.left, right=current_border.right)
         
         fila_fin_tv = fila_actual - 1
+        fila_actual += 2  # Espacio de 2 filas entre tablas
 
     # Después de procesar TV, agregar AM
     if datos_am is not None and not datos_am.empty:
+        # Agregar estados SPECTRA
+        datos_am_con_estados = agregar_estados_spectra(datos_am, "AM", ciudad_normalizada)
+        
         # Ordenar datos AM por frecuencia (de menor a mayor)
-        datos_am_ordenados = datos_am.sort_values(by="Frecuencia (MHz)")
+        datos_am_ordenados = datos_am_con_estados.sort_values(by="Frecuencia (MHz)")
         
         # Encabezado para AM
         ws_obs.cell(row=fila_actual, column=1, value="AM")
-        ws_obs.merge_cells(start_row=fila_actual, start_column=1, end_row=fila_actual, end_column=5)
+        ws_obs.merge_cells(start_row=fila_actual, start_column=1, end_row=fila_actual, end_column=7)
         celda = ws_obs.cell(row=fila_actual, column=1)
         celda.font = Font(bold=True, size=14)
         celda.alignment = Alignment(horizontal="center", vertical="center")
@@ -1004,7 +1121,7 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None):
         
         # Encabezados de columnas para AM (mismo formato que TV)
         encabezados_am = ["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", 
-                         "Medición Manual AB(KHz)\no NIVEL (dBµV/m)", "OBSERVACIONES"]
+                         "Medición Manual AB(KHz)\no NIVEL (dBµV/m)", "OBSERVACIONES", "ESTADO_ESTACION", "ESTADO_SOLICITUD"]
         
         for col, encabezado in enumerate(encabezados_am, 1):
             ws_obs.cell(row=fila_actual, column=col, value=encabezado)
@@ -1025,7 +1142,7 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None):
         # Datos de AM ordenados
         for _, row in datos_am_ordenados.iterrows():
             for col_idx, col_name in enumerate(["ESTACION", "Frecuencia (MHz)", "Promedio(dBuV/m)", 
-                                              "Medición Manual", "OBSERVACIONES"], 1):
+                                              "Medición Manual", "OBSERVACIONES", "ESTADO_ESTACION", "ESTADO_SOLICITUD"], 1):
                 ws_obs.cell(row=fila_actual, column=col_idx, value=row[col_name])
                 # Aplicar alineación centrada a todas las celdas
                 ws_obs.cell(row=fila_actual, column=col_idx).alignment = Alignment(
@@ -1033,16 +1150,16 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None):
                 )
             
             # Aplicar bordes a cada fila de datos
-            for col in range(1, 6):
+            for col in range(1, 8):
                 celda = ws_obs.cell(row=fila_actual, column=col)
                 celda.border = Border(top=thin, bottom=thin, 
                                      left=borde_grueso if col == 1 else thin,
-                                     right=borde_grueso if col == 5 else thin)
+                                     right=borde_grueso if col == 7 else thin)
             
             fila_actual += 1
         
         # Borde inferior grueso para la tabla AM
-        for col in range(1, 6):
+        for col in range(1, 8):
             celda = ws_obs.cell(row=fila_actual-1, column=col)
             current_border = celda.border
             celda.border = Border(top=current_border.top, bottom=borde_grueso,
@@ -1173,6 +1290,9 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None):
                 num_lineas = str(celda.value).count("\n") + 1
                 ws_obs.row_dimensions[fila].height = max(ws_obs.row_dimensions[fila].height or 15, num_lineas * 15)
 
+
+
+
 # ------------------ FUNCIÓN PARA OBTENER EL CÓDIGO SEGÚN LA BASE ------------------
 def obtener_codigo_base(base):
     """Obtiene el código correspondiente según el nombre de la base"""
@@ -1247,7 +1367,17 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
     Función principal que procesa todos los datos con la nueva lógica de cotejo
     """
     # Inicializar directorios
+    # Inicializar directorios
     inicializar_directorios()
+    
+    # Cargar datos SPECTRA al inicio
+    if callback_log:
+        callback_log("📁 Cargando datos SPECTRA...")
+    
+    datos_spectra = cargar_datos_spectra("SPECTRA_filtrado", callback_log)
+    
+    if callback_log:
+        callback_log(f"✅ Cargados datos SPECTRA para {len(datos_spectra)} ciudades")
     
     # Inicializar lista de ciudades
     ciudades_encontradas = []
@@ -1616,7 +1746,7 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
             # Crear hojas adicionales
             wb.create_sheet("Manual FM")
             wb.create_sheet("Manual TV")
-            crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am)
+            crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am, datos_spectra, base)
             
             # Reordenar hojas
             orden_hojas = ["Informe", "Manual FM", "Manual TV", "Observaciones"]
