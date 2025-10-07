@@ -11,7 +11,7 @@ class DecimalEncoder(json.JSONEncoder):
             return format(obj, '.2f')
         return super().encode(obj)
 
-def normalizar_frecuencias_tv_y_fm(archivo_json, callback_log=None):
+def normalizar_frecuencias_tv_fm_am(archivo_json, callback_log=None):
     """
     Normaliza las frecuencias en un archivo JSON y REEMPLAZA el archivo original:
     
@@ -23,6 +23,10 @@ def normalizar_frecuencias_tv_y_fm(archivo_json, callback_log=None):
     Para FM:
     - Trunca frecuencias con más de 1 decimal a solo 1 decimal
     - FORMATO: 1 decimal
+    
+    Para AM:
+    - Convierte de KHz a MHz (dividiendo entre 1000)
+    - FORMATO: 3 decimales (para mayor precisión en AM)
     
     Para ambos:
     - Elimina duplicados por FRECUENCIA, priorizando registros "Activos"
@@ -57,7 +61,11 @@ def normalizar_frecuencias_tv_y_fm(archivo_json, callback_log=None):
             # Procesar FM - 1 decimal
             if procesar_frecuencia_fm(registro, callback_log):
                 registros_modificados += 1
-        # Para AM u otros servicios, no hacer cambios
+        elif servicio == 'AM - Amplitud Modulada':
+            # Procesar AM - convertir KHz a MHz
+            if procesar_frecuencia_am(registro, callback_log):
+                registros_modificados += 1
+        # Para otros servicios, no hacer cambios
     
     log_message(f"🔄 Se modificaron {registros_modificados} registros de frecuencia")
     
@@ -76,7 +84,7 @@ def normalizar_frecuencias_tv_y_fm(archivo_json, callback_log=None):
     return datos_sin_duplicados, archivo_json
 
 def procesar_frecuencia_tv(registro, callback_log=None):
-    """Procesa frecuencia de TV según las reglas específicas - 2 decimales"""
+    """Procesa frecuencia de TV según las reglas específices - 2 decimales"""
     
     def log_message(message):
         if callback_log:
@@ -154,6 +162,37 @@ def procesar_frecuencia_fm(registro, callback_log=None):
         log_message(f"❌ FM - Error procesando frecuencia: {frecuencia} para {registro.get('RED')}")
         return False
 
+def procesar_frecuencia_am(registro, callback_log=None):
+    """Procesa frecuencia de AM: convierte de KHz a MHz - 3 decimales"""
+    
+    def log_message(message):
+        if callback_log:
+            callback_log(message)
+        else:
+            print(message)
+    
+    frecuencia = registro.get('FRECUENCIA')
+    if frecuencia is None:
+        return False
+    
+    try:
+        frecuencia_float = float(frecuencia)
+        frecuencia_original = frecuencia
+        
+        # Convertir de KHz a MHz (dividir entre 1000)
+        frecuencia_mhz = frecuencia_float / 1000.0
+        
+        # Redondear a 3 decimales para mayor precisión en AM
+        frecuencia_normalizada = round(frecuencia_mhz, 3)
+        
+        log_message(f"📡 AM - Convirtiendo KHz a MHz: {frecuencia_original} KHz -> {frecuencia_normalizada} MHz para {registro.get('RED')}")
+        registro['FRECUENCIA'] = frecuencia_normalizada
+        return True
+            
+    except (ValueError, TypeError):
+        log_message(f"❌ AM - Error procesando frecuencia: {frecuencia} para {registro.get('RED')}")
+        return False
+
 def eliminar_duplicados_por_frecuencia(registros, callback_log=None):
     """
     Elimina registros duplicados por FRECUENCIA, priorizando los que están "Activos"
@@ -181,6 +220,8 @@ def eliminar_duplicados_por_frecuencia(registros, callback_log=None):
                 frecuencia_clave = round(float(frecuencia), 1)  # 1 decimal para FM
             elif servicio == 'TV - Televisión Abierta':
                 frecuencia_clave = round(float(frecuencia), 2)  # 2 decimales para TV
+            elif servicio == 'AM - Amplitud Modulada':
+                frecuencia_clave = round(float(frecuencia), 3)  # 3 decimales para AM
             else:
                 frecuencia_clave = float(frecuencia)  # Sin formato específico para otros
         except (ValueError, TypeError):
@@ -288,7 +329,7 @@ def procesar_todos_los_archivos_en_carpeta(carpeta, callback_log=None, callback_
         log_message(f"{'='*50}")
         
         try:
-            datos_normalizados, archivo_salida = normalizar_frecuencias_tv_y_fm(str(archivo), callback_log)
+            datos_normalizados, archivo_salida = normalizar_frecuencias_tv_fm_am(str(archivo), callback_log)
             resultados[archivo.name] = {
                 'archivo_procesado': str(archivo),
                 'total_registros': len(datos_normalizados),
@@ -314,9 +355,9 @@ def procesar_todos_los_archivos_en_carpeta(carpeta, callback_log=None, callback_
     return resultados
 
 # Función principal para usar desde la GUI
-def procesar_normalizacion_tv_desde_gui(callback_log=None, callback_progress=None):
+def procesar_normalizacion_tv_fm_am_desde_gui(callback_log=None, callback_progress=None):
     """
-    Función principal para normalizar TV y FM desde la GUI
+    Función principal para normalizar TV, FM y AM desde la GUI
     """
     
     def log_message(message):
@@ -330,8 +371,8 @@ def procesar_normalizacion_tv_desde_gui(callback_log=None, callback_progress=Non
             callback_progress(value)
     
     try:
-        log_message("🎯 INICIANDO NORMALIZACIÓN DE FRECUENCIAS TV Y FM")
-        log_message("📺 TV: 2 decimales | 📻 FM: 1 decimal")
+        log_message("🎯 INICIANDO NORMALIZACIÓN DE FRECUENCIAS TV, FM Y AM")
+        log_message("📺 TV: 2 decimales | 📻 FM: 1 decimal | 📡 AM: KHz a MHz (3 decimales)")
         
         # Configuración
         carpeta_resultados = "SPECTRA_Filtrado"
@@ -353,17 +394,17 @@ def procesar_normalizacion_tv_desde_gui(callback_log=None, callback_progress=Non
         
         update_progress(95)
         
-        log_message("✅ NORMALIZACIÓN TV Y FM COMPLETADA EXITOSAMENTE")
+        log_message("✅ NORMALIZACIÓN TV, FM Y AM COMPLETADA EXITOSAMENTE")
         update_progress(100)
         
         return True
         
     except Exception as e:
-        error_msg = f"❌ ERROR en normalización TV y FM: {str(e)}"
+        error_msg = f"❌ ERROR en normalización TV, FM y AM: {str(e)}"
         log_message(error_msg)
         return False
 
 # Ejemplo de uso
 if __name__ == "__main__":
     # Para uso directo del script
-    procesar_normalizacion_tv_desde_gui()
+    procesar_normalizacion_tv_fm_am_desde_gui()

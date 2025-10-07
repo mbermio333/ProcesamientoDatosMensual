@@ -30,6 +30,7 @@ CONFIG_SPECTRA_FILE = "config_spectra.json"  # ← NUEVA CONSTANTE
 DEFAULT_PATHS_PROCESAMIENTO = {
     "fm_path": "MedicionesFmCSV",
     "tv_path": "MedicionesTvCSV", 
+    "am_path": "MedicionesAmCSV",  # ← NUEVA RUTA AM
     "output_path": "ReportesUnificados"
 }
 
@@ -1853,14 +1854,15 @@ class WorkerThread(QThread):
     """Hilo para ejecutar el procesamiento en segundo plano"""
     progress_signal = pyqtSignal(int)
     log_signal = pyqtSignal(str)
-    finished_signal = pyqtSignal(object)  # Cambiar a object para recibir diferentes tipos de datos
+    finished_signal = pyqtSignal(object)
     ciudades_signal = pyqtSignal(list)
     
-    def __init__(self, fm_path, tv_path, output_path, mode="procesamiento", parent_window=None):
+    def __init__(self, fm_path, tv_path, output_path, mode="procesamiento", parent_window=None, am_path=None):
         super().__init__()
         self.running = True
         self.fm_path = fm_path
         self.tv_path = tv_path
+        self.am_path = am_path  # ← NUEVO: Ruta AM
         self.output_path = output_path
         self.mode = mode
         self.parent_window = parent_window
@@ -1876,6 +1878,7 @@ class WorkerThread(QThread):
                 # Configurar rutas
                 main.ruta_fm = self.fm_path
                 main.ruta_tv = self.tv_path
+                main.ruta_am = self.am_path  # ← NUEVO: Configurar ruta AM
                 main.ruta_salida = self.output_path
                 
                 # Llamar a la función principal
@@ -1930,17 +1933,13 @@ class WorkerThread(QThread):
                 self.finished_signal.emit(False)
             else:
                 self.finished_signal.emit({"existen_problemas": False, "error": str(e)})
-    
-    def stop(self):
-        self.running = False
-        self.log_signal.emit("Procesamiento detenido por el usuario")
 
 class ProcesamientoTab(QWidget):
     """Pestaña de procesamiento"""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        self.config = self.parent.load_config("procesamiento")  # Cargar configuración específica
+        self.config = self.parent.load_config("procesamiento")
         self.initUI()
         
     def initUI(self):
@@ -1954,9 +1953,11 @@ class ProcesamientoTab(QWidget):
         config_layout.setSpacing(8)
         
         # Rutas de entrada con mejor formato - usar valores de configuración específica
+        # AGREGAR RUTA AM
         paths = [
             ("Ruta FM:", self.config.get("fm_path", "MedicionesFmCSV"), "fm_path_label"),
             ("Ruta TV:", self.config.get("tv_path", "MedicionesTvCSV"), "tv_path_label"), 
+            ("Ruta AM:", self.config.get("am_path", "MedicionesAmCSV"), "am_path_label"),  # ← NUEVA RUTA AM
             ("Ruta Salida:", self.config.get("output_path", "ReportesUnificados"), "output_path_label")
         ]
         
@@ -1986,6 +1987,8 @@ class ProcesamientoTab(QWidget):
                 btn_change.clicked.connect(lambda: self.parent.change_path("fm", self, "procesamiento"))
             elif "tv" in attr_name:
                 btn_change.clicked.connect(lambda: self.parent.change_path("tv", self, "procesamiento"))
+            elif "am" in attr_name:  # ← NUEVO: Manejar ruta AM
+                btn_change.clicked.connect(lambda: self.parent.change_path("am", self, "procesamiento"))
             elif "output" in attr_name:
                 btn_change.clicked.connect(lambda: self.parent.change_path("output", self, "procesamiento"))
             
@@ -1997,6 +2000,7 @@ class ProcesamientoTab(QWidget):
         
         config_group.setLayout(config_layout)
         layout.addWidget(config_group)
+        
         # Botones de acción
         action_layout = QHBoxLayout()
         action_layout.setSpacing(10)
@@ -2740,6 +2744,8 @@ class MainWindow(QMainWindow):
             current_path = getattr(tab_widget, "fm_path_label" if mode == "procesamiento" else "fm_path_label_ocup").toolTip()
         elif path_type == "tv":
             current_path = getattr(tab_widget, "tv_path_label" if mode == "procesamiento" else "tv_path_label_ocup").toolTip()
+        elif path_type == "am":  # ← NUEVO: Manejar ruta AM
+            current_path = getattr(tab_widget, "am_path_label").toolTip()
         elif path_type == "output":
             current_path = getattr(tab_widget, "output_path_label" if mode == "procesamiento" else "output_path_label_ocup").toolTip()
         elif path_type == "ocupacion_output":
@@ -2754,6 +2760,8 @@ class MainWindow(QMainWindow):
                 label = getattr(tab_widget, "fm_path_label" if mode == "procesamiento" else "fm_path_label_ocup")
             elif path_type == "tv":
                 label = getattr(tab_widget, "tv_path_label" if mode == "procesamiento" else "tv_path_label_ocup")
+            elif path_type == "am":  # ← NUEVO: Manejar ruta AM
+                label = getattr(tab_widget, "am_path_label")
             elif path_type == "output":
                 label = getattr(tab_widget, "output_path_label" if mode == "procesamiento" else "output_path_label_ocup")
             elif path_type == "ocupacion_output":
@@ -2768,6 +2776,8 @@ class MainWindow(QMainWindow):
                 config["fm_path"] = new_path
             elif path_type == "tv":
                 config["tv_path"] = new_path
+            elif path_type == "am":  # ← NUEVO: Guardar ruta AM
+                config["am_path"] = new_path
             elif path_type == "output":
                 config["output_path"] = new_path
             elif path_type == "ocupacion_output":
@@ -2808,6 +2818,7 @@ class MainWindow(QMainWindow):
         if mode == "procesamiento":
             fm_path = self.procesamiento_tab.fm_path_label.toolTip()
             tv_path = self.procesamiento_tab.tv_path_label.toolTip()
+            am_path = self.procesamiento_tab.am_path_label.toolTip()  # ← NUEVA RUTA AM
             output_path = self.procesamiento_tab.output_path_label.toolTip()
             tab = self.procesamiento_tab
         else:
@@ -2823,6 +2834,9 @@ class MainWindow(QMainWindow):
         if not os.path.exists(tv_path):
             self.log_message(f"ERROR: La ruta TV '{tv_path}' no existe", mode)
             return
+        # La ruta AM es opcional, solo verificar si existe
+        if mode == "procesamiento" and not os.path.exists(am_path):
+            self.log_message(f"ADVERTENCIA: La ruta AM '{am_path}' no existe. Continuando sin datos AM.", mode)
         
         # Crear directorio de salida si no existe
         if not os.path.exists(output_path):
@@ -2840,7 +2854,8 @@ class MainWindow(QMainWindow):
         tab.status_label.setText("Procesando...")
         
         # Crear y configurar worker - pasar la referencia de la ventana principal
-        self.worker = WorkerThread(fm_path, tv_path, output_path, mode, self)  # Pasar self como parent_window
+        # MODIFICADO: Pasar también la ruta AM para procesamiento
+        self.worker = WorkerThread(fm_path, tv_path, output_path, mode, self, am_path if mode == "procesamiento" else None)
         
         self.worker.progress_signal.connect(lambda value: tab.progress_bar.setValue(value))
         self.worker.log_signal.connect(lambda msg: self.log_message(msg, mode))

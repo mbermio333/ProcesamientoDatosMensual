@@ -12,7 +12,7 @@ import time
 
 # ------------------ CONFIGURACIÓN GENERAL ------------------
 # Cargar configuración desde archivo
-CONFIG_FILE = "config_procesamiento.json"
+CONFIG_FILE = "config.json"
 
 def cargar_configuracion():
     """Cargar configuración desde archivo JSON"""
@@ -37,15 +37,15 @@ def cargar_configuracion():
     
     return config_default
 
-def guardar_configuracion(config):
-    """Guardar configuración en archivo JSON"""
+"""def guardar_configuracion(config):
+    #Guardar configuración en archivo JSON
     try:
         with open(CONFIG_FILE, 'w') as f:
             json.dump(config, f, indent=4, ensure_ascii=False)
         return True
     except Exception as e:
         print(f"Error al guardar configuración: {e}")
-        return False
+        return False """
 
 def extraer_nombres_emisoras(ruta_archivo, tipo):
     """Extraer nombres únicos de emisoras de un archivo CSV con sus frecuencias"""
@@ -1384,12 +1384,12 @@ def procesar_datos(callback_progreso=None, callback_log=None, obtener_ciudades=F
         config["emisoras_por_ciudad"] = emisoras_por_ciudad
     
     # Guardar configuración actualizada
-    if guardar_configuracion(config):
-        total_fm = sum(len(ciudad["FM"]) for ciudad in emisoras_por_ciudad.values() if "FM" in ciudad)
-        total_tv = sum(len(ciudad["TV"]) for ciudad in emisoras_por_ciudad.values() if "TV" in ciudad)
-        total_am = sum(len(ciudad["AM"]) for ciudad in emisoras_por_ciudad.values() if "AM" in ciudad)  # ← NUEVO
-        if callback_log:
-            callback_log(f"Guardadas {total_fm} emisoras FM, {total_tv} emisoras TV y {total_am} emisoras AM por ciudad en config.json")
+    #if guardar_configuracion(config):
+    #    total_fm = sum(len(ciudad["FM"]) for ciudad in emisoras_por_ciudad.values() if "FM" in ciudad)
+    #    total_am = sum(len(ciudad["AM"]) for ciudad in emisoras_por_ciudad.values() if "AM" in ciudad)  # ← NUEVO
+    #    if callback_log:
+    ##    total_tv = sum(len(ciudad["TV"]) for ciudad in emisoras_por_ciudad.values() if "TV" in ciudad)
+    #        callback_log(f"Guardadas {total_fm} emisoras FM, {total_tv} emisoras TV y {total_am} emisoras AM por ciudad en config.json")
     
     # Emitir progreso después de guardar configuración
     if callback_progreso:
