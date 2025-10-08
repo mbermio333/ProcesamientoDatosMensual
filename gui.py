@@ -1852,12 +1852,17 @@ class ObservacionTab(QWidget):
 
 # Modificar la clase WorkerThread para que reciba la referencia de la ventana principal
 class WorkerThread(QThread):
+    progress_signal = pyqtSignal(int)
+    log_signal = pyqtSignal(str)
+    finished_signal = pyqtSignal(object)  # Cambiado a object para manejar diferentes tipos de resultado
+    ciudades_signal = pyqtSignal(list)    # Señal para enviar ciudades encontradas
+    
     def __init__(self, fm_path, tv_path, output_path, mode="procesamiento", parent_window=None, am_path=None):
         super().__init__()
         self.running = True
         self.fm_path = fm_path
         self.tv_path = tv_path
-        self.am_path = am_path  # ← NUEVO: Ruta AM para ocupación también
+        self.am_path = am_path
         self.output_path = output_path
         self.mode = mode
         self.parent_window = parent_window
@@ -1865,18 +1870,42 @@ class WorkerThread(QThread):
     def run(self):
         try:
             if self.mode == "procesamiento":
-                # ... (código existente para procesamiento)
-                pass
+                # Importar y configurar el módulo principal de procesamiento
+                import main
+                
+                self.log_signal.emit("Iniciando procesamiento...")
+                
+                # Configurar rutas
+                main.ruta_fm = self.fm_path
+                main.ruta_tv = self.tv_path
+                main.ruta_am = self.am_path
+                main.ruta_salida = self.output_path
+                
+                # Llamar a la función de procesamiento
+                resultado = main.procesar_datos(
+                    callback_progreso=self.progress_signal.emit,
+                    callback_log=self.log_signal.emit
+                )
+                
+                # Emitir resultado y ciudades encontradas
+                self.finished_signal.emit(resultado)
+                
+                # Extraer ciudades del resultado si está disponible
+                if hasattr(resultado, 'get'):
+                    ciudades = resultado.get('ciudades', [])
+                    if ciudades:
+                        self.ciudades_signal.emit(ciudades)
+                
             else:  # modo == "ocupacion"
                 # Importar y configurar el módulo principal de ocupación
                 import main2
                 
                 self.log_signal.emit("Iniciando análisis de ocupación...")
                 
-                # Configurar rutas - AGREGAR RUTA AM
+                # Configurar rutas
                 main2.ruta_fm = self.fm_path
                 main2.ruta_tv = self.tv_path
-                main2.ruta_am = self.am_path  # ← NUEVO: Configurar ruta AM para ocupación
+                main2.ruta_am = self.am_path
                 main2.ruta_salida = self.output_path
                 
                 # Obtener umbrales de la interfaz
@@ -1906,6 +1935,9 @@ class WorkerThread(QThread):
                 self.finished_signal.emit(False)
             else:
                 self.finished_signal.emit({"existen_problemas": False, "error": str(e)})
+    
+    def stop(self):
+        self.running = False
 
                 
 class ProcesamientoTab(QWidget):

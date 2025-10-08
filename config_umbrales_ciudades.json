@@ -68,12 +68,12 @@
         "FM": 60.0,
         "AM": 30.0,
         "TV": {
-            "tipo": "general",
+            "tipo": "bandas",
             "valor": 45.0,
             "valores": {
-                "Banda I-III": 47.0,
-                "Banda III": 56.0,
-                "Banda IV-V": 64.0
+                "Banda I-III": 45.0,
+                "Banda III": 60.0,
+                "Banda IV-V": 60.0
             }
         }
     }
