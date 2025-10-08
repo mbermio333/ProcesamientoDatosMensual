@@ -208,17 +208,17 @@ def insertar_umbrales_excel(archivo_excel, umbrales_ciudad):
 def crear_hoja_datos_manual(wb):
     """
     Crea la hoja 'DATOS Manual' con resumen de frecuencias autorizadas, no autorizadas
-    y en observación para FM y TV, extrayendo datos de las hojas existentes.
+    y en observación para FM, TV y AM, extrayendo datos de las hojas existentes.
     """
     # Verificar si las hojas de datos existen
-    if "Datos FM" not in wb.sheetnames or "Datos TV" not in wb.sheetnames:
-        print("⚠️  No se encontraron las hojas 'Datos FM' y/o 'Datos TV'")
+    hojas_existentes = [hoja for hoja in ["Datos FM", "Datos TV", "Datos AM"] if hoja in wb.sheetnames]
+    if not hojas_existentes:
+        print("⚠️  No se encontraron hojas de datos")
         return wb
     
     # Crear o limpiar hoja existente
     if "DATOS Manual" in wb.sheetnames:
         ws_manual = wb["DATOS Manual"]
-        # Limpiar la hoja existente
         ws_manual.delete_rows(1, ws_manual.max_row)
         ws_manual.delete_cols(1, ws_manual.max_column)
     else:
@@ -249,14 +249,14 @@ def crear_hoja_datos_manual(wb):
     alineacion_izquierda = Alignment(horizontal='left', vertical='center')
     
     # Título principal
-    ws_manual.merge_cells('A1:H1')
+    ws_manual.merge_cells('A1:K1')
     celda_titulo = ws_manual['A1']
     celda_titulo.value = "DATOS DEL MONITOREO MANUAL"
     celda_titulo.fill = color_titulo_principal
     celda_titulo.font = fuente_titulo
     celda_titulo.alignment = alineacion_centro
     
-    # Subtítulo FM
+    # Subtítulos para cada tipo
     ws_manual.merge_cells('A2:C2')
     celda_fm = ws_manual['A2']
     celda_fm.value = "FRECUENCIA MODULADA"
@@ -264,148 +264,130 @@ def crear_hoja_datos_manual(wb):
     celda_fm.font = fuente_subtitulo
     celda_fm.alignment = alineacion_centro
     
-    # Subtítulo TV
-    ws_manual.merge_cells('F2:H2')
-    celda_tv = ws_manual['F2']
+    ws_manual.merge_cells('E2:G2')
+    celda_am = ws_manual['E2']
+    celda_am.value = "AMPLITUD MODULADA"
+    celda_am.fill = color_subtitulo
+    celda_am.font = fuente_subtitulo
+    celda_am.alignment = alineacion_centro
+    
+    ws_manual.merge_cells('I2:K2')
+    celda_tv = ws_manual['I2']
     celda_tv.value = "TELEVISION ABIERTA"
     celda_tv.fill = color_subtitulo
     celda_tv.font = fuente_subtitulo
     celda_tv.alignment = alineacion_centro
     
-      # Obtener datos de FM
-    ws_fm = wb["Datos FM"]
+    # Obtener datos de FM
     datos_fm_autorizadas = []
     datos_fm_no_autorizadas = []
     datos_fm_observacion = []
     
-    # Recorrer filas de FM (fila 2 en adelante)
-    for fila in range(2, ws_fm.max_row + 1):
-        estacion = ws_fm.cell(row=fila, column=2).value  # Columna B = Estación
-        frecuencia = ws_fm.cell(row=fila, column=1).value  # Columna A = Frecuencia (MHz)
-        color_celda = ws_fm.cell(row=fila, column=2).fill  # Color de la celda de estación
-        
-        # NUEVO: Quitar sufijo _OBSERVACION para visualización
-        if estacion and "_OBSERVACION" in estacion:
-            estacion = estacion.replace("_OBSERVACION", "").strip()
-        
-        if estacion and frecuencia:
-            # Determinar tipo por color (la clasificación ya se hizo)
-            if color_celda.start_color.index == VERDE.start_color.index:
-                datos_fm_autorizadas.append((frecuencia, estacion))
-            elif color_celda.start_color.index == ROJO.start_color.index:
-                datos_fm_no_autorizadas.append((frecuencia, estacion))
-            elif color_celda.start_color.index == AMARILLO.start_color.index:
-                datos_fm_observacion.append((frecuencia, estacion))
+    if "Datos FM" in wb.sheetnames:
+        ws_fm = wb["Datos FM"]
+        for fila in range(2, ws_fm.max_row + 1):
+            estacion = ws_fm.cell(row=fila, column=2).value
+            frecuencia = ws_fm.cell(row=fila, column=1).value
+            color_celda = ws_fm.cell(row=fila, column=2).fill
+            
+            if estacion and "_OBSERVACION" in estacion:
+                estacion = estacion.replace("_OBSERVACION", "").strip()
+            
+            if estacion and frecuencia:
+                if color_celda.start_color.index == VERDE.start_color.index:
+                    datos_fm_autorizadas.append((frecuencia, estacion))
+                elif color_celda.start_color.index == ROJO.start_color.index:
+                    datos_fm_no_autorizadas.append((frecuencia, estacion))
+                elif color_celda.start_color.index == AMARILLO.start_color.index:
+                    datos_fm_observacion.append((frecuencia, estacion))
+    
+    # Obtener datos de AM
+    datos_am_autorizadas = []
+    datos_am_no_autorizadas = []
+    datos_am_observacion = []
+    
+    if "Datos AM" in wb.sheetnames:
+        ws_am = wb["Datos AM"]
+        for fila in range(2, ws_am.max_row + 1):
+            estacion = ws_am.cell(row=fila, column=2).value
+            frecuencia = ws_am.cell(row=fila, column=1).value
+            color_celda = ws_am.cell(row=fila, column=2).fill
+            
+            if estacion and "_OBSERVACION" in estacion:
+                estacion = estacion.replace("_OBSERVACION", "").strip()
+            
+            if estacion and frecuencia:
+                if color_celda.start_color.index == VERDE.start_color.index:
+                    datos_am_autorizadas.append((frecuencia, estacion))
+                elif color_celda.start_color.index == ROJO.start_color.index:
+                    datos_am_no_autorizadas.append((frecuencia, estacion))
+                elif color_celda.start_color.index == AMARILLO.start_color.index:
+                    datos_am_observacion.append((frecuencia, estacion))
     
     # Obtener datos de TV
-    ws_tv = wb["Datos TV"]
     datos_tv_autorizadas = []
     datos_tv_no_autorizadas = []
     datos_tv_observacion = []
     
-    # Recorrer filas de TV (fila 2 en adelante)
-    for fila in range(2, ws_tv.max_row + 1):
-        estacion = ws_tv.cell(row=fila, column=2).value  # Columna B = Estación
-        frecuencia = ws_tv.cell(row=fila, column=1).value  # Columna A = Frecuencia (MHz)
-        color_celda = ws_tv.cell(row=fila, column=2).fill  # Color de la celda de estación
-        
-        # NUEVO: Quitar sufijo _OBSERVACION para visualización
-        if estacion and "_OBSERVACION" in estacion:
-            estacion = estacion.replace("_OBSERVACION", "").strip()
-        
-        if estacion and frecuencia:
-            # Determinar tipo por color (la clasificación ya se hizo)
-            if color_celda.start_color.index == VERDE.start_color.index:
-                datos_tv_autorizadas.append((frecuencia, estacion))
-            elif color_celda.start_color.index == ROJO.start_color.index:
-                datos_tv_no_autorizadas.append((frecuencia, estacion))
-            elif color_celda.start_color.index == AMARILLO.start_color.index:
-                datos_tv_observacion.append((frecuencia, estacion))
+    if "Datos TV" in wb.sheetnames:
+        ws_tv = wb["Datos TV"]
+        for fila in range(2, ws_tv.max_row + 1):
+            estacion = ws_tv.cell(row=fila, column=2).value
+            frecuencia = ws_tv.cell(row=fila, column=1).value
+            color_celda = ws_tv.cell(row=fila, column=2).fill
+            
+            if estacion and "_OBSERVACION" in estacion:
+                estacion = estacion.replace("_OBSERVACION", "").strip()
+            
+            if estacion and frecuencia:
+                if color_celda.start_color.index == VERDE.start_color.index:
+                    datos_tv_autorizadas.append((frecuencia, estacion))
+                elif color_celda.start_color.index == ROJO.start_color.index:
+                    datos_tv_no_autorizadas.append((frecuencia, estacion))
+                elif color_celda.start_color.index == AMARILLO.start_color.index:
+                    datos_tv_observacion.append((frecuencia, estacion))
     
-    # Crear tabla resumen para FM
-    fila_resumen_fm = 3
+    # --- SECCIÓN FM (Columnas A-C) ---
+    fila_actual = 3
     
-    # Encabezados tabla resumen FM
-    ws_manual[f'A{fila_resumen_fm}'] = "FRECUENCIAS AUTORIZADAS"
-    ws_manual[f'B{fila_resumen_fm}'] = len(datos_fm_autorizadas)
-    ws_manual[f'A{fila_resumen_fm}'].fill = color_autorizada
-    ws_manual[f'B{fila_resumen_fm}'].fill = color_autorizada
-    ws_manual[f'A{fila_resumen_fm}'].font = fuente_resumen
-    ws_manual[f'B{fila_resumen_fm}'].font = fuente_resumen
-    ws_manual[f'A{fila_resumen_fm}'].alignment = alineacion_izquierda
-    ws_manual[f'B{fila_resumen_fm}'].alignment = alineacion_centro
-    ws_manual[f'A{fila_resumen_fm}'].border = borde_fino
-    ws_manual[f'B{fila_resumen_fm}'].border = borde_fino
+    # Resumen FM
+    ws_manual[f'A{fila_actual}'] = "FRECUENCIAS AUTORIZADAS"
+    ws_manual[f'B{fila_actual}'] = len(datos_fm_autorizadas)
+    ws_manual[f'A{fila_actual}'].fill = color_autorizada
+    ws_manual[f'B{fila_actual}'].fill = color_autorizada
+    ws_manual[f'A{fila_actual}'].font = fuente_resumen
+    ws_manual[f'B{fila_actual}'].font = fuente_resumen
+    ws_manual[f'A{fila_actual}'].alignment = alineacion_izquierda
+    ws_manual[f'B{fila_actual}'].alignment = alineacion_centro
+    ws_manual[f'A{fila_actual}'].border = borde_fino
+    ws_manual[f'B{fila_actual}'].border = borde_fino
     
-    fila_resumen_fm += 1
+    fila_actual += 1
+    ws_manual[f'A{fila_actual}'] = "FRECUENCIAS NO AUTORIZADAS"
+    ws_manual[f'B{fila_actual}'] = len(datos_fm_no_autorizadas)
+    ws_manual[f'A{fila_actual}'].fill = color_no_autorizada
+    ws_manual[f'B{fila_actual}'].fill = color_no_autorizada
+    ws_manual[f'A{fila_actual}'].font = fuente_resumen
+    ws_manual[f'B{fila_actual}'].font = fuente_resumen
+    ws_manual[f'A{fila_actual}'].alignment = alineacion_izquierda
+    ws_manual[f'B{fila_actual}'].alignment = alineacion_centro
+    ws_manual[f'A{fila_actual}'].border = borde_fino
+    ws_manual[f'B{fila_actual}'].border = borde_fino
     
-    ws_manual[f'A{fila_resumen_fm}'] = "FRECUENCIAS NO AUTORIZADAS"
-    ws_manual[f'B{fila_resumen_fm}'] = len(datos_fm_no_autorizadas)
-    ws_manual[f'A{fila_resumen_fm}'].fill = color_no_autorizada
-    ws_manual[f'B{fila_resumen_fm}'].fill = color_no_autorizada
-    ws_manual[f'A{fila_resumen_fm}'].font = fuente_resumen
-    ws_manual[f'B{fila_resumen_fm}'].font = fuente_resumen
-    ws_manual[f'A{fila_resumen_fm}'].alignment = alineacion_izquierda
-    ws_manual[f'B{fila_resumen_fm}'].alignment = alineacion_centro
-    ws_manual[f'A{fila_resumen_fm}'].border = borde_fino
-    ws_manual[f'B{fila_resumen_fm}'].border = borde_fino
+    fila_actual += 1
+    ws_manual[f'A{fila_actual}'] = "EN OBSERVACIÓN"
+    ws_manual[f'B{fila_actual}'] = len(datos_fm_observacion)
+    ws_manual[f'A{fila_actual}'].fill = color_observacion
+    ws_manual[f'B{fila_actual}'].fill = color_observacion
+    ws_manual[f'A{fila_actual}'].font = fuente_resumen
+    ws_manual[f'B{fila_actual}'].font = fuente_resumen
+    ws_manual[f'A{fila_actual}'].alignment = alineacion_izquierda
+    ws_manual[f'B{fila_actual}'].alignment = alineacion_centro
+    ws_manual[f'A{fila_actual}'].border = borde_fino
+    ws_manual[f'B{fila_actual}'].border = borde_fino
     
-    fila_resumen_fm += 1
-    
-    ws_manual[f'A{fila_resumen_fm}'] = "EN OBSERVACIÓN"
-    ws_manual[f'B{fila_resumen_fm}'] = len(datos_fm_observacion)
-    ws_manual[f'A{fila_resumen_fm}'].fill = color_observacion
-    ws_manual[f'B{fila_resumen_fm}'].fill = color_observacion
-    ws_manual[f'A{fila_resumen_fm}'].font = fuente_resumen
-    ws_manual[f'B{fila_resumen_fm}'].font = fuente_resumen
-    ws_manual[f'A{fila_resumen_fm}'].alignment = alineacion_izquierda
-    ws_manual[f'B{fila_resumen_fm}'].alignment = alineacion_centro
-    ws_manual[f'A{fila_resumen_fm}'].border = borde_fino
-    ws_manual[f'B{fila_resumen_fm}'].border = borde_fino
-    
-    # Crear tabla resumen para TV (suma de todas las bandas)
-    fila_resumen_tv = 3
-    
-    # Encabezados tabla resumen TV
-    ws_manual[f'F{fila_resumen_tv}'] = "FRECUENCIAS AUTORIZADAS"
-    ws_manual[f'G{fila_resumen_tv}'] = len(datos_tv_autorizadas)
-    ws_manual[f'F{fila_resumen_tv}'].fill = color_autorizada
-    ws_manual[f'G{fila_resumen_tv}'].fill = color_autorizada
-    ws_manual[f'F{fila_resumen_tv}'].font = fuente_resumen
-    ws_manual[f'G{fila_resumen_tv}'].font = fuente_resumen
-    ws_manual[f'F{fila_resumen_tv}'].alignment = alineacion_izquierda
-    ws_manual[f'G{fila_resumen_tv}'].alignment = alineacion_centro
-    ws_manual[f'F{fila_resumen_tv}'].border = borde_fino
-    ws_manual[f'G{fila_resumen_tv}'].border = borde_fino
-    
-    fila_resumen_tv += 1
-    
-    ws_manual[f'F{fila_resumen_tv}'] = "FRECUENCIAS NO AUTORIZADAS"
-    ws_manual[f'G{fila_resumen_tv}'] = len(datos_tv_no_autorizadas)
-    ws_manual[f'F{fila_resumen_tv}'].fill = color_no_autorizada
-    ws_manual[f'G{fila_resumen_tv}'].fill = color_no_autorizada
-    ws_manual[f'F{fila_resumen_tv}'].font = fuente_resumen
-    ws_manual[f'G{fila_resumen_tv}'].font = fuente_resumen
-    ws_manual[f'F{fila_resumen_tv}'].alignment = alineacion_izquierda
-    ws_manual[f'G{fila_resumen_tv}'].alignment = alineacion_centro
-    ws_manual[f'F{fila_resumen_tv}'].border = borde_fino
-    ws_manual[f'G{fila_resumen_tv}'].border = borde_fino
-    
-    fila_resumen_tv += 1
-    
-    ws_manual[f'F{fila_resumen_tv}'] = "EN OBSERVACIÓN"
-    ws_manual[f'G{fila_resumen_tv}'] = len(datos_tv_observacion)
-    ws_manual[f'F{fila_resumen_tv}'].fill = color_observacion
-    ws_manual[f'G{fila_resumen_tv}'].fill = color_observacion
-    ws_manual[f'F{fila_resumen_tv}'].font = fuente_resumen
-    ws_manual[f'G{fila_resumen_tv}'].font = fuente_resumen
-    ws_manual[f'F{fila_resumen_tv}'].alignment = alineacion_izquierda
-    ws_manual[f'G{fila_resumen_tv}'].alignment = alineacion_centro
-    ws_manual[f'F{fila_resumen_tv}'].border = borde_fino
-    ws_manual[f'G{fila_resumen_tv}'].border = borde_fino
-    
-    # Encabezados tabla detalle FM (después del resumen)
-    fila_detalle_fm = fila_resumen_fm + 2
+    # Detalle FM
+    fila_detalle_fm = fila_actual + 2
     ws_manual[f'A{fila_detalle_fm}'] = "TIPO"
     ws_manual[f'B{fila_detalle_fm}'] = "Frecuencia (MHz)"
     ws_manual[f'C{fila_detalle_fm}'] = "ESTACION"
@@ -417,138 +399,264 @@ def crear_hoja_datos_manual(wb):
         celda.alignment = alineacion_centro
         celda.border = borde_fino
     
-    # Encabezados tabla detalle TV (después del resumen)
-    fila_detalle_tv = fila_resumen_tv + 2
-    ws_manual[f'F{fila_detalle_tv}'] = "TIPO"
-    ws_manual[f'G{fila_detalle_tv}'] = "Frecuencia (MHz)"
-    ws_manual[f'H{fila_detalle_tv}'] = "ESTACION"
+    # Insertar datos FM
+    fila_actual_fm = fila_detalle_fm + 1
+    for frecuencia, estacion in datos_fm_autorizadas:
+        ws_manual[f'A{fila_actual_fm}'] = "AUTORIZADA"
+        ws_manual[f'B{fila_actual_fm}'] = frecuencia
+        ws_manual[f'C{fila_actual_fm}'] = estacion
+        for col in ['A', 'B', 'C']:
+            celda = ws_manual[f'{col}{fila_actual_fm}']
+            celda.fill = color_autorizada
+            celda.font = fuente_normal
+            celda.border = borde_fino
+            if col in ['A', 'C']:
+                celda.alignment = alineacion_izquierda
+            else:
+                celda.alignment = alineacion_centro
+        fila_actual_fm += 1
     
-    for col in ['F', 'G', 'H']:
+    for frecuencia, estacion in datos_fm_no_autorizadas:
+        ws_manual[f'A{fila_actual_fm}'] = "NO AUTORIZADA"
+        ws_manual[f'B{fila_actual_fm}'] = frecuencia
+        ws_manual[f'C{fila_actual_fm}'] = estacion
+        for col in ['A', 'B', 'C']:
+            celda = ws_manual[f'{col}{fila_actual_fm}']
+            celda.fill = color_no_autorizada
+            celda.font = fuente_normal
+            celda.border = borde_fino
+            if col in ['A', 'C']:
+                celda.alignment = alineacion_izquierda
+            else:
+                celda.alignment = alineacion_centro
+        fila_actual_fm += 1
+    
+    for frecuencia, estacion in datos_fm_observacion:
+        ws_manual[f'A{fila_actual_fm}'] = "EN OBSERVACIÓN"
+        ws_manual[f'B{fila_actual_fm}'] = frecuencia
+        ws_manual[f'C{fila_actual_fm}'] = estacion
+        for col in ['A', 'B', 'C']:
+            celda = ws_manual[f'{col}{fila_actual_fm}']
+            celda.fill = color_observacion
+            celda.font = fuente_normal
+            celda.border = borde_fino
+            if col in ['A', 'C']:
+                celda.alignment = alineacion_izquierda
+            else:
+                celda.alignment = alineacion_centro
+        fila_actual_fm += 1
+    
+    # --- SECCIÓN AM (Columnas E-G) ---
+    fila_actual_am = 3
+    
+    # Resumen AM
+    ws_manual[f'E{fila_actual_am}'] = "FRECUENCIAS AUTORIZADAS"
+    ws_manual[f'F{fila_actual_am}'] = len(datos_am_autorizadas)
+    ws_manual[f'E{fila_actual_am}'].fill = color_autorizada
+    ws_manual[f'F{fila_actual_am}'].fill = color_autorizada
+    ws_manual[f'E{fila_actual_am}'].font = fuente_resumen
+    ws_manual[f'F{fila_actual_am}'].font = fuente_resumen
+    ws_manual[f'E{fila_actual_am}'].alignment = alineacion_izquierda
+    ws_manual[f'F{fila_actual_am}'].alignment = alineacion_centro
+    ws_manual[f'E{fila_actual_am}'].border = borde_fino
+    ws_manual[f'F{fila_actual_am}'].border = borde_fino
+    
+    fila_actual_am += 1
+    ws_manual[f'E{fila_actual_am}'] = "FRECUENCIAS NO AUTORIZADAS"
+    ws_manual[f'F{fila_actual_am}'] = len(datos_am_no_autorizadas)
+    ws_manual[f'E{fila_actual_am}'].fill = color_no_autorizada
+    ws_manual[f'F{fila_actual_am}'].fill = color_no_autorizada
+    ws_manual[f'E{fila_actual_am}'].font = fuente_resumen
+    ws_manual[f'F{fila_actual_am}'].font = fuente_resumen
+    ws_manual[f'E{fila_actual_am}'].alignment = alineacion_izquierda
+    ws_manual[f'F{fila_actual_am}'].alignment = alineacion_centro
+    ws_manual[f'E{fila_actual_am}'].border = borde_fino
+    ws_manual[f'F{fila_actual_am}'].border = borde_fino
+    
+    fila_actual_am += 1
+    ws_manual[f'E{fila_actual_am}'] = "EN OBSERVACIÓN"
+    ws_manual[f'F{fila_actual_am}'] = len(datos_am_observacion)
+    ws_manual[f'E{fila_actual_am}'].fill = color_observacion
+    ws_manual[f'F{fila_actual_am}'].fill = color_observacion
+    ws_manual[f'E{fila_actual_am}'].font = fuente_resumen
+    ws_manual[f'F{fila_actual_am}'].font = fuente_resumen
+    ws_manual[f'E{fila_actual_am}'].alignment = alineacion_izquierda
+    ws_manual[f'F{fila_actual_am}'].alignment = alineacion_centro
+    ws_manual[f'E{fila_actual_am}'].border = borde_fino
+    ws_manual[f'F{fila_actual_am}'].border = borde_fino
+    
+    # Detalle AM
+    fila_detalle_am = fila_actual_am + 2
+    ws_manual[f'E{fila_detalle_am}'] = "TIPO"
+    ws_manual[f'F{fila_detalle_am}'] = "Frecuencia (MHz)"
+    ws_manual[f'G{fila_detalle_am}'] = "ESTACION"
+    
+    for col in ['E', 'F', 'G']:
+        celda = ws_manual[f'{col}{fila_detalle_am}']
+        celda.fill = color_encabezado
+        celda.font = fuente_encabezado
+        celda.alignment = alineacion_centro
+        celda.border = borde_fino
+    
+    # Insertar datos AM
+    fila_actual_am_detalle = fila_detalle_am + 1
+    for frecuencia, estacion in datos_am_autorizadas:
+        ws_manual[f'E{fila_actual_am_detalle}'] = "AUTORIZADA"
+        ws_manual[f'F{fila_actual_am_detalle}'] = frecuencia
+        ws_manual[f'G{fila_actual_am_detalle}'] = estacion
+        for col in ['E', 'F', 'G']:
+            celda = ws_manual[f'{col}{fila_actual_am_detalle}']
+            celda.fill = color_autorizada
+            celda.font = fuente_normal
+            celda.border = borde_fino
+            if col in ['E', 'G']:
+                celda.alignment = alineacion_izquierda
+            else:
+                celda.alignment = alineacion_centro
+        fila_actual_am_detalle += 1
+    
+    for frecuencia, estacion in datos_am_no_autorizadas:
+        ws_manual[f'E{fila_actual_am_detalle}'] = "NO AUTORIZADA"
+        ws_manual[f'F{fila_actual_am_detalle}'] = frecuencia
+        ws_manual[f'G{fila_actual_am_detalle}'] = estacion
+        for col in ['E', 'F', 'G']:
+            celda = ws_manual[f'{col}{fila_actual_am_detalle}']
+            celda.fill = color_no_autorizada
+            celda.font = fuente_normal
+            celda.border = borde_fino
+            if col in ['E', 'G']:
+                celda.alignment = alineacion_izquierda
+            else:
+                celda.alignment = alineacion_centro
+        fila_actual_am_detalle += 1
+    
+    for frecuencia, estacion in datos_am_observacion:
+        ws_manual[f'E{fila_actual_am_detalle}'] = "EN OBSERVACIÓN"
+        ws_manual[f'F{fila_actual_am_detalle}'] = frecuencia
+        ws_manual[f'G{fila_actual_am_detalle}'] = estacion
+        for col in ['E', 'F', 'G']:
+            celda = ws_manual[f'{col}{fila_actual_am_detalle}']
+            celda.fill = color_observacion
+            celda.font = fuente_normal
+            celda.border = borde_fino
+            if col in ['E', 'G']:
+                celda.alignment = alineacion_izquierda
+            else:
+                celda.alignment = alineacion_centro
+        fila_actual_am_detalle += 1
+    
+    # --- SECCIÓN TV (Columnas I-K) ---
+    fila_actual_tv = 3
+    
+    # Resumen TV
+    ws_manual[f'I{fila_actual_tv}'] = "FRECUENCIAS AUTORIZADAS"
+    ws_manual[f'J{fila_actual_tv}'] = len(datos_tv_autorizadas)
+    ws_manual[f'I{fila_actual_tv}'].fill = color_autorizada
+    ws_manual[f'J{fila_actual_tv}'].fill = color_autorizada
+    ws_manual[f'I{fila_actual_tv}'].font = fuente_resumen
+    ws_manual[f'J{fila_actual_tv}'].font = fuente_resumen
+    ws_manual[f'I{fila_actual_tv}'].alignment = alineacion_izquierda
+    ws_manual[f'J{fila_actual_tv}'].alignment = alineacion_centro
+    ws_manual[f'I{fila_actual_tv}'].border = borde_fino
+    ws_manual[f'J{fila_actual_tv}'].border = borde_fino
+    
+    fila_actual_tv += 1
+    ws_manual[f'I{fila_actual_tv}'] = "FRECUENCIAS NO AUTORIZADAS"
+    ws_manual[f'J{fila_actual_tv}'] = len(datos_tv_no_autorizadas)
+    ws_manual[f'I{fila_actual_tv}'].fill = color_no_autorizada
+    ws_manual[f'J{fila_actual_tv}'].fill = color_no_autorizada
+    ws_manual[f'I{fila_actual_tv}'].font = fuente_resumen
+    ws_manual[f'J{fila_actual_tv}'].font = fuente_resumen
+    ws_manual[f'I{fila_actual_tv}'].alignment = alineacion_izquierda
+    ws_manual[f'J{fila_actual_tv}'].alignment = alineacion_centro
+    ws_manual[f'I{fila_actual_tv}'].border = borde_fino
+    ws_manual[f'J{fila_actual_tv}'].border = borde_fino
+    
+    fila_actual_tv += 1
+    ws_manual[f'I{fila_actual_tv}'] = "EN OBSERVACIÓN"
+    ws_manual[f'J{fila_actual_tv}'] = len(datos_tv_observacion)
+    ws_manual[f'I{fila_actual_tv}'].fill = color_observacion
+    ws_manual[f'J{fila_actual_tv}'].fill = color_observacion
+    ws_manual[f'I{fila_actual_tv}'].font = fuente_resumen
+    ws_manual[f'J{fila_actual_tv}'].font = fuente_resumen
+    ws_manual[f'I{fila_actual_tv}'].alignment = alineacion_izquierda
+    ws_manual[f'J{fila_actual_tv}'].alignment = alineacion_centro
+    ws_manual[f'I{fila_actual_tv}'].border = borde_fino
+    ws_manual[f'J{fila_actual_tv}'].border = borde_fino
+    
+    # Detalle TV
+    fila_detalle_tv = fila_actual_tv + 2
+    ws_manual[f'I{fila_detalle_tv}'] = "TIPO"
+    ws_manual[f'J{fila_detalle_tv}'] = "Frecuencia (MHz)"
+    ws_manual[f'K{fila_detalle_tv}'] = "ESTACION"
+    
+    for col in ['I', 'J', 'K']:
         celda = ws_manual[f'{col}{fila_detalle_tv}']
         celda.fill = color_encabezado
         celda.font = fuente_encabezado
         celda.alignment = alineacion_centro
         celda.border = borde_fino
     
-    # Insertar datos FM - Autorizadas
-    fila_actual_fm = fila_detalle_fm + 1
-    for frecuencia, estacion in datos_fm_autorizadas:
-        ws_manual[f'A{fila_actual_fm}'] = "AUTORIZADA"
-        ws_manual[f'B{fila_actual_fm}'] = frecuencia
-        ws_manual[f'C{fila_actual_fm}'] = estacion
-        
-        for col in ['A', 'B', 'C']:
-            celda = ws_manual[f'{col}{fila_actual_fm}']
-            celda.fill = color_autorizada
-            celda.font = fuente_normal
-            celda.border = borde_fino
-            if col in ['A', 'C']:
-                celda.alignment = alineacion_izquierda
-            else:
-                celda.alignment = alineacion_centro
-        
-        fila_actual_fm += 1
-    
-    # Insertar datos FM - No Autorizadas
-    for frecuencia, estacion in datos_fm_no_autorizadas:
-        ws_manual[f'A{fila_actual_fm}'] = "NO AUTORIZADA"
-        ws_manual[f'B{fila_actual_fm}'] = frecuencia
-        ws_manual[f'C{fila_actual_fm}'] = estacion
-        
-        for col in ['A', 'B', 'C']:
-            celda = ws_manual[f'{col}{fila_actual_fm}']
-            celda.fill = color_no_autorizada
-            celda.font = fuente_normal
-            celda.border = borde_fino
-            if col in ['A', 'C']:
-                celda.alignment = alineacion_izquierda
-            else:
-                celda.alignment = alineacion_centro
-        
-        fila_actual_fm += 1
-    
-    # Insertar datos FM - Observación
-    for frecuencia, estacion in datos_fm_observacion:
-        ws_manual[f'A{fila_actual_fm}'] = "EN OBSERVACIÓN"
-        ws_manual[f'B{fila_actual_fm}'] = frecuencia
-        ws_manual[f'C{fila_actual_fm}'] = estacion
-        
-        for col in ['A', 'B', 'C']:
-            celda = ws_manual[f'{col}{fila_actual_fm}']
-            celda.fill = color_observacion
-            celda.font = fuente_normal
-            celda.border = borde_fino
-            if col in ['A', 'C']:
-                celda.alignment = alineacion_izquierda
-            else:
-                celda.alignment = alineacion_centro
-        
-        fila_actual_fm += 1
-    
-    # Insertar datos TV - Autorizadas
-    fila_actual_tv = fila_detalle_tv + 1
+    # Insertar datos TV
+    fila_actual_tv_detalle = fila_detalle_tv + 1
     for frecuencia, estacion in datos_tv_autorizadas:
-        ws_manual[f'F{fila_actual_tv}'] = "AUTORIZADA"
-        ws_manual[f'G{fila_actual_tv}'] = frecuencia
-        ws_manual[f'H{fila_actual_tv}'] = estacion
-        
-        for col in ['F', 'G', 'H']:
-            celda = ws_manual[f'{col}{fila_actual_tv}']
+        ws_manual[f'I{fila_actual_tv_detalle}'] = "AUTORIZADA"
+        ws_manual[f'J{fila_actual_tv_detalle}'] = frecuencia
+        ws_manual[f'K{fila_actual_tv_detalle}'] = estacion
+        for col in ['I', 'J', 'K']:
+            celda = ws_manual[f'{col}{fila_actual_tv_detalle}']
             celda.fill = color_autorizada
             celda.font = fuente_normal
             celda.border = borde_fino
-            if col in ['F', 'H']:
+            if col in ['I', 'K']:
                 celda.alignment = alineacion_izquierda
             else:
                 celda.alignment = alineacion_centro
-        
-        fila_actual_tv += 1
+        fila_actual_tv_detalle += 1
     
-    # Insertar datos TV - No Autorizadas
     for frecuencia, estacion in datos_tv_no_autorizadas:
-        ws_manual[f'F{fila_actual_tv}'] = "NO AUTORIZADA"
-        ws_manual[f'G{fila_actual_tv}'] = frecuencia
-        ws_manual[f'H{fila_actual_tv}'] = estacion
-        
-        for col in ['F', 'G', 'H']:
-            celda = ws_manual[f'{col}{fila_actual_tv}']
+        ws_manual[f'I{fila_actual_tv_detalle}'] = "NO AUTORIZADA"
+        ws_manual[f'J{fila_actual_tv_detalle}'] = frecuencia
+        ws_manual[f'K{fila_actual_tv_detalle}'] = estacion
+        for col in ['I', 'J', 'K']:
+            celda = ws_manual[f'{col}{fila_actual_tv_detalle}']
             celda.fill = color_no_autorizada
             celda.font = fuente_normal
             celda.border = borde_fino
-            if col in ['F', 'H']:
+            if col in ['I', 'K']:
                 celda.alignment = alineacion_izquierda
             else:
                 celda.alignment = alineacion_centro
-        
-        fila_actual_tv += 1
+        fila_actual_tv_detalle += 1
     
-    # Insertar datos TV - Observación
     for frecuencia, estacion in datos_tv_observacion:
-        ws_manual[f'F{fila_actual_tv}'] = "EN OBSERVACIÓN"
-        ws_manual[f'G{fila_actual_tv}'] = frecuencia
-        ws_manual[f'H{fila_actual_tv}'] = estacion
-        
-        for col in ['F', 'G', 'H']:
-            celda = ws_manual[f'{col}{fila_actual_tv}']
+        ws_manual[f'I{fila_actual_tv_detalle}'] = "EN OBSERVACIÓN"
+        ws_manual[f'J{fila_actual_tv_detalle}'] = frecuencia
+        ws_manual[f'K{fila_actual_tv_detalle}'] = estacion
+        for col in ['I', 'J', 'K']:
+            celda = ws_manual[f'{col}{fila_actual_tv_detalle}']
             celda.fill = color_observacion
             celda.font = fuente_normal
             celda.border = borde_fino
-            if col in ['F', 'H']:
+            if col in ['I', 'K']:
                 celda.alignment = alineacion_izquierda
             else:
                 celda.alignment = alineacion_centro
-        
-        fila_actual_tv += 1
+        fila_actual_tv_detalle += 1
     
-    # Ajustar el ancho de las columnas
+    # Ajustar anchos de columnas
     ws_manual.column_dimensions['A'].width = 20
     ws_manual.column_dimensions['B'].width = 15
     ws_manual.column_dimensions['C'].width = 25
-    ws_manual.column_dimensions['F'].width = 20
-    ws_manual.column_dimensions['G'].width = 15
-    ws_manual.column_dimensions['H'].width = 25
+    ws_manual.column_dimensions['E'].width = 20
+    ws_manual.column_dimensions['F'].width = 15
+    ws_manual.column_dimensions['G'].width = 25
+    ws_manual.column_dimensions['I'].width = 20
+    ws_manual.column_dimensions['J'].width = 15
+    ws_manual.column_dimensions['K'].width = 25
     
     return wb
+
 
 def crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, titulo, celda_destino, identificador_unico):
     """
@@ -643,12 +751,63 @@ def crear_grafico_pastel_estatus_openpyxl(ws, porcentaje_autorizadas, porcentaje
 
     return chart
 
+# Agregar esta nueva función después de la función crear_grafico_pastel_openpyxl existente
+
+def crear_grafico_pastel_estatus_openpyxl(ws, porcentaje_autorizadas, porcentaje_no_autorizadas, porcentaje_observacion, 
+                                        titulo, celda_destino, identificador_unico):
+    """
+    Crea un gráfico de pastel para los estatus (autorizadas, no autorizadas, observación)
+    """
+    # Crear datos para el gráfico en celdas ocultas con posición única
+    fila_inicio = 150 + (identificador_unico * 10)  # Espacio suficiente entre gráficos (diferente del anterior)
+    col_datos = 25  # Columna Y para datos temporales
+
+    # Limpiar celdas previas (por si acaso)
+    for i in range(4):  # Limpiar 4 filas
+        ws.cell(row=fila_inicio + i, column=col_datos, value="")
+        ws.cell(row=fila_inicio + i, column=col_datos + 1, value="")
+
+    # Crear datos para el gráfico
+    ws.cell(row=fila_inicio, column=col_datos, value="AUTORIZADAS")
+    ws.cell(row=fila_inicio, column=col_datos + 1, value=porcentaje_autorizadas)
+
+    ws.cell(row=fila_inicio + 1, column=col_datos, value="NO AUTORIZADAS")
+    ws.cell(row=fila_inicio + 1, column=col_datos + 1, value=porcentaje_no_autorizadas)
+
+    ws.cell(row=fila_inicio + 2, column=col_datos, value="OBSERVACIÓN")
+    ws.cell(row=fila_inicio + 2, column=col_datos + 1, value=porcentaje_observacion)
+
+    # Crear gráfico de pastel
+    chart = PieChart()
+    chart.title = titulo
+
+    # Referencias a datos y etiquetas
+    labels = Reference(ws, min_col=col_datos, min_row=fila_inicio, max_row=fila_inicio + 2)
+    data = Reference(ws, min_col=col_datos + 1, min_row=fila_inicio, max_row=fila_inicio + 2)
+
+    # Añadir datos y categorías correctamente
+    chart.add_data(data, titles_from_data=False)
+    chart.set_categories(labels)
+
+    # Configurar etiquetas de datos
+    chart.dataLabels = DataLabelList()
+    chart.dataLabels.showPercent = True
+    chart.dataLabels.showCategoryName = True
+    chart.dataLabels.showVal = False
+    chart.dataLabels.showSerName = False
+
+    # Añadir gráfico a la hoja
+    ws.add_chart(chart, celda_destino)
+
+    return chart
+
 
 def cargar_configuracion():
     """Cargar configuración desde archivo JSON"""
     config_default = {
         "fm_path": "MedicionesFmCSV",
-        "tv_path": "MedicionesTvCSV", 
+        "tv_path": "MedicionesTvCSV",
+        "am_path": "MedicionesAmCSV",  # NUEVO
         "output_path": "ReportesOcupacion",
         "emisoras_por_ciudad": {}
     }
@@ -657,7 +816,6 @@ def cargar_configuracion():
         try:
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-                # Asegurar que exista la clave emisoras_por_ciudad
                 if "emisoras_por_ciudad" not in config:
                     config["emisoras_por_ciudad"] = {}
                 return config
@@ -671,10 +829,226 @@ def cargar_configuracion():
 config = cargar_configuracion()
 ruta_fm = config.get("fm_path", "MedicionesFmCSV")
 ruta_tv = config.get("tv_path", "MedicionesTvCSV")
+ruta_am = config.get("am_path", "MedicionesAmCSV")
 ruta_salida = config.get("output_path", "ReportesOcupacion")
 fecha_actual = datetime.now().strftime("%d/%m/%Y")
-
+# Umbral para AM (puedes ajustarlo según necesidades)
+UMBRAL_AM = 45.0
 # ------------------ FUNCIONES AUXILIARES ------------------
+
+def crear_tabla_ocupacion_am(ws, datos, umbral=45, ciudad=""):
+    """
+    Crea la tabla de ocupación AM a partir de la columna J
+    Similar a la función de FM
+    """
+    # Obtener los datos de la hoja
+    fila_inicio = 2
+    
+    # Calcular estadísticas
+    total_frecuencias = len(datos)
+    
+    # Lista para frecuencias problemáticas
+    frecuencias_problematicas = []
+    
+    # Contar frecuencias operando mayor al umbral (OCUPACIÓN > 0%)
+    frecuencias_mayor_umbral = 0
+    for fila in range(fila_inicio, ws.max_row + 1):
+        ocupacion_celda = ws.cell(row=fila, column=4)  # Columna D = Ocupación (%)
+        if ocupacion_celda.value and isinstance(ocupacion_celda.value, (int, float)):
+            if ocupacion_celda.value > 0:  # Ocupación > 0%
+                frecuencias_mayor_umbral += 1
+    
+    # Contar frecuencias con criterios corregidos y detectar problemáticas
+    frecuencias_autorizadas = 0
+    frecuencias_no_autorizadas = 0
+    frecuencias_observacion = 0
+    frecuencias_libres = 0
+    
+    for fila in range(fila_inicio, ws.max_row + 1):
+        estacion_celda = ws.cell(row=fila, column=2)  # Columna B = Estación
+        ocupacion_celda = ws.cell(row=fila, column=4)  # Columna D = Ocupación (%)
+        
+        # Convertir ocupación a número
+        ocupacion_valor = 0
+        if ocupacion_celda.value is not None:
+            try:
+                ocupacion_valor = float(ocupacion_celda.value)
+            except (ValueError, TypeError):
+                ocupacion_valor = 0
+        
+        # Verificar si tiene nombre en ESTACIÓN y si termina en "_OBSERVACION"
+        tiene_nombre = estacion_celda.value and estacion_celda.value != "No identificada" and estacion_celda.value != ""
+        es_observacion = False
+        if tiene_nombre:
+            estacion_str = str(estacion_celda.value).strip()
+            es_observacion = estacion_str.upper().endswith("_OBSERVACION")
+        
+        # LÓGICA DE CLASIFICACIÓN (igual que FM)
+        
+        # Caso 1: Frecuencias con ocupación > 0% y nombre no termina en "_OBSERVACION"
+        if ocupacion_valor > 0 and tiene_nombre and not es_observacion:
+            estacion_str = str(estacion_celda.value).lower()
+            if "no autorizado" in estacion_str or "no autorizada" in estacion_str or "no aut" in estacion_str:
+                frecuencias_no_autorizadas += 1
+                ws.cell(row=fila, column=1).fill = ROJO
+                ws.cell(row=fila, column=2).fill = ROJO
+                ws.cell(row=fila, column=4).fill = ROJO
+            else:
+                frecuencias_autorizadas += 1
+                ws.cell(row=fila, column=1).fill = VERDE
+                ws.cell(row=fila, column=2).fill = VERDE
+                ws.cell(row=fila, column=4).fill = VERDE
+        
+        # Caso 2: Frecuencias con ocupación 0% y nombre no termina en "_OBSERVACION"
+        elif ocupacion_valor == 0 and tiene_nombre and not es_observacion:
+            estacion_str = str(estacion_celda.value).lower()
+            if "no autorizado" in estacion_str or "no autorizada" in estacion_str or "no aut" in estacion_str:
+                frecuencias_no_autorizadas += 1
+                ws.cell(row=fila, column=1).fill = ROJO
+                ws.cell(row=fila, column=2).fill = ROJO
+                ws.cell(row=fila, column=4).fill = ROJO
+            else:
+                frecuencias_autorizadas += 1
+                ws.cell(row=fila, column=1).fill = VERDE
+                ws.cell(row=fila, column=2).fill = VERDE
+                ws.cell(row=fila, column=4).fill = VERDE
+            
+            # DETECTAR COMO PROBLEMÁTICA
+            frecuencia_celda = ws.cell(row=fila, column=1)
+            level_celda = ws.cell(row=fila, column=5)
+            
+            frecuencia_problematica = {
+                "ciudad": normalizar_nombre_ciudad(ciudad),
+                "estacion": str(estacion_celda.value),
+                "tipo": "AM",
+                "frecuencia": frecuencia_celda.value if frecuencia_celda.value else "N/A",
+                "ocupacion": 0,
+                "level": level_celda.value if level_celda.value else "N/A",
+                "fila_excel": fila
+            }
+            frecuencias_problematicas.append(frecuencia_problematica)
+        
+        # Caso 3: Frecuencias con ocupación > 0% sin nombre o con nombre terminado en "_OBSERVACION"
+        elif ocupacion_valor > 0 and (not tiene_nombre or es_observacion):
+            frecuencias_observacion += 1
+            ws.cell(row=fila, column=1).fill = AMARILLO
+            ws.cell(row=fila, column=2).fill = AMARILLO
+            ws.cell(row=fila, column=4).fill = AMARILLO
+        
+        # Caso 4: Frecuencias con ocupación 0% sin nombre
+        if ocupacion_valor == 0:
+            frecuencias_libres += 1
+    
+    # Calcular porcentajes
+    porcentaje_ocupadas = (frecuencias_mayor_umbral / total_frecuencias * 100) if total_frecuencias > 0 else 0
+    porcentaje_libres = (frecuencias_libres / total_frecuencias * 100) if total_frecuencias > 0 else 0
+    porcentaje_autorizadas = (frecuencias_autorizadas / total_frecuencias * 100) if total_frecuencias > 0 else 0
+    porcentaje_no_autorizadas = (frecuencias_no_autorizadas / total_frecuencias * 100) if total_frecuencias > 0 else 0
+    porcentaje_observacion = (frecuencias_observacion / total_frecuencias * 100) if total_frecuencias > 0 else 0
+
+    # Crear la tabla a partir de la columna J (columna 10)
+    col_inicio = 10
+    fila_inicio_tabla = 1
+    
+    # Estilos
+    font_bold = Font(bold=True)
+    alignment_center = Alignment(horizontal="center", vertical="center")
+    alignment_left = Alignment(horizontal="left", vertical="center")
+    thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    
+    # Título
+    ws.cell(row=fila_inicio_tabla, column=col_inicio, value="OCUPACIÓN AM")
+    ws.merge_cells(start_row=fila_inicio_tabla, start_column=col_inicio, end_row=fila_inicio_tabla, end_column=col_inicio + 3)
+    titulo_cell = ws.cell(row=fila_inicio_tabla, column=col_inicio)
+    titulo_cell.font = Font(bold=True, size=14)
+    titulo_cell.alignment = alignment_center
+    titulo_cell.fill = GRIS
+    
+    # Encabezados de la tabla
+    datos_tabla = [
+        ["UMBRAL", umbral, "% FRECUENCIAS OCUPADAS", f"{porcentaje_ocupadas:.2f}%"],
+        ["TOTAL DE FRECUENCIAS MONITOREADAS", total_frecuencias, "% FRECUENCIAS LIBRES", f"{porcentaje_libres:.2f}%"],
+        ["FRECUENCIAS OCUPADAS", frecuencias_mayor_umbral, "% AUTORIZADAS", f"{porcentaje_autorizadas:.2f}%"],
+        ["FRECUENCIAS AUTORIZADAS", frecuencias_autorizadas, "% NO AUTORIZADAS", f"{porcentaje_no_autorizadas:.2f}%"],
+        ["FRECUENCIAS EN OBSERVACIÓN", frecuencias_observacion, "% INTERMODULACIÓN O RUIDO", f"{porcentaje_observacion:.2f}%"],
+        ["FRECUENCIAS NO AUTORIZADOS", frecuencias_no_autorizadas, "", ""],
+        ["FRECUENCIAS LIBRES", frecuencias_libres, "", ""]
+    ]
+    
+    # Escribir datos de la tabla (similar a FM)
+    for i, fila_datos in enumerate(datos_tabla, start=fila_inicio_tabla + 1):
+        celda_j = ws.cell(row=i, column=col_inicio, value=fila_datos[0])
+        celda_j.font = font_bold
+        celda_j.alignment = alignment_left
+        celda_j.border = thin_border
+        
+        # Colorear solo las celdas de la columna J (encabezados)
+        if "FRECUENCIAS AUTORIZADAS" in fila_datos[0]:
+            celda_j.fill = VERDE
+        elif "FRECUENCIAS EN OBSERVACIÓN" in fila_datos[0]:
+            celda_j.fill = AMARILLO
+        elif "FRECUENCIAS NO AUTORIZADOS" in fila_datos[0]:
+            celda_j.fill = ROJO
+        elif "FRECUENCIAS LIBRES" in fila_datos[0]:
+            celda_j.fill = PatternFill(start_color="E0E0E0", end_color="E0E0E0", fill_type="solid")
+        
+        # Columna K: Valor numérico
+        if fila_datos[1] != "":
+            celda_k = ws.cell(row=i, column=col_inicio + 1, value=fila_datos[1])
+            celda_k.font = font_bold
+            celda_k.alignment = alignment_center
+            celda_k.border = thin_border
+        
+        # Columna L: Encabezado de porcentaje
+        if fila_datos[2] != "":
+            celda_l = ws.cell(row=i, column=col_inicio + 2, value=fila_datos[2])
+            celda_l.font = font_bold
+            celda_l.alignment = alignment_left
+            celda_l.border = thin_border
+        
+        # Columna M: Valor de porcentaje
+        if fila_datos[3] != "":
+            celda_m = ws.cell(row=i, column=col_inicio + 3, value=fila_datos[3])
+            celda_m.font = font_bold
+            celda_m.alignment = alignment_center
+            celda_m.border = thin_border
+    
+    # Ajustar anchos de columnas
+    anchos_columnas = [35, 15, 25, 15]  # J, K, L, M
+    for i, ancho in enumerate(anchos_columnas, start=col_inicio):
+        ws.column_dimensions[get_column_letter(i)].width = ancho
+    
+    # Crear gráfico de pastel para AM
+    try:
+        crear_grafico_pastel_openpyxl(ws, porcentaje_ocupadas, porcentaje_libres, "OCUPACIÓN AM", "P2", 997)
+    except Exception as e:
+        print(f"Error al crear gráfico AM: {e}")
+
+    # Crear gráfico de pastel para estatus AM
+    try:
+        crear_grafico_pastel_estatus_openpyxl(ws, porcentaje_autorizadas, porcentaje_no_autorizadas, 
+                                            porcentaje_observacion, "ESTATUS AM", "Y2", 996)
+    except Exception as e:
+        print(f"Error al crear gráfico AM (estatus): {e}")
+
+    return {
+        "total_frecuencias": total_frecuencias,
+        "frecuencias_mayor_umbral": frecuencias_mayor_umbral,
+        "frecuencias_autorizadas": frecuencias_autorizadas,
+        "frecuencias_no_autorizadas": frecuencias_no_autorizadas,
+        "frecuencias_observacion": frecuencias_observacion,
+        "frecuencias_libres": frecuencias_libres,
+        "frecuencias_problematicas": frecuencias_problematicas,
+        "porcentajes": {
+            "ocupadas": porcentaje_ocupadas,
+            "libres": porcentaje_libres,
+            "autorizadas": porcentaje_autorizadas,
+            "no_autorizadas": porcentaje_no_autorizadas,
+            "observacion": porcentaje_observacion
+        }
+    }
+
+
 def crear_tabla_ocupacion_fm(ws, datos, umbral=60, ciudad=""):
     """
     Crea la tabla de ocupación FM a partir de la columna J
@@ -1272,35 +1646,14 @@ def buscar_emisora_por_frecuencia(ciudad, frecuencia, tipo, tolerancia=0.1):
     config = cargar_configuracion()
     emisoras_por_ciudad = config.get("emisoras_por_ciudad", {})
     
-    # Normalizar nombre de ciudad (manejar diferentes representaciones de "cañar")
+    # Normalizar nombre de ciudad
     ciudad_normalizada = ciudad.lower().strip()
     
-    # Buscar coincidencias para "cañar" en diferentes representaciones
-    """posibles_nombres_canar = ["cañar", "cañar", "canar", "caÃ±ar"]
-    if any(nombre in ciudad_normalizada for nombre in posibles_nombres_canar):
-        # Buscar la clave exacta en el config.json
-        claves_config = list(emisoras_por_ciudad.keys())
-        clave_canar = None
-        for clave in claves_config:
-            clave_normalizada = clave.lower().strip()
-            if any(nombre in clave_normalizada for nombre in posibles_nombres_canar):
-                clave_canar = clave
-                break
-        
-        if clave_canar:
-            ciudad_normalizada = clave_canar
-        else:
-            ciudad_normalizada = "cañar"
-    """
-
+    # Buscar por similitud si no se encuentra exacto
     if ciudad_normalizada not in emisoras_por_ciudad:
-        print(f"⚠️  Ciudad '{ciudad}' no encontrada en config.json")
-        print(f"Ciudades disponibles: {list(emisoras_por_ciudad.keys())}")
-        # Intentar buscar por similitud
         for clave_real in emisoras_por_ciudad.keys():
             if ciudad.lower() in clave_real.lower() or clave_real.lower() in ciudad.lower():
                 ciudad_normalizada = clave_real
-                print(f"✅ Usando ciudad similar: {clave_real}")
                 break
         else:
             return None
@@ -1308,18 +1661,50 @@ def buscar_emisora_por_frecuencia(ciudad, frecuencia, tipo, tolerancia=0.1):
     emisoras = emisoras_por_ciudad[ciudad_normalizada].get(tipo, [])
     
     if not emisoras:
-        print(f"⚠️  No hay emisoras de tipo {tipo} para la ciudad {ciudad_normalizada}")
         return None
     
-    for emisora in emisoras:
-        try:
-            freq_emisora = float(emisora.get("frecuencia", 0))
-            if abs(freq_emisora - frecuencia) <= tolerancia:
-                return emisora.get("nombre", "Desconocido")
-        except (ValueError, TypeError):
-            continue
+    # CASO ESPECÍFICO PARA AM - TOLERANCIAS MÁS ESTRICTAS
+    if tipo == "AM":
+        # Para AM: coincidencia exacta muy estricta primero
+        for emisora in emisoras:
+            try:
+                freq_emisora = float(emisora.get("frecuencia", 0))
+                if abs(freq_emisora - frecuencia) <= 0.001:  # Coincidencia muy exacta (0.001 MHz)
+                    return emisora.get("nombre", "Desconocido")
+            except (ValueError, TypeError):
+                continue
+        
+        # Luego buscar con tolerancia muy reducida
+        for emisora in emisoras:
+            try:
+                freq_emisora = float(emisora.get("frecuencia", 0))
+                if abs(freq_emisora - frecuencia) <= 0.005:  # Tolerancia muy reducida (0.01 MHz)
+                    return emisora.get("nombre", "Desconocido")
+            except (ValueError, TypeError):
+                continue
+        
+        return None
     
-    #print(f"⚠️  No se encontró emisora para frecuencia {frecuencia} MHz en {ciudad_normalizada} (tolerancia: {tolerancia} MHz)")
+    else:
+        # PARA FM Y TV - MANTENER TOLERANCIAS ORIGINALES
+        # Buscar coincidencia exacta primero
+        for emisora in emisoras:
+            try:
+                freq_emisora = float(emisora.get("frecuencia", 0))
+                if abs(freq_emisora - frecuencia) <= 0.01:  # Coincidencia exacta
+                    return emisora.get("nombre", "Desconocido")
+            except (ValueError, TypeError):
+                continue
+        
+        # Luego buscar con tolerancia normal
+        for emisora in emisoras:
+            try:
+                freq_emisora = float(emisora.get("frecuencia", 0))
+                if abs(freq_emisora - frecuencia) <= tolerancia:  # Tolerancia normal (0.1 MHz)
+                    return emisora.get("nombre", "Desconocido")
+            except (ValueError, TypeError):
+                continue
+    
     return None
 
 def obtener_emisoras_ciudad(ciudad):
@@ -1336,6 +1721,7 @@ def inicializar_directorios():
     os.makedirs(ruta_salida, exist_ok=True)
     os.makedirs(ruta_fm, exist_ok=True)
     os.makedirs(ruta_tv, exist_ok=True)
+    os.makedirs(ruta_am, exist_ok=True)  # NUEVO
 
 def obtener_codigo_base(base):
     """Obtiene el código correspondiente según el nombre de la base"""
@@ -1375,6 +1761,43 @@ def obtener_base(nombre_archivo):
     #print(nombre_archivo)
     return nombre_archivo.split("_")[0].lower().strip()
 
+
+def reducir_archivo_am_csv(ruta_archivo):
+    """
+    Reduce el tamaño del archivo CSV AM conservando hasta la frecuencia 1560000 Hz (fila 104)
+    """
+    try:
+        # Leer el archivo completo
+        df = pd.read_csv(ruta_archivo, encoding='latin-1', low_memory=False)
+        
+        # Limpiar nombres de columnas
+        df.columns = [col.strip().replace('Ą', 'u').replace('¾', 'o') for col in df.columns]
+        
+        # Convertir frecuencia a MHz
+        df["Frecuencia (MHz)"] = df["Frecuencia (Hz)"].apply(limpiar_valor_numerico) / 1_000_000
+        
+        # Filtrar hasta 1560000 Hz (1.56 MHz) o fila 104
+        df_filtrado = df[df["Frecuencia (MHz)"] <= 1.56]
+        if len(df_filtrado) > 104:
+            df_filtrado = df_filtrado.head(104)
+        
+        # Eliminar la columna temporal
+        if "Frecuencia (MHz)" in df_filtrado.columns:
+            df_filtrado = df_filtrado.drop(columns=["Frecuencia (MHz)"])
+        
+        # Guardar el archivo reducido (sobreescribir el original)
+        df_filtrado.to_csv(ruta_archivo, index=False, encoding='latin-1')
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error reduciendo archivo AM {ruta_archivo}: {e}")
+        return False
+    
+
+
+
+
 def reducir_archivo_csv(ruta_archivo, tipo):
     """
     Reduce el tamaño del archivo CSV conservando solo las filas necesarias
@@ -1399,8 +1822,8 @@ def reducir_archivo_csv(ruta_archivo, tipo):
         else:  # TV
             # Para TV: rango 55.25-693.25 MHz, conservar primeras 45 filas
             df_filtrado = df[(df["Frecuencia (MHz)"] >= 55.25) & (df["Frecuencia (MHz)"] <= 693.25)]
-            if len(df_filtrado) > 45:
-                df_filtrado = df_filtrado.head(45)
+            if len(df_filtrado) > 46:
+                df_filtrado = df_filtrado.head(46)
         
         # Eliminar la columna temporal
         if "Frecuencia (MHz)" in df_filtrado.columns:
@@ -1414,6 +1837,98 @@ def reducir_archivo_csv(ruta_archivo, tipo):
     except Exception as e:
         print(f"Error reduciendo archivo {ruta_archivo}: {e}")
         return False
+
+
+def formatear_hoja_ocupacion_am(ws, datos, ciudad):
+    """Formatea una hoja de ocupación AM con bordes y estilos"""
+    # Limpiar hoja existente
+    ws.delete_rows(1, ws.max_row)
+    
+    # Agregar encabezado para AM
+    encabezados = [
+        "Frecuencia (MHz)", "Estación", "FECHA DE SUSCRIPCION", "Ocupación (%)",
+        "Level (dBµV/m)", "Bandwidth (Hz)", "Offset (Hz)", "AM (%)"
+    ]
+    
+    # Escribir encabezados
+    for col, encabezado in enumerate(encabezados, 1):
+        ws.cell(row=1, column=col, value=encabezado)
+        celda = ws.cell(row=1, column=col)
+        celda.font = Font(bold=True)
+        celda.alignment = Alignment(horizontal="center", vertical="center")
+    
+    # Escribir datos con columna Estación
+    for fila_idx, (_, fila) in enumerate(datos.iterrows(), 2):
+        frecuencia = fila["Frecuencia (MHz)"]
+        
+        # Buscar emisora por frecuencia
+        nombre_emisora = buscar_emisora_por_frecuencia(ciudad, frecuencia, "AM")
+        
+        ws.cell(row=fila_idx, column=1, value=frecuencia)
+        ws.cell(row=fila_idx, column=2, value=nombre_emisora or "No identificada")
+        ws.cell(row=fila_idx, column=3, value=fila["FECHA DE SUSCRIPCION"])
+        ws.cell(row=fila_idx, column=4, value=fila["Ocupación (%)"])
+        ws.cell(row=fila_idx, column=5, value=fila["Level (dBµV/m)"])
+        ws.cell(row=fila_idx, column=6, value=fila["Bandwidth (Hz)"])
+        ws.cell(row=fila_idx, column=7, value=fila["Offset (Hz)"])
+        ws.cell(row=fila_idx, column=8, value=fila["AM (%)"])
+    
+    # Aplicar bordes y formato (similar a FM)
+    thin = Side(border_style="thin")
+    borde_grueso = Side(border_style="medium")
+    
+    num_columnas = len(encabezados)
+    num_filas = len(datos) + 1
+    
+    for row in range(1, num_filas + 1):
+        for col in range(1, num_columnas + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.border = Border(top=thin, bottom=thin, left=thin, right=thin)
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            
+            if row == 1:
+                cell.border = Border(top=borde_grueso, bottom=thin,
+                                   left=borde_grueso if col == 1 else thin,
+                                   right=borde_grueso if col == num_columnas else thin)
+            elif row == num_filas:
+                cell.border = Border(top=thin, bottom=borde_grueso,
+                                   left=borde_grueso if col == 1 else thin,
+                                   right=borde_grueso if col == num_columnas else thin)
+            elif col == 1:
+                cell.border = Border(left=borde_grueso, top=thin, bottom=thin, right=thin)
+            elif col == num_columnas:
+                cell.border = Border(right=borde_grueso, top=thin, bottom=thin, left=thin)
+    
+    # Ajustar anchos de columnas
+    for col in range(1, num_columnas + 1):
+        col_letter = get_column_letter(col)
+        max_length = 0
+        for cell in ws[col_letter]:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+        if col == 2:  # Columna Estación
+            ws.column_dimensions[col_letter].width = max(max_length + 2, 25)
+        else:
+            ws.column_dimensions[col_letter].width = max_length + 2
+    
+    # Crear tabla de ocupación AM
+    resultados_am = crear_tabla_ocupacion_am(ws, datos, ciudad=ciudad)
+    frecuencias_problematicas = resultados_am.get("frecuencias_problematicas", [])
+    
+    # Quitar sufijo _OBSERVACION después de la clasificación
+    for fila in range(2, ws.max_row + 1):
+        estacion_celda = ws.cell(row=fila, column=2)
+        if estacion_celda.value and "_OBSERVACION" in estacion_celda.value:
+            nombre_limpio = estacion_celda.value.replace("_OBSERVACION", "").strip()
+            estacion_celda.value = nombre_limpio
+
+    return frecuencias_problematicas
+
+
+
 
 def formatear_hoja_ocupacion(ws, datos, tipo, ciudad):
     """Formatea una hoja de ocupación con bordes y estilos, incluyendo columna Estación
@@ -1582,6 +2097,110 @@ def obtener_banda_por_frecuencia(freq):
     else:
         return "Otra banda"
     
+
+
+def procesar_archivo_am(ruta_archivo, base):
+    """Procesa archivo AM y extrae datos de ocupación hasta 1.56 MHz"""
+    try:
+        # Primero reducir el archivo
+        if not reducir_archivo_am_csv(ruta_archivo):
+            return None, None
+            
+        # Leer el archivo reducido
+        df = pd.read_csv(ruta_archivo, encoding='latin-1', low_memory=False)
+        
+        # Limpiar nombres de columnas
+        df.columns = [col.strip().replace('Ą', 'u').replace('¾', 'o') for col in df.columns]
+        
+        # Filtrar por rango de frecuencia (hasta 1.56 MHz)
+        df["Frecuencia (MHz)"] = df["Frecuencia (Hz)"].apply(limpiar_valor_numerico) / 1_000_000
+        df_filtrado = df[df["Frecuencia (MHz)"] <= 1.56]
+        
+        if df_filtrado.empty:
+            return None, None
+        
+        # Obtener mes de los datos
+        try:
+            df["Tiempo"] = pd.to_datetime(df["Tiempo"], format="%d/%m/%Y  %H:%M:%S,%f", errors='coerce').dt.date
+        except:
+            try:
+                df["Tiempo"] = pd.to_datetime(df["Tiempo"], errors='coerce').dt.date
+            except:
+                df["Tiempo"] = None
+        
+        # Usar la fecha del sistema si no se puede determinar del archivo
+        if df["Tiempo"].isna().all():
+            mes_objetivo = datetime.now().month
+        else:
+            mes_objetivo = df["Tiempo"].dropna().apply(lambda x: x.month).value_counts().idxmax()
+        
+        # Buscar las columnas necesarias (similar a FM)
+        columna_ocupacion = buscar_columna_por_patron(df_filtrado, ['ocupaci'])
+        columna_level = buscar_columna_por_patron(df_filtrado, ['level_3', 'nivel'])
+        columna_bandwidth = buscar_columna_por_patron(df_filtrado, ['bandwidth', 'ancho de banda'])
+        columna_offset = buscar_columna_por_patron(df_filtrado, ['offset', 'desplazamiento'])
+        columna_am = buscar_columna_por_patron(df_filtrado, ['am', 'amplitud modulada'])
+        
+        # Calcular ocupación usando los valores reales del archivo
+        ocupacion_data = []
+        
+        if columna_ocupacion:
+            # Usar los valores reales de ocupación del archivo
+            for _, row in df_filtrado.iterrows():
+                try:
+                    # Limpiar y convertir el valor de ocupación
+                    ocupacion_val = limpiar_valor_numerico(row[columna_ocupacion])
+                    if not np.isnan(ocupacion_val):
+                        # Obtener los demás valores
+                        level_val = limpiar_valor_numerico(row[columna_level]) if columna_level else np.nan
+                        bandwidth_val = limpiar_valor_numerico(row[columna_bandwidth]) if columna_bandwidth else np.nan
+                        offset_val = limpiar_valor_numerico(row[columna_offset]) if columna_offset else np.nan
+                        am_val = limpiar_valor_numerico(row[columna_am]) if columna_am else np.nan
+                        
+                        ocupacion_data.append({
+                            "Frecuencia (MHz)": row["Frecuencia (MHz)"],
+                            "FECHA DE SUSCRIPCION": datetime.now().strftime("%Y-%m-%d"),
+                            "Ocupación (%)": ocupacion_val,
+                            "Level (dBµV/m)": level_val,
+                            "Bandwidth (Hz)": bandwidth_val,
+                            "Offset (Hz)": offset_val,
+                            "AM (%)": am_val
+                        })
+                except (ValueError, TypeError):
+                    continue
+        else:
+            # Si no hay columna de ocupación, usar 100% para frecuencias con señal
+            for _, row in df_filtrado.iterrows():
+                try:
+                    # Obtener los demás valores
+                    level_val = limpiar_valor_numerico(row[columna_level]) if columna_level else np.nan
+                    bandwidth_val = limpiar_valor_numerico(row[columna_bandwidth]) if columna_bandwidth else np.nan
+                    offset_val = limpiar_valor_numerico(row[columna_offset]) if columna_offset else np.nan
+                    am_val = limpiar_valor_numerico(row[columna_am]) if columna_am else np.nan
+                    
+                    ocupacion_data.append({
+                        "Frecuencia (MHz)": row["Frecuencia (MHz)"],
+                        "FECHA DE SUSCRIPCION": datetime.now().strftime("%Y-%m-%d"),
+                        "Ocupación (%)": 100.0,
+                        "Level (dBµV/m)": level_val,
+                        "Bandwidth (Hz)": bandwidth_val,
+                        "Offset (Hz)": offset_val,
+                        "AM (%)": am_val
+                    })
+                except (ValueError, TypeError):
+                    continue
+        
+        resultado = pd.DataFrame(ocupacion_data)
+        resultado["Mes"] = mes_objetivo
+        return resultado, base
+        
+    except Exception as e:
+        print(f"Error procesando archivo AM {ruta_archivo}: {e}")
+        import traceback
+        traceback.print_exc()
+        return None, base
+    
+
 def procesar_archivo_fm(ruta_archivo, base):
     """Procesa archivo FM y extrae datos de ocupación en el rango desde 88.1 MHz"""
     try:
@@ -1972,11 +2591,30 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
     """
     # Inicializar directorios
     inicializar_directorios()
+    if callback_log:
+        callback_log("=== VERIFICACIÓN INICIAL DE ARCHIVOS ===")
     
+    # Obtener listas de archivos
+    try:
+        archivos_fm = {obtener_base(f): os.path.join(ruta_fm, f) for f in os.listdir(ruta_fm) if f.endswith(".csv")}
+        archivos_tv = {obtener_base(f): os.path.join(ruta_tv, f) for f in os.listdir(ruta_tv) if f.endswith(".csv")}
+        archivos_am = {obtener_base(f): os.path.join(ruta_am, f) for f in os.listdir(ruta_am) if f.endswith(".csv")}
+        
+        if callback_log:
+            callback_log(f"Archivos FM encontrados: {list(archivos_fm.keys())}")
+            callback_log(f"Archivos TV encontrados: {list(archivos_tv.keys())}")
+            callback_log(f"Archivos AM encontrados: {list(archivos_am.keys())}")
+            
+    except Exception as e:
+        if callback_log:
+            callback_log(f"Error al leer archivos: {str(e)}")
+        return {"error": f"Error al leer archivos: {str(e)}"}
+    
+
     # Inicializar estructura para resultados
     resultado = {
         "existen_problemas": False,
-        "datos": {"FM": [], "TV": []},
+        "datos": {"FM": [], "TV": [], "AM": []},  # NUEVO: Agregar AM
         "archivos_generados": [],
         "error": None
     }
@@ -1985,6 +2623,7 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
         callback_log("Iniciando procesamiento de ocupación de espectro...")
         callback_log(f"Ruta FM: {ruta_fm}")
         callback_log(f"Ruta TV: {ruta_tv}")
+        callback_log(f"Ruta AM: {ruta_am}")  # NUEVO
         callback_log(f"Ruta salida: {ruta_salida}")
     
     # Si no se proporcionan umbrales, usar los globales por defecto
@@ -1992,6 +2631,7 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
         umbrales = {
             "global": {
                 "FM": 60.0,
+                "AM": 45.0,  # NUEVO: Umbral para AM
                 "TV": {
                     "tipo": "general",
                     "valor": 45.0,
@@ -2010,22 +2650,23 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
     try:
         archivos_fm = {obtener_base(f): os.path.join(ruta_fm, f) for f in os.listdir(ruta_fm) if f.endswith(".csv")}
         archivos_tv = {obtener_base(f): os.path.join(ruta_tv, f) for f in os.listdir(ruta_tv) if f.endswith(".csv")}
+        archivos_am = {obtener_base(f): os.path.join(ruta_am, f) for f in os.listdir(ruta_am) if f.endswith(".csv")}  # NUEVO
         
         if callback_log:
-            callback_log(f"Encontrados {len(archivos_fm)} archivos FM y {len(archivos_tv)} archivos TV")
+            callback_log(f"Encontrados {len(archivos_fm)} archivos FM, {len(archivos_tv)} archivos TV y {len(archivos_am)} archivos AM")  # MODIFICADO
     except Exception as e:
         if callback_log:
             callback_log(f"Error al leer archivos: {str(e)}")
         resultado["error"] = f"Error al leer archivos: {str(e)}"
         return resultado
 
-    # Encontrar bases comunes entre FM y TV
+    # Encontrar bases comunes (para FM y TV)
     bases_comunes = set(archivos_fm.keys()).intersection(archivos_tv.keys())
     total_bases = len(bases_comunes)
     
     if total_bases == 0:
         if callback_log:
-            callback_log("No se encontraron bases comunes entre FM and TV")
+            callback_log("No se encontraron bases comunes entre FM y TV")
         resultado["error"] = "No se encontraron bases comunes entre FM y TV"
         return resultado
     
@@ -2034,12 +2675,12 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
     
     # Variables para tracking
     archivos_generados = []
-    todas_frecuencias_problematicas = {"FM": [], "TV": []}
+    todas_frecuencias_problematicas = {"FM": [], "TV": [], "AM": []}  # NUEVO: Agregar AM
     
     # Procesar cada base común
+    # En la función procesar_ocupacion, dentro del loop de bases_comunes:
     for i, base in enumerate(bases_comunes):
         if callback_progreso:
-            # Calcular progreso (0-100)
             progreso = int((i / total_bases) * 100)
             callback_progreso(progreso)
             
@@ -2047,24 +2688,81 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
             callback_log(f"Procesando base: {base}")
         
         try:
+            # VERIFICACIÓN DIAGNÓSTICA
+            if callback_log:
+                callback_log(f"🔍 Verificando archivos para {base}:")
+                callback_log(f"   FM: {'SÍ' if base in archivos_fm else 'NO'}")
+                callback_log(f"   TV: {'SÍ' if base in archivos_tv else 'NO'}")
+                callback_log(f"   AM: {'SÍ' if base in archivos_am else 'NO'}")
+            
             # Procesar archivos FM y TV
             datos_fm, base_fm = procesar_archivo_fm(archivos_fm[base], base)
             datos_tv, base_tv = procesar_archivo_tv(archivos_tv[base], base)
-
-            if datos_fm is None or datos_tv is None:
+            
+            # NUEVO: Procesar AM solo para Cuenca
+            datos_am = None
+            if base.lower() == "cuenca" and base in archivos_am:
                 if callback_log:
-                    callback_log(f"❌ No se pudieron procesar los datos para {base}")
-                continue
+                    callback_log(f"📻 Procesando archivo AM para Cuenca: {archivos_am[base]}")
+                datos_am, base_am = procesar_archivo_am(archivos_am[base], base)
+                if datos_am is not None and not datos_am.empty:
+                    if callback_log:
+                        callback_log(f"✅ Datos AM procesados para Cuenca: {len(datos_am)} frecuencias")
+                else:
+                    if callback_log:
+                        callback_log(f"⚠️  No se pudieron procesar datos AM para {base}")
+                    datos_am = pd.DataFrame(columns=[
+                        "Frecuencia (MHz)", "FECHA DE SUSCRIPCION", "Ocupación (%)",
+                        "Level (dBµV/m)", "Bandwidth (Hz)", "Offset (Hz)", "AM (%)", "Mes"
+                    ])
+            else:
+                datos_am = pd.DataFrame(columns=[
+                    "Frecuencia (MHz)", "FECHA DE SUSCRIPCION", "Ocupación (%)",
+                    "Level (dBµV/m)", "Bandwidth (Hz)", "Offset (Hz)", "AM (%)", "Mes"
+    ])
+            
 
+
+            # DIAGNÓSTICO DE DATOS
+            if callback_log:
+                callback_log(f"   Resultados FM: {'VÁLIDOS' if datos_fm is not None else 'NULOS/ERROR'}")
+                callback_log(f"   Resultados TV: {'VÁLIDOS' if datos_tv is not None else 'NULOS/ERROR'}")
+                if datos_fm is not None:
+                    callback_log(f"   Filas FM: {len(datos_fm)}")
+                if datos_tv is not None:
+                    callback_log(f"   Filas TV: {len(datos_tv)}")
+            
+            # NUEVO: Procesar AM solo para Cuenca
+           
+            # Permitir continuar si al menos uno de los dos tiene datos
+            if datos_fm is None:
+                if callback_log:
+                    callback_log(f"⚠️  No hay datos FM para {base}, continuando solo con TV")
+                # Crear datos FM vacíos pero con estructura correcta
+                datos_fm = pd.DataFrame(columns=[
+                    "Frecuencia (MHz)", "FECHA DE SUSCRIPCION", "Ocupación (%)",
+                    "Level (dBµV/m)", "Bandwidth (Hz)", "Offset (Hz)", "FM (kHz)", "Mes"
+                ])
+
+            if datos_tv is None:
+                if callback_log:
+                    callback_log(f"⚠️  No hay datos TV para {base}, continuando solo con FM")
+                # Crear datos TV vacíos pero con estructura correcta
+                datos_tv = pd.DataFrame(columns=[
+                    "Frecuencia (MHz)", "Banda", "Canal", "Ocupación (%)",
+                    "Level (dBµV/m)", "Bandwidth (Hz)", "Offset (Hz)", "AM (%)", "Mes"
+                ])
+            
             # Verificar que ambos archivos sean del mismo mes
             mes_fm = datos_fm["Mes"].iloc[0] if not datos_fm.empty else None
             mes_tv = datos_tv["Mes"].iloc[0] if not datos_tv.empty else None
+            mes_am = datos_am["Mes"].iloc[0] if datos_am is not None and not datos_am.empty else None  # NUEVO
 
             if mes_fm != mes_tv:
                 if callback_log:
                     callback_log(f"⚠️  Los archivos de {base} son de meses diferentes: FM={mes_fm}, TV={mes_tv}")
 
-            # Usar el mes de FM como referencia (or TV si FM no está disponible)
+            # Usar el mes de FM como referencia (o TV si FM no está disponible)
             mes_referencia = mes_fm if mes_fm is not None else mes_tv
 
             # Crear libro de Excel
@@ -2080,12 +2778,11 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
             # Variables para frecuencias problemáticas de esta base
             frecuencias_problematicas_fm = []
             frecuencias_problematicas_tv = []
+            frecuencias_problematicas_am = []  # NUEVO
 
             # Formatear hoja FM si hay datos
             if not datos_fm.empty:
-                # MODIFICACIÓN: Ahora formatear_hoja_ocupacion retorna las frecuencias problemáticas
                 frecuencias_problematicas_fm = formatear_hoja_ocupacion(ws_fm, datos_fm.drop(columns=["Mes"]), "FM", base)
-                todas_frecuencias_problematicas["FM"].extend(frecuencias_problematicas_fm)
             else:
                 if callback_log:
                     callback_log(f"⚠️  No hay datos FM para {base}")
@@ -2093,12 +2790,21 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
             # Crear hoja para TV
             ws_tv = wb.create_sheet("Datos TV")
             if not datos_tv.empty:
-                # MODIFICACIÓN: Ahora formatear_hoja_ocupacion retorna las frecuencias problemáticas
                 frecuencias_problematicas_tv = formatear_hoja_ocupacion(ws_tv, datos_tv.drop(columns=["Mes"]), "TV", base)
-                todas_frecuencias_problematicas["TV"].extend(frecuencias_problematicas_tv)
             else:
                 if callback_log:
                     callback_log(f"⚠️  No hay datos TV para {base}")
+
+            # NUEVO: Crear hoja para AM (solo para Cuenca)
+            if base.lower() == "cuenca" and datos_am is not None and not datos_am.empty:
+                ws_am = wb.create_sheet("Datos AM")
+                frecuencias_problematicas_am = formatear_hoja_ocupacion_am(ws_am, datos_am.drop(columns=["Mes"]), base)
+                todas_frecuencias_problematicas["AM"].extend(frecuencias_problematicas_am)
+                if callback_log:
+                    callback_log(f"✅ Hoja 'Datos AM' creada para {base}")
+            else:
+                if callback_log and base.lower() == "cuenca":
+                    callback_log(f"⚠️  No hay datos AM para {base}")
 
             # Crear hoja "DATOS Manual"
             wb = crear_hoja_datos_manual(wb)
@@ -2128,6 +2834,7 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
                 # Usar umbrales globales si no hay específicos para esta ciudad
                 umbrales_ciudad = umbrales.get("global", {
                     "FM": 60.0,
+                    "AM": 45.0,  # NUEVO
                     "TV": {
                         "tipo": "general",
                         "valor": 45.0,
@@ -2153,7 +2860,9 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
             archivos_generados.append(ruta_completa)
             
             # Log de frecuencias problemáticas para esta base
-            total_problematicas_base = len(frecuencias_problematicas_fm) + len(frecuencias_problematicas_tv)
+            total_problematicas_base = (len(frecuencias_problematicas_fm) + 
+                                      len(frecuencias_problematicas_tv) + 
+                                      len(frecuencias_problematicas_am))  # MODIFICADO
             if total_problematicas_base > 0 and callback_log:
                 callback_log(f"⚠️  {base}: {total_problematicas_base} frecuencias con ocupación 0%")
             
@@ -2167,7 +2876,9 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
             traceback.print_exc()
     
     # VERIFICAR SI HAY FRECUENCIAS PROBLEMÁTICAS EN TOTAL
-    total_problematicas = len(todas_frecuencias_problematicas["FM"]) + len(todas_frecuencias_problematicas["TV"])
+    total_problematicas = (len(todas_frecuencias_problematicas["FM"]) + 
+                          len(todas_frecuencias_problematicas["TV"]) + 
+                          len(todas_frecuencias_problematicas["AM"]))  # MODIFICADO
     
     if total_problematicas > 0:
         resultado["existen_problemas"] = True
