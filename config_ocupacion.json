@@ -1,6 +1,6 @@
 {
-    "fm_path": "/Users/mateobermeo/Desktop/Mediciones/Ocupacion_JulioCSV/FM",
-    "tv_path": "/Users/mateobermeo/Desktop/Mediciones/Ocupacion_JulioCSV/TV",
-    "ocupacion_output_path": "/Users/mateobermeo/Desktop/ProcesamientoDatosMensual/ReportesOcupacion",
-    "am_path": "/Users/mateobermeo/Desktop/Mediciones/Ocupacion_JulioCSV/AM"
+    "fm_path": "/Users/mateobermeo/Desktop/PRUEBAS_REPORTES/Julio_REPORTES/Ocupacion/FM",
+    "tv_path": "/Users/mateobermeo/Desktop/PRUEBAS_REPORTES/Julio_REPORTES/Ocupacion/TV",
+    "ocupacion_output_path": "/Users/mateobermeo/Desktop/PRUEBAS_REPORTES/Julio_REPORTES/ReportesOcupacion",
+    "am_path": "/Users/mateobermeo/Desktop/PRUEBAS_REPORTES/Julio_REPORTES/Ocupacion/AM"
 }

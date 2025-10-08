@@ -221,6 +221,11 @@ def insertar_umbrales_excel(archivo_excel, umbrales_ciudad):
             hoja_fm = workbook['Datos FM']
             # Umbral FM en K2
             hoja_fm['K2'] = umbrales_ciudad['FM']
+
+        if 'Datos AM' in workbook.sheetnames:
+            hoja_fm = workbook['Datos AM']
+            # Umbral AM en K2
+            hoja_fm['K2'] = umbrales_ciudad['AM']
         
         if 'Datos TV' in workbook.sheetnames:
             hoja_tv = workbook['Datos TV']
@@ -508,8 +513,8 @@ def enriquecer_nombre_estacion(nombre_original, info_spectra):
     nombre_enriquecido = " - ".join(partes)
     
     # Limitar la longitud si es muy largo
-    if len(nombre_enriquecido) > 100:
-        nombre_enriquecido = nombre_enriquecido[:97] + "..."
+    #if len(nombre_enriquecido) > 100:
+    #    nombre_enriquecido = nombre_enriquecido[:97] + "..."
     
     return nombre_enriquecido
 
@@ -2964,51 +2969,6 @@ def verificar_posicion_tablas(ws):
 
 # ------------------ FUNCIÓN PRINCIPAL DE PROCESAMIENTO ------------------
 
-# Agregar esta función al inicio del archivo, después de las importaciones
-def insertar_umbrales_excel(archivo_excel, umbrales_ciudad):
-    """
-    Inserta los umbrales en las posiciones específicas del archivo Excel
-    """
-    try:
-        import openpyxl
-        
-        # Abrir el archivo Excel
-        workbook = openpyxl.load_workbook(archivo_excel)
-        
-        # Insertar umbrales en las posiciones especificadas
-        if 'Datos FM' in workbook.sheetnames:
-            hoja_fm = workbook['Datos FM']
-            # Umbral FM en K2
-            hoja_fm['K2'] = umbrales_ciudad['FM']
-        
-        if 'Datos TV' in workbook.sheetnames:
-            hoja_tv = workbook['Datos TV']
-            
-            # Obtener configuración de TV
-            tv_config = umbrales_ciudad['TV']
-            
-            if tv_config['tipo'] == 'general':
-                # Umbral general para todas las bandas
-                umbral_general = tv_config['valor']
-                hoja_tv['L2'] = umbral_general   # Banda I-III
-                hoja_tv['L12'] = umbral_general  # Banda III
-                hoja_tv['L22'] = umbral_general  # Banda IV-V
-            else:
-                # Umbrales específicos por banda
-                valores_bandas = tv_config['valores']
-                hoja_tv['L2'] = valores_bandas.get('Banda I-III', 47.0)   # Banda I-III
-                hoja_tv['L12'] = valores_bandas.get('Banda III', 56.0)     # Banda III
-                hoja_tv['L22'] = valores_bandas.get('Banda IV-V', 64.0)    # Banda IV-V
-        
-        # Guardar los cambios
-        workbook.save(archivo_excel)
-        workbook.close()
-        
-        return True
-        
-    except Exception as e:
-        print(f"Error al insertar umbrales en {archivo_excel}: {e}")
-        return False
 
 # Modificar la función procesar_ocupacion para aceptar el parámetro umbrales
 def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None):
