@@ -159,6 +159,52 @@ def detectar_frecuencias_ocupacion_cero(ws, tipo, ciudad, resultados_estadistica
     
     return frecuencias_problematicas
 
+def construir_nombre_completo_spectra(info_spectra, nombre_original):
+    """
+    Construye el nombre completo usando la información de SPECTRA
+    Formato: "RED (NOMBRES) - ESTACION"
+    """
+    if not info_spectra:
+        return nombre_original
+    
+    red = info_spectra.get("RED", "").strip()
+    nombres = info_spectra.get("NOMBRES", "").strip()
+    estacion = info_spectra.get("ESTACION", "").strip()
+    
+    # Si no hay información adicional útil, mantener el nombre original
+    if not red and not nombres and not estacion:
+        return nombre_original
+    
+    partes = []
+    
+    # Agregar RED si existe
+    if red:
+        partes.append(red)
+    
+    # Agregar NOMBRES entre paréntesis si es diferente de RED
+    if nombres and nombres != red:
+        if partes:  # Si ya hay RED, poner NOMBRES entre paréntesis
+            partes[-1] = f"{partes[-1]} ({nombres})"
+        else:
+            partes.append(nombres)
+    
+    # Agregar ESTACION si existe y es diferente
+    if estacion and estacion not in nombres and estacion not in red:
+        partes.append(estacion)
+    
+    # Si no hay partes después del procesamiento, mantener original
+    if not partes:
+        return nombre_original
+    
+    nombre_completo = " - ".join(partes)
+    
+    # Limitar la longitud si es muy largo
+    #if len(nombre_completo) > 100:
+    #    nombre_completo = nombre_completo[:97] + "..."
+    
+    return nombre_completo
+
+
 
 def insertar_umbrales_excel(archivo_excel, umbrales_ciudad):
     """
@@ -205,16 +251,332 @@ def insertar_umbrales_excel(archivo_excel, umbrales_ciudad):
         print(f"Error al insertar umbrales en {archivo_excel}: {e}")
         return False
 
-def crear_hoja_datos_manual(wb):
+
+
+###############----------------SPECTRA---------------####################
+def extraer_ciudad_desde_nombre_archivo(nombre_archivo):
+    """
+    Extrae el nombre de la ciudad desde el nombre del archivo Excel
+    Ejemplo: 'SCS-L01_OcupacionZamora_Octubre2025.xlsx' -> 'zamora'
+    """
+    nombre_archivo = nombre_archivo.lower()
+    
+    # Mapeo de códigos a ciudades
+    codigo_ciudad_map = {
+        "scs-l01": "zamora",
+        "scs-l02": "loja", 
+        "scs-l03": "tambo",
+        "scs-l04": "macas",
+        "scc-l04": "machala",
+        "scs-l05": "cuenca"
+    }
+    
+    # Buscar por código primero
+    for codigo, ciudad in codigo_ciudad_map.items():
+        if codigo in nombre_archivo:
+            print(f"🔍 Ciudad detectada por código {codigo}: {ciudad}")
+            return ciudad
+    
+    # Buscar por nombre de ciudad directamente en el patrón _Ocupacion[Ciudad]_
+    import re
+    patron_ocupacion = re.search(r'_ocupacion([a-z]+)_', nombre_archivo)
+    if patron_ocupacion:
+        ciudad_encontrada = patron_ocupacion.group(1)
+        print(f"🔍 Ciudad detectada por patrón Ocupacion: {ciudad_encontrada}")
+        return ciudad_encontrada
+    
+    # Buscar por nombre de ciudad directamente
+    ciudades_conocidas = ["zamora", "loja", "macas", "tambo", "machala", "cuenca"]
+    for ciudad in ciudades_conocidas:
+        if ciudad in nombre_archivo:
+            print(f"🔍 Ciudad detectada por nombre directo: {ciudad}")
+            return ciudad
+    
+    print(f"⚠️  No se pudo detectar ciudad desde: {nombre_archivo}")
+    return "desconocida"
+
+
+def obtener_ciudades_spectra_disponibles():
+    """
+    Obtiene la lista de ciudades disponibles en el directorio SPECTRA_Filtrado
+    """
+    try:
+        directorio_spectra = "SPECTRA_Filtrado"
+        if not os.path.exists(directorio_spectra):
+            print(f"⚠️  Directorio {directorio_spectra} no existe")
+            return []
+        
+        archivos_spectra = [f for f in os.listdir(directorio_spectra) if f.endswith('_spectra.json')]
+        ciudades = [f.replace('_spectra.json', '') for f in archivos_spectra]
+        
+        print(f"🏙️  Ciudades disponibles en SPECTRA: {ciudades}")
+        return ciudades
+    except Exception as e:
+        print(f"❌ Error al listar ciudades SPECTRA: {e}")
+        return []
+
+
+
+
+
+
+
+
+
+
+
+def cargar_datos_spectra(ciudad):
+    """
+    Carga los datos adicionales del archivo spectra JSON para una ciudad específica
+    con manejo mejorado de errores
+    """
+    try:
+        # Normalizar nombre de ciudad
+        ciudad = ciudad.lower().strip()
+        ruta_spectra = os.path.join("SPECTRA_Filtrado", f"{ciudad}_spectra.json")
+        
+        if not os.path.exists(ruta_spectra):
+            # Intentar con variaciones del nombre
+            variaciones = [
+                ciudad,
+                ciudad.replace(' ', '_'),
+                ciudad.replace('-', '_'),
+                ciudad.title(),
+                ciudad.upper()
+            ]
+            
+            for variacion in variaciones:
+                ruta_alternativa = os.path.join("SPECTRA_Filtrado", f"{variacion}_spectra.json")
+                if os.path.exists(ruta_alternativa):
+                    ruta_spectra = ruta_alternativa
+                    print(f"✅ Encontrado archivo spectra con variación: {variacion}")
+                    break
+        
+        if not os.path.exists(ruta_spectra):
+            print(f"⚠️  No se encontró archivo spectra para {ciudad}: {ruta_spectra}")
+            # Mostrar qué archivos sí existen
+            directorio = "SPECTRA_Filtrado"
+            if os.path.exists(directorio):
+                archivos = [f for f in os.listdir(directorio) if f.endswith('_spectra.json')]
+                print(f"   Archivos disponibles: {archivos}")
+            return []
+        
+        with open(ruta_spectra, 'r', encoding='utf-8') as f:
+            datos_spectra = json.load(f)
+        
+        print(f"✅ Datos spectra cargados para {ciudad}: {len(datos_spectra)} registros")
+        return datos_spectra
+        
+    except Exception as e:
+        print(f"❌ Error cargando datos spectra para {ciudad}: {e}")
+        return []
+    
+def verificar_archivos_spectra():
+    """
+    Verifica qué archivos spectra están disponibles
+    """
+    directorio = "SPECTRA_Filtrado"
+    if not os.path.exists(directorio):
+        print(f"❌ El directorio {directorio} no existe")
+        return
+    
+    archivos = [f for f in os.listdir(directorio) if f.endswith('_spectra.json')]
+    print("=== ARCHIVOS SPECTRA DISPONIBLES ===")
+    for archivo in archivos:
+        ciudad = archivo.replace('_spectra.json', '')
+        ruta_completa = os.path.join(directorio, archivo)
+        tamaño = os.path.getsize(ruta_completa)
+        print(f"📍 {ciudad}: {archivo} ({tamaño} bytes)")
+    
+def buscar_info_spectra_por_frecuencia(datos_spectra, frecuencia, tipo, tolerancia=0.1):
+    """
+    Busca información adicional en los datos spectra por frecuencia y tipo
+    con los mismos criterios de tolerancia que buscar_emisora_por_frecuencia
+    """
+    if not datos_spectra:
+        return None
+    
+    # Mapear tipos internos a tipos del spectra
+    tipo_spectra_map = {
+        "FM": "FM - Frecuencia Modulada",
+        "AM": "AM - Amplitud Modulada", 
+        "TV": "TV - Televisión Abierta"
+    }
+    
+    tipo_buscar = tipo_spectra_map.get(tipo, tipo)
+    
+    # CASO ESPECÍFICO PARA AM - TOLERANCIAS MÁS ESTRICTAS (igual que buscar_emisora_por_frecuencia)
+    if tipo == "AM":
+        # Para AM: coincidencia exacta muy estricta primero
+        for registro in datos_spectra:
+            registro_servicio = registro.get("SERVICIO", "")
+            registro_frecuencia = registro.get("FRECUENCIA", 0)
+            
+            if registro_servicio == tipo_buscar:
+                try:
+                    if abs(registro_frecuencia - frecuencia) <= 0.001:  # Coincidencia muy exacta (0.001 MHz)
+                        return registro
+                except (ValueError, TypeError):
+                    continue
+        
+        # Luego buscar con tolerancia muy reducida
+        for registro in datos_spectra:
+            registro_servicio = registro.get("SERVICIO", "")
+            registro_frecuencia = registro.get("FRECUENCIA", 0)
+            
+            if registro_servicio == tipo_buscar:
+                try:
+                    if abs(registro_frecuencia - frecuencia) <= 0.005:  # Tolerancia muy reducida (0.005 MHz)
+                        return registro
+                except (ValueError, TypeError):
+                    continue
+        
+        return None
+    
+    else:
+        # PARA FM Y TV - MANTENER TOLERANCIAS ORIGINALES
+        # Buscar coincidencia exacta primero
+        for registro in datos_spectra:
+            registro_servicio = registro.get("SERVICIO", "")
+            registro_frecuencia = registro.get("FRECUENCIA", 0)
+            
+            if registro_servicio == tipo_buscar:
+                try:
+                    if abs(registro_frecuencia - frecuencia) <= 0.01:  # Coincidencia exacta (0.01 MHz)
+                        return registro
+                except (ValueError, TypeError):
+                    continue
+        
+        # Luego buscar con tolerancia normal
+        for registro in datos_spectra:
+            registro_servicio = registro.get("SERVICIO", "")
+            registro_frecuencia = registro.get("FRECUENCIA", 0)
+            
+            if registro_servicio == tipo_buscar:
+                try:
+                    if abs(registro_frecuencia - frecuencia) <= tolerancia:  # Tolerancia normal (0.1 MHz por defecto)
+                        return registro
+                except (ValueError, TypeError):
+                    continue
+    
+    return None
+
+def enriquecer_nombre_estacion(nombre_original, info_spectra):
+    """
+    Enriquece el nombre de la estación con información adicional del spectra
+    Formato: "RED (NOMBRES) - ESTACION"
+    """
+    if not info_spectra:
+        return nombre_original
+    
+    red = info_spectra.get("RED", "").strip()
+    nombres = info_spectra.get("NOMBRES", "").strip()
+    estacion = info_spectra.get("ESTACION", "").strip()
+    
+    # Si no hay información adicional útil, mantener el nombre original
+    if not red and not nombres and not estacion:
+        return nombre_original
+    
+    # Si el nombre original ya contiene esta información, no duplicar
+    nombre_original_lower = nombre_original.lower()
+    if (red and red.lower() in nombre_original_lower) or \
+       (nombres and nombres.lower() in nombre_original_lower) or \
+       (estacion and estacion.lower() in nombre_original_lower):
+        return nombre_original
+    
+    partes = []
+    
+    # Agregar RED si existe y es diferente de nombres
+    if red and red != nombres:
+        partes.append(red)
+    
+    # Agregar NOMBRES entre paréntesis si es diferente de RED
+    if nombres and nombres != red:
+        if partes:  # Si ya hay RED, poner NOMBRES entre paréntesis
+            partes[-1] = f"{partes[-1]} ({nombres})"
+        else:
+            partes.append(nombres)
+    
+    # Agregar ESTACION si existe y es diferente
+    if estacion and estacion not in nombres and estacion not in red:
+        partes.append(estacion)
+    
+    # Si no hay partes después del procesamiento, mantener original
+    if not partes:
+        return nombre_original
+    
+    nombre_enriquecido = " - ".join(partes)
+    
+    # Limitar la longitud si es muy largo
+    if len(nombre_enriquecido) > 100:
+        nombre_enriquecido = nombre_enriquecido[:97] + "..."
+    
+    return nombre_enriquecido
+
+def crear_hoja_datos_manual(wb, nombre_archivo_excel=None):
     """
     Crea la hoja 'DATOS Manual' con resumen de frecuencias autorizadas, no autorizadas
     y en observación para FM, TV y AM, extrayendo datos de las hojas existentes.
+    Ahora enriquece los nombres con información adicional del spectra.
     """
     # Verificar si las hojas de datos existen
     hojas_existentes = [hoja for hoja in ["Datos FM", "Datos TV", "Datos AM"] if hoja in wb.sheetnames]
     if not hojas_existentes:
         print("⚠️  No se encontraron hojas de datos")
         return wb
+    
+    # CORRECCIÓN: Inicializar ciudad primero
+    ciudad = "desconocida"  # <-- INICIALIZAR AQUÍ
+
+    # Opción 1: Desde el nombre del archivo Excel (más confiable)
+    if nombre_archivo_excel:
+        ciudad = extraer_ciudad_desde_nombre_archivo(nombre_archivo_excel)
+        print(f"🔍 Ciudad detectada desde nombre archivo: {ciudad}")
+    
+    # Opción 2: Buscar en las hojas (como respaldo)
+    if ciudad == "desconocida":
+        for nombre_hoja in wb.sheetnames:
+            if "Datos FM" in nombre_hoja or "Datos TV" in nombre_hoja or "Datos AM" in nombre_hoja:
+                try:
+                    ws_temp = wb[nombre_hoja]
+                    for fila in range(2, min(10, ws_temp.max_row + 1)):
+                        estacion_celda = ws_temp.cell(row=fila, column=2)
+                        if estacion_celda.value:
+                            ciudades_conocidas = ["cuenca", "zamora", "loja", "macas", "tambo", "machala"]
+                            for ciudad_temp in ciudades_conocidas:
+                                if ciudad_temp in str(estacion_celda.value).lower():
+                                    ciudad = ciudad_temp
+                                    break
+                        if ciudad != "desconocida":
+                            break
+                except:
+                    pass
+    
+    # Opción 3: Mostrar ciudades disponibles y usar la primera
+    if ciudad == "desconocida":
+        ciudades_disponibles = obtener_ciudades_spectra_disponibles()
+        if ciudades_disponibles:
+            ciudad = ciudades_disponibles[0]  # Usar la primera disponible
+            print(f"⚠️  Usando primera ciudad disponible: {ciudad}")
+        else:
+            print("❌ No se pudo determinar la ciudad y no hay archivos SPECTRA disponibles")
+            return wb
+    
+    print(f"🔍 Ciudad final para enriquecimiento: {ciudad}")
+
+
+    # Cargar datos spectra para la ciudad
+    datos_spectra = cargar_datos_spectra(ciudad)
+    print(f"🔍 Cargados {len(datos_spectra)} registros spectra para {ciudad}")
+    
+
+
+    # Debug: mostrar algunos registros spectra para TV
+    if datos_spectra:
+        print("📺 Muestra de registros SPECTRA para TV:")
+        tv_registros = [r for r in datos_spectra if r.get("SERVICIO") == "TV - Televisión Abierta"]
+        for i, registro in enumerate(tv_registros[:5]):
+            print(f"   {i+1}. Frec: {registro.get('FRECUENCIA')} - RED: '{registro.get('RED')}' - NOMBRES: '{registro.get('NOMBRES')}' - ESTACION: '{registro.get('ESTACION')}'")
     
     # Crear o limpiar hoja existente
     if "DATOS Manual" in wb.sheetnames:
@@ -224,7 +586,7 @@ def crear_hoja_datos_manual(wb):
     else:
         ws_manual = wb.create_sheet("DATOS Manual")
     
-    # Definir estilos y colores
+    # Definir estilos y colores (mantener igual)
     color_titulo_principal = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
     color_subtitulo = PatternFill(start_color="BFBFBF", end_color="BFBFBF", fill_type="solid")
     color_encabezado = PatternFill(start_color="95B3D7", end_color="95B3D7", fill_type="solid")
@@ -278,7 +640,7 @@ def crear_hoja_datos_manual(wb):
     celda_tv.font = fuente_subtitulo
     celda_tv.alignment = alineacion_centro
     
-    # Obtener datos de FM
+    # Obtener datos de FM (MODIFICADO: incluir frecuencia para el enriquecimiento)
     datos_fm_autorizadas = []
     datos_fm_no_autorizadas = []
     datos_fm_observacion = []
@@ -290,18 +652,35 @@ def crear_hoja_datos_manual(wb):
             frecuencia = ws_fm.cell(row=fila, column=1).value
             color_celda = ws_fm.cell(row=fila, column=2).fill
             
-            if estacion and "_OBSERVACION" in estacion:
-                estacion = estacion.replace("_OBSERVACION", "").strip()
-            
+            estacion_original = estacion
+        
             if estacion and frecuencia:
+                # Buscar información adicional en spectra
+                info_spectra = buscar_info_spectra_por_frecuencia(datos_spectra, frecuencia, "FM")
+                
+                # DEBUG: Mostrar información de spectra encontrada
+                if info_spectra:
+                    print(f"✅ SPECTRA encontrado para {frecuencia} MHz:")
+                    print(f"   RED: '{info_spectra.get('RED', '')}'")
+                    print(f"   NOMBRES: '{info_spectra.get('NOMBRES', '')}'")
+                    print(f"   ESTACION: '{info_spectra.get('ESTACION', '')}'")
+                
+                # Construir nombre enriquecido con el formato deseado
+                nombre_enriquecido = construir_nombre_completo_spectra(info_spectra, estacion_original)
+                
+                # DEBUG: Comparar nombres
+                if nombre_enriquecido != estacion_original:
+                    print(f"🔄 Nombre enriquecido: '{estacion_original}' -> '{nombre_enriquecido}'")
+                
+                # Clasificar según el color (usando el nombre original para la clasificación)
                 if color_celda.start_color.index == VERDE.start_color.index:
-                    datos_fm_autorizadas.append((frecuencia, estacion))
+                    datos_fm_autorizadas.append((frecuencia, nombre_enriquecido))  # Guardar nombre enriquecido
                 elif color_celda.start_color.index == ROJO.start_color.index:
-                    datos_fm_no_autorizadas.append((frecuencia, estacion))
+                    datos_fm_no_autorizadas.append((frecuencia, nombre_enriquecido))  # Guardar nombre enriquecido
                 elif color_celda.start_color.index == AMARILLO.start_color.index:
-                    datos_fm_observacion.append((frecuencia, estacion))
+                    datos_fm_observacion.append((frecuencia, nombre_enriquecido))  # Guardar nombre enriquecido
     
-    # Obtener datos de AM
+    # Obtener datos de AM (MODIFICADO: incluir frecuencia para el enriquecimiento)
     datos_am_autorizadas = []
     datos_am_no_autorizadas = []
     datos_am_observacion = []
@@ -313,22 +692,46 @@ def crear_hoja_datos_manual(wb):
             frecuencia = ws_am.cell(row=fila, column=1).value
             color_celda = ws_am.cell(row=fila, column=2).fill
             
-            if estacion and "_OBSERVACION" in estacion:
-                estacion = estacion.replace("_OBSERVACION", "").strip()
-            
+            estacion_original = estacion
+        
             if estacion and frecuencia:
+                # Buscar información adicional en spectra
+                info_spectra = buscar_info_spectra_por_frecuencia(datos_spectra, frecuencia, "AM")
+                
+                # DEBUG: Mostrar información de spectra encontrada
+                if info_spectra:
+                    print(f"✅ SPECTRA encontrado para {frecuencia} MHz:")
+                    print(f"   RED: '{info_spectra.get('RED', '')}'")
+                    print(f"   NOMBRES: '{info_spectra.get('NOMBRES', '')}'")
+                    print(f"   ESTACION: '{info_spectra.get('ESTACION', '')}'")
+                
+                # Construir nombre enriquecido con el formato deseado
+                nombre_enriquecido = construir_nombre_completo_spectra(info_spectra, estacion_original)
+                
+                # DEBUG: Comparar nombres
+                if nombre_enriquecido != estacion_original:
+                    print(f"🔄 Nombre enriquecido: '{estacion_original}' -> '{nombre_enriquecido}'")
+                
+                # Clasificar según el color (usando el nombre original para la clasificación)
                 if color_celda.start_color.index == VERDE.start_color.index:
-                    datos_am_autorizadas.append((frecuencia, estacion))
+                    datos_am_autorizadas.append((frecuencia, nombre_enriquecido))  # Guardar nombre enriquecido
                 elif color_celda.start_color.index == ROJO.start_color.index:
-                    datos_am_no_autorizadas.append((frecuencia, estacion))
+                    datos_am_no_autorizadas.append((frecuencia, nombre_enriquecido))  # Guardar nombre enriquecido
                 elif color_celda.start_color.index == AMARILLO.start_color.index:
-                    datos_am_observacion.append((frecuencia, estacion))
+                    datos_am_observacion.append((frecuencia, nombre_enriquecido))  # Guardar nombre enriquecido
+
     
-    # Obtener datos de TV
+    # Obtener datos de TV (MODIFICADO: incluir frecuencia para el enriquecimiento)
     datos_tv_autorizadas = []
     datos_tv_no_autorizadas = []
     datos_tv_observacion = []
-    
+    # Debug inicial de SPECTRA
+    print(f"=== DEBUG SPECTRA PARA {ciudad} ===")
+    print(f"Total registros SPECTRA: {len(datos_spectra)}")
+    tv_spectra = [r for r in datos_spectra if r.get("SERVICIO") == "TV - Televisión Abierta"]
+    print(f"Registros TV en SPECTRA: {len(tv_spectra)}")
+    for i, reg in enumerate(tv_spectra[:3]):
+        print(f"  {i+1}. Frec: {reg.get('FRECUENCIA')} - RED: '{reg.get('RED')}'")
     if "Datos TV" in wb.sheetnames:
         ws_tv = wb["Datos TV"]
         for fila in range(2, ws_tv.max_row + 1):
@@ -336,17 +739,39 @@ def crear_hoja_datos_manual(wb):
             frecuencia = ws_tv.cell(row=fila, column=1).value
             color_celda = ws_tv.cell(row=fila, column=2).fill
             
-            if estacion and "_OBSERVACION" in estacion:
-                estacion = estacion.replace("_OBSERVACION", "").strip()
             
+                
+            estacion_original = estacion
+        
             if estacion and frecuencia:
+                # Buscar información adicional en spectra
+                info_spectra = buscar_info_spectra_por_frecuencia(datos_spectra, frecuencia, "TV")
+                
+                # DEBUG: Mostrar información de spectra encontrada
+                if info_spectra:
+                    print(f"✅ SPECTRA encontrado para {frecuencia} MHz:")
+                    print(f"   RED: '{info_spectra.get('RED', '')}'")
+                    print(f"   NOMBRES: '{info_spectra.get('NOMBRES', '')}'")
+                    print(f"   ESTACION: '{info_spectra.get('ESTACION', '')}'")
+                
+                # Construir nombre enriquecido con el formato deseado
+                nombre_enriquecido = construir_nombre_completo_spectra(info_spectra, estacion_original)
+                
+                # DEBUG: Comparar nombres
+                if nombre_enriquecido != estacion_original:
+                    print(f"🔄 Nombre enriquecido: '{estacion_original}' -> '{nombre_enriquecido}'")
+                
+                # Clasificar según el color (usando el nombre original para la clasificación)
                 if color_celda.start_color.index == VERDE.start_color.index:
-                    datos_tv_autorizadas.append((frecuencia, estacion))
+                    datos_tv_autorizadas.append((frecuencia, nombre_enriquecido))  # Guardar nombre enriquecido
                 elif color_celda.start_color.index == ROJO.start_color.index:
-                    datos_tv_no_autorizadas.append((frecuencia, estacion))
+                    datos_tv_no_autorizadas.append((frecuencia, nombre_enriquecido))  # Guardar nombre enriquecido
                 elif color_celda.start_color.index == AMARILLO.start_color.index:
-                    datos_tv_observacion.append((frecuencia, estacion))
-    
+                    datos_tv_observacion.append((frecuencia, nombre_enriquecido))  # Guardar nombre enriquecido
+                
+
+
+
     # --- SECCIÓN FM (Columnas A-C) ---
     fila_actual = 3
     
@@ -399,7 +824,7 @@ def crear_hoja_datos_manual(wb):
         celda.alignment = alineacion_centro
         celda.border = borde_fino
     
-    # Insertar datos FM
+    # Insertar datos FM (ahora con nombres enriquecidos)
     fila_actual_fm = fila_detalle_fm + 1
     for frecuencia, estacion in datos_fm_autorizadas:
         ws_manual[f'A{fila_actual_fm}'] = "AUTORIZADA"
@@ -498,7 +923,7 @@ def crear_hoja_datos_manual(wb):
         celda.alignment = alineacion_centro
         celda.border = borde_fino
     
-    # Insertar datos AM
+    # Insertar datos AM (ahora con nombres enriquecidos)
     fila_actual_am_detalle = fila_detalle_am + 1
     for frecuencia, estacion in datos_am_autorizadas:
         ws_manual[f'E{fila_actual_am_detalle}'] = "AUTORIZADA"
@@ -597,7 +1022,7 @@ def crear_hoja_datos_manual(wb):
         celda.alignment = alineacion_centro
         celda.border = borde_fino
     
-    # Insertar datos TV
+    # Insertar datos TV (ahora con nombres enriquecidos)
     fila_actual_tv_detalle = fila_detalle_tv + 1
     for frecuencia, estacion in datos_tv_autorizadas:
         ws_manual[f'I{fila_actual_tv_detalle}'] = "AUTORIZADA"
@@ -644,16 +1069,18 @@ def crear_hoja_datos_manual(wb):
                 celda.alignment = alineacion_centro
         fila_actual_tv_detalle += 1
     
-    # Ajustar anchos de columnas
+    # Ajustar anchos de columnas (aumentar ancho de columna ESTACION para nombres más largos)
     ws_manual.column_dimensions['A'].width = 20
     ws_manual.column_dimensions['B'].width = 15
-    ws_manual.column_dimensions['C'].width = 25
+    ws_manual.column_dimensions['C'].width = 40  # Aumentado para nombres enriquecidos
     ws_manual.column_dimensions['E'].width = 20
     ws_manual.column_dimensions['F'].width = 15
-    ws_manual.column_dimensions['G'].width = 25
+    ws_manual.column_dimensions['G'].width = 40  # Aumentado para nombres enriquecidos
     ws_manual.column_dimensions['I'].width = 20
     ws_manual.column_dimensions['J'].width = 15
-    ws_manual.column_dimensions['K'].width = 25
+    ws_manual.column_dimensions['K'].width = 40  # Aumentado para nombres enriquecidos
+    
+    print(f"✅ Hoja 'DATOS Manual' creada con nombres enriquecidos para {ciudad}")
     
     return wb
 
@@ -2806,12 +3233,7 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
                 if callback_log and base.lower() == "cuenca":
                     callback_log(f"⚠️  No hay datos AM para {base}")
 
-            # Crear hoja "DATOS Manual"
-            wb = crear_hoja_datos_manual(wb)
             
-            # Eliminar hoja por defecto si existe
-            if "Sheet" in wb.sheetnames and wb.sheetnames[0] == "Sheet":
-                del wb["Sheet"]
             
             # Generar nombre de archivo
             codigo_base = obtener_codigo_base(base)
@@ -2820,6 +3242,16 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
             nombre_ciudad = normalizar_nombre_ciudad(base)
             nombre_mes_completo = obtener_nombre_mes_es(mes_referencia) if mes_referencia else "Desconocido"
             nombre_salida = f"{codigo_base}_Ocupacion{nombre_ciudad}_{nombre_mes_completo}2025.xlsx"
+
+
+            # Crear hoja "DATOS Manual"
+            wb = crear_hoja_datos_manual(wb,nombre_salida)
+            
+            # Eliminar hoja por defecto si existe
+            if "Sheet" in wb.sheetnames and wb.sheetnames[0] == "Sheet":
+                del wb["Sheet"]
+
+
             ruta_completa = os.path.join(ruta_salida, nombre_salida)
             
             # Guardar archivo
