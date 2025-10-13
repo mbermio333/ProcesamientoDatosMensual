@@ -1076,7 +1076,7 @@ class AdvertenciaOcupacionCeroDialog(QDialog):
         self.frecuencias_cero = frecuencias_cero
         self.setWindowTitle("Advertencia - Frecuencias con Ocupación 0%")
         self.setModal(True)
-        self.setMinimumSize(800, 500)
+        self.setMinimumSize(900, 500)  # Aumentar un poco el ancho
         self.initUI()
         
     def initUI(self):
@@ -1084,8 +1084,7 @@ class AdvertenciaOcupacionCeroDialog(QDialog):
         
         # Mensaje de advertencia
         mensaje_label = QLabel(
-            "Se han detectado frecuencias autorizadas o no autorizadas con ocupación = 0%.\nLos porcentajes obtenidos podrian ser inconsistentes.\nSe recomienda reconsiderar el umbral.\n"
-            #"Los archivos Excel han sido generados. ¿Qué desea hacer?"
+            "Se han detectado frecuencias autorizadas o no autorizadas con ocupación = 0%.\nLos porcentajes obtenidos podrían ser inconsistentes.\nSe recomienda reconsiderar el umbral."
         )
         mensaje_label.setStyleSheet("font-weight: bold; color: #d32f2f; font-size: 12pt;")
         mensaje_label.setAlignment(Qt.AlignCenter)
@@ -1099,7 +1098,7 @@ class AdvertenciaOcupacionCeroDialog(QDialog):
         info_label.setStyleSheet("color: #666; font-size: 10pt; margin: 10px;")
         layout.addWidget(info_label)
         
-        # Tabla de frecuencias con ocupación 0%
+        # Tabla de frecuencias con ocupación 0% - ACTUALIZADA PARA INCLUIR AM
         if self.frecuencias_cero:
             tabla_label = QLabel("Frecuencias detectadas con ocupación 0%:")
             tabla_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
@@ -1118,11 +1117,15 @@ class AdvertenciaOcupacionCeroDialog(QDialog):
             header.setSectionResizeMode(QHeaderView.ResizeToContents)
             header.setStretchLastSection(True)
             
-            # Llenar tabla con datos
+            # Llenar tabla con datos - AHORA INCLUYE AM
             for row, frecuencia in enumerate(self.frecuencias_cero):
                 self.tabla.setItem(row, 0, QTableWidgetItem(frecuencia.get('ciudad', '')))
                 self.tabla.setItem(row, 1, QTableWidgetItem(frecuencia.get('estacion', '')))
-                self.tabla.setItem(row, 2, QTableWidgetItem(frecuencia.get('tipo', '')))
+                
+                # Mostrar tipo (FM, TV, AM)
+                tipo = frecuencia.get('tipo', '')
+                self.tabla.setItem(row, 2, QTableWidgetItem(tipo))
+                
                 self.tabla.setItem(row, 3, QTableWidgetItem(str(frecuencia.get('frecuencia', ''))))
                 self.tabla.setItem(row, 4, QTableWidgetItem(str(frecuencia.get('ocupacion', ''))))
                 self.tabla.setItem(row, 5, QTableWidgetItem(str(frecuencia.get('level', ''))))
@@ -2964,7 +2967,7 @@ class MainWindow(QMainWindow):
                 self.ocupacion_tab.status_label.setText("Procesamiento detenido")
     
     def processing_finished(self, resultado, mode):
-        """Manejar la finalización del procesamiento - MODIFICADA"""
+        """Manejar la finalización del procesamiento - CON DIAGNÓSTICO MEJORADO"""
         if mode == "procesamiento":
             tab = self.procesamiento_tab
             # Manejo normal para procesamiento (resultado es booleano)
@@ -2985,6 +2988,16 @@ class MainWindow(QMainWindow):
             
             # resultado ahora es un diccionario
             if isinstance(resultado, dict):
+                # DIAGNÓSTICO DETALLADO
+                self.log_message("=== DIAGNÓSTICO DE RESULTADOS ===", mode)
+                self.log_message(f"Existen problemas: {resultado.get('existen_problemas', False)}", mode)
+                self.log_message(f"Error: {resultado.get('error', 'Ninguno')}", mode)
+                
+                datos_problematicos = resultado.get("datos", {})
+                for tipo in ["FM", "TV", "AM"]:
+                    count = len(datos_problematicos.get(tipo, []))
+                    self.log_message(f"Frecuencias {tipo} problemáticas: {count}", mode)
+                
                 if resultado.get("error"):
                     # Error en el procesamiento
                     tab.status_label.setText("Procesamiento falló")
@@ -3006,18 +3019,45 @@ class MainWindow(QMainWindow):
                 # Fallback para compatibilidad
                 tab.status_label.setText("Procesamiento completado")
                 self.log_message("Procesamiento completado", mode)
+
+
+    def verificar_archivo_advertencia(self):
+        """Verificar si el archivo de advertencia se está generando correctamente"""
+        archivo_advertencia = "AdvertenciaOcup.json"
+        if os.path.exists(archivo_advertencia):
+            try:
+                with open(archivo_advertencia, 'r', encoding='utf-8') as f:
+                    datos = json.load(f)
+                    self.log_message("=== CONTENIDO ARCHIVO ADVERTENCIA ===", "ocupacion")
+                    self.log_message(f"Total frecuencias: {datos.get('total_frecuencias_problematicas', 0)}", "ocupacion")
+                    self.log_message(f"FM: {len(datos.get('frecuencias_fm', []))}", "ocupacion")
+                    self.log_message(f"TV: {len(datos.get('frecuencias_tv', []))}", "ocupacion")
+                    self.log_message(f"AM: {len(datos.get('frecuencias_am', []))}", "ocupacion")
+            except Exception as e:
+                self.log_message(f"Error leyendo archivo advertencia: {e}", "ocupacion")
+        else:
+            self.log_message("Archivo de advertencia no encontrado", "ocupacion")
+
+
+
     def mostrar_advertencia_ocupacion_cero(self, resultado):
-        """Mostrar diálogo de advertencia para frecuencias con ocupación 0%"""
+        """Mostrar diálogo de advertencia para frecuencias con ocupación 0% - ACTUALIZADA PARA AM"""
+        self.verificar_archivo_advertencia()
         datos_problematicos = resultado.get("datos", {})
         archivos_generados = resultado.get("archivos_generados", [])
         
-        # Preparar datos para el diálogo
+        # Preparar datos para el diálogo - AHORA INCLUYE AM
         todas_frecuencias = []
-        for tipo in ["FM", "TV"]:
-            todas_frecuencias.extend(datos_problematicos.get(tipo, []))
+        for tipo in ["FM", "TV", "AM"]:  # ← MODIFICADO: Incluir AM
+            frecuencias_tipo = datos_problematicos.get(tipo, [])
+            self.log_message(f"📊 {tipo}: {len(frecuencias_tipo)} frecuencias problemáticas", "ocupacion")
+            todas_frecuencias.extend(frecuencias_tipo)
         
         if not todas_frecuencias:
+            self.log_message("No se encontraron frecuencias problemáticas", "ocupacion")
             return
+        
+        self.log_message(f"📋 Total frecuencias problemáticas: {len(todas_frecuencias)}", "ocupacion")
         
         # Crear y mostrar diálogo
         dialog = AdvertenciaOcupacionCeroDialog(todas_frecuencias, self)

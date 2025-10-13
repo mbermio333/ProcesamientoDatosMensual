@@ -58,12 +58,17 @@ def guardar_advertencia_ocupacion_cero(datos_problematicos, ruta_salida):
     try:
         archivo_advertencia = os.path.join(ruta_salida, "AdvertenciaOcup.json")
         
-        # Preparar datos para JSON
+        # Preparar datos para JSON - ACTUALIZADO PARA INCLUIR AM
         datos_json = {
             "fecha_generacion": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "total_frecuencias_problematicas": len(datos_problematicos.get("FM", [])) + len(datos_problematicos.get("TV", [])),
+            "total_frecuencias_problematicas": (
+                len(datos_problematicos.get("FM", [])) + 
+                len(datos_problematicos.get("TV", [])) +
+                len(datos_problematicos.get("AM", []))  # ← NUEVO: Incluir AM
+            ),
             "frecuencias_fm": datos_problematicos.get("FM", []),
-            "frecuencias_tv": datos_problematicos.get("TV", [])
+            "frecuencias_tv": datos_problematicos.get("TV", []),
+            "frecuencias_am": datos_problematicos.get("AM", [])  # ← NUEVO: Incluir AM
         }
         
         with open(archivo_advertencia, 'w', encoding='utf-8') as f:
@@ -3170,6 +3175,7 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
             # Formatear hoja FM si hay datos
             if not datos_fm.empty:
                 frecuencias_problematicas_fm = formatear_hoja_ocupacion(ws_fm, datos_fm.drop(columns=["Mes"]), "FM", base)
+                todas_frecuencias_problematicas["FM"].extend(frecuencias_problematicas_fm)
             else:
                 if callback_log:
                     callback_log(f"⚠️  No hay datos FM para {base}")
@@ -3178,6 +3184,7 @@ def procesar_ocupacion(callback_progreso=None, callback_log=None, umbrales=None)
             ws_tv = wb.create_sheet("Datos TV")
             if not datos_tv.empty:
                 frecuencias_problematicas_tv = formatear_hoja_ocupacion(ws_tv, datos_tv.drop(columns=["Mes"]), "TV", base)
+                todas_frecuencias_problematicas["TV"].extend(frecuencias_problematicas_tv)
             else:
                 if callback_log:
                     callback_log(f"⚠️  No hay datos TV para {base}")
