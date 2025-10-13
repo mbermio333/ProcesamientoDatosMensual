@@ -874,7 +874,7 @@ class SpectraWorker(QThread):
             self.log_signal.emit("📺 Ejecutando normalizarTV.py...")
             self.progress_signal.emit(40)
             
-            result2 = normalizarTV.procesar_normalizacion_tv_desde_gui(
+            result2 = normalizarTV.procesar_normalizacion_tv_fm_am_desde_gui(
                 callback_log=self.log_signal.emit,
                 callback_progress=self.progress_signal.emit
             )
