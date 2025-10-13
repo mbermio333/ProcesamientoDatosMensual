@@ -1,6 +1,6 @@
 {
     "TAMBO": {
-        "FM": 65.0,
+        "FM": 60.0,
         "AM": 30.0,
         "TV": {
             "tipo": "general",
@@ -13,11 +13,11 @@
         }
     },
     "ZAMORA": {
-        "FM": 50.0,
+        "FM": 55.0,
         "AM": 30.0,
         "TV": {
             "tipo": "general",
-            "valor": 50.0,
+            "valor": 30.0,
             "valores": {
                 "Banda I-III": 47.0,
                 "Banda III": 56.0,
@@ -52,7 +52,7 @@
         }
     },
     "LOJA": {
-        "FM": 65.0,
+        "FM": 60.0,
         "AM": 30.0,
         "TV": {
             "tipo": "general",

@@ -62,7 +62,6 @@ def obtener_frecuencias_observacion(ruta_archivo_excel, ciudad):
                         'Frecuencia (MHz)': fila.get('Frecuencia (MHz)', ''),
                         'Estación': fila.get('Estación', ''),
                         'Banda': fila.get('Banda', ''),
-                        'Canal': fila.get('Canal', ''),
                         'Ocupación (%)': fila.get('Ocupación (%)', ''),
                         'Level (dBµV/m)': fila.get('Level (dBµV/m)', ''),
                         'Estado': 'Observación'  # Estado por defecto

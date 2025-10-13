@@ -1185,10 +1185,10 @@ class ObservacionTab(QWidget):
         layout.setSpacing(10)
         
         # Título de la pestaña
-        titulo_label = QLabel("Frecuencias en Observación")
-        titulo_label.setStyleSheet("font-size: 16pt; font-weight: bold; color: #2c3e50; margin: 10px;")
-        titulo_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(titulo_label)
+        #titulo_label = QLabel("Frecuencias en Observación")
+        #titulo_label.setStyleSheet("font-size: 16pt; font-weight: bold; color: #2c3e50; margin: 10px;")
+        #titulo_label.setAlignment(Qt.AlignCenter)
+        #layout.addWidget(titulo_label)
         
         # Grupo de selección de ciudad
         ciudad_group = QGroupBox("Selección de Ciudad")
@@ -1507,7 +1507,7 @@ class ObservacionTab(QWidget):
         
         # Definir columnas para TV (incluyendo Estado)
         columnas = [
-            'Frecuencia (MHz)', 'Estación', 'Banda', 'Canal', 'Ocupación (%)', 'Level (dBµV/m)', 'Estado'
+            'Frecuencia (MHz)', 'Estación', 'Banda', 'Ocupación (%)', 'Level (dBµV/m)', 'Estado'
         ]
         
         self.tabla_tv.setRowCount(len(datos_tv))
