@@ -8,17 +8,18 @@ import json
 def obtener_frecuencias_observacion(ruta_archivo_excel, ciudad):
     """
     Obtiene las frecuencias en observación (con "No identificada" en la columna Estación)
-    tanto para FM como para TV de un archivo Excel generado en la pestaña de ocupación
+    tanto para FM, TV y AM de un archivo Excel generado en la pestaña de ocupación
     Filtra solo las filas con ocupación diferente a 0
     """
     try:
         # Verificar si el archivo existe
         if not os.path.exists(ruta_archivo_excel):
-            return {"FM": [], "TV": [], "error": f"Archivo no encontrado: {ruta_archivo_excel}"}
+            return {"FM": [], "TV": [], "AM": [], "error": f"Archivo no encontrado: {ruta_archivo_excel}"}
         
         # Leer el archivo Excel
         datos_fm = []
         datos_tv = []
+        datos_am = []  # ← NUEVO: Datos para AM
         
         # Procesar hoja FM
         try:
@@ -40,7 +41,6 @@ def obtener_frecuencias_observacion(ruta_archivo_excel, ciudad):
                         'Ocupación (%)': fila.get('Ocupación (%)', ''),
                         'Level (dBµV/m)': fila.get('Level (dBµV/m)', ''),
                         'Estado': 'Observación'  # Estado por defecto
-                        # Eliminadas las columnas no deseadas: Bandwidth, Offset, FM, Tipo
                     })
         except Exception as e:
             print(f"Error procesando hoja FM: {e}")
@@ -65,21 +65,47 @@ def obtener_frecuencias_observacion(ruta_archivo_excel, ciudad):
                         'Ocupación (%)': fila.get('Ocupación (%)', ''),
                         'Level (dBµV/m)': fila.get('Level (dBµV/m)', ''),
                         'Estado': 'Observación'  # Estado por defecto
-                        # Eliminadas las columnas no deseadas: Bandwidth, Offset, AM, Tipo
                     })
         except Exception as e:
             print(f"Error procesando hoja TV: {e}")
         
+        # ← NUEVO: Procesar hoja AM
+        try:
+            df_am = pd.read_excel(ruta_archivo_excel, sheet_name='Datos AM')
+            
+            # Buscar filas con "No identificada" en la columna Estación Y ocupación diferente a 0
+            if 'Estación' in df_am.columns and 'Ocupación (%)' in df_am.columns:
+                # Filtrar por "No identificada" y ocupación ≠ 0
+                filtro = (df_am['Estación'].str.contains('No identificada', na=False, case=False) & 
+                         (df_am['Ocupación (%)'] != 0) & 
+                         (df_am['Ocupación (%)'].notna()))
+                
+                filas_no_identificadas = df_am[filtro]
+                
+                for _, fila in filas_no_identificadas.iterrows():
+                    datos_am.append({
+                        'Frecuencia (MHz)': fila.get('Frecuencia (MHz)', ''),
+                        'Estación': fila.get('Estación', ''),
+                        'Ocupación (%)': fila.get('Ocupación (%)', ''),
+                        'Level (dBµV/m)': fila.get('Level (dBµV/m)', ''),
+                        'Estado': 'Observación'  # Estado por defecto
+                    })
+        except Exception as e:
+            print(f"Error procesando hoja AM: {e}")
+            # Si no existe la hoja AM, continuar sin errores
+        
         return {
             "FM": datos_fm,
             "TV": datos_tv,
+            "AM": datos_am,  # ← NUEVO
             "total_fm": len(datos_fm),
             "total_tv": len(datos_tv),
+            "total_am": len(datos_am),  # ← NUEVO
             "archivo": os.path.basename(ruta_archivo_excel)
         }
         
     except Exception as e:
-        return {"FM": [], "TV": [], "error": f"Error general: {str(e)}"}
+        return {"FM": [], "TV": [], "AM": [], "error": f"Error general: {str(e)}"}
 
 def limpiar_valor_numerico(valor):
     """Limpia y convierte valores numéricos, manejando diferentes formatos"""
@@ -142,7 +168,7 @@ def obtener_todas_frecuencias_observacion(ruta_salida_ocupacion, ciudad):
         archivos = buscar_archivos_ocupacion_ciudad(ruta_salida_ocupacion, ciudad)
         
         if not archivos:
-            return {"FM": [], "TV": [], "error": f"No se encontraron archivos para la ciudad: {ciudad}"}
+            return {"FM": [], "TV": [], "AM": [], "error": f"No se encontraron archivos para la ciudad: {ciudad}"}
         
         # Usar el archivo más reciente
         archivo_mas_reciente = archivos[0]
@@ -154,7 +180,7 @@ def obtener_todas_frecuencias_observacion(ruta_salida_ocupacion, ciudad):
         return resultado
         
     except Exception as e:
-        return {"FM": [], "TV": [], "error": f"Error obteniendo frecuencias: {str(e)}"}
+        return {"FM": [], "TV": [], "AM": [], "error": f"Error obteniendo frecuencias: {str(e)}"}
 
 # Función principal para ser llamada desde la GUI
 def procesar_frecuencias_observacion(ruta_salida_ocupacion, ciudad, callback_log=None):
@@ -171,7 +197,7 @@ def procesar_frecuencias_observacion(ruta_salida_ocupacion, ciudad, callback_log
         if resultado.get('error'):
             callback_log(f"❌ Error: {resultado['error']}")
         else:
-            callback_log(f"✅ Encontradas {resultado['total_fm']} frecuencias FM y {resultado['total_tv']} frecuencias TV en observación")
+            callback_log(f"✅ Encontradas {resultado['total_fm']} frecuencias FM, {resultado['total_tv']} frecuencias TV y {resultado['total_am']} frecuencias AM en observación")  # ← MODIFICADO
             callback_log(f"📊 Archivo utilizado: {resultado.get('archivo_utilizado', 'N/A')}")
     
     return resultado

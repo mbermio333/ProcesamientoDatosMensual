@@ -319,6 +319,14 @@ class RegistroGeneralTab(QWidget):
         self.tabla_tv = QTableWidget()
         layout_tv.addWidget(self.tabla_tv)
         self.tabs_datos.addTab(self.tab_tv, "Frecuencias TV")
+
+
+        # Pestaña AM
+        self.tab_am = QWidget()
+        layout_am = QVBoxLayout(self.tab_am)
+        self.tabla_am = QTableWidget()
+        layout_am.addWidget(self.tabla_am)
+        self.tabs_datos.addTab(self.tab_am, "Frecuencias AM")
         
         layout.addWidget(self.tabs_datos)
         
@@ -437,17 +445,38 @@ class RegistroGeneralTab(QWidget):
                     'Estado': estado,
                     'nombre_original': nombre_original  # Guardar para referencia
                 })
+
+            datos_am = []
+            for emisora in datos_ciudad.get('AM', []):
+                frecuencia = emisora.get('frecuencia', 0)
+                nombre_original = emisora.get('nombre', '')
+                
+                # Determinar estado según el nombre
+                estado = self.determinar_estado(nombre_original)
+                
+                # Limpiar el nombre para mostrar (sin sufijos)
+                nombre_limpio = self.limpiar_nombre_estacion(nombre_original)
+                
+                datos_am.append({
+                    'Frecuencia (MHz)': frecuencia,
+                    'Estación': nombre_limpio,
+                    'Estado': estado,
+                    'nombre_original': nombre_original  # Guardar para referencia
+                })
             
             # Guardar datos actuales
+            # Actualizar datos actuales
             self.datos_actuales = {
                 'FM': datos_fm,
                 'TV': datos_tv,
+                'AM': datos_am,  # ← NUEVO
                 'ciudad_real': ciudad_real
             }
             
             # Actualizar la información
             total_fm = len(datos_fm)
             total_tv = len(datos_tv)
+            total_am = len(datos_am)  # ← NUEVO
             
             #self.info_label.setText(
             #    f"📊 Encontradas {total_fm} frecuencias FM y {total_tv} frecuencias TV\n"
@@ -457,6 +486,7 @@ class RegistroGeneralTab(QWidget):
             # Actualizar tablas
             self.actualizar_tabla_fm(datos_fm)
             self.actualizar_tabla_tv(datos_tv)
+            self.actualizar_tabla_am(datos_am)  # ← NUEVO
             
             # Habilitar botones
             tiene_datos = total_fm + total_tv > 0
@@ -638,6 +668,66 @@ class RegistroGeneralTab(QWidget):
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
         header.setStretchLastSection(True)
     
+
+
+    def actualizar_tabla_am(self, datos_am):
+        """Actualizar la tabla de frecuencias AM"""
+        if not datos_am:
+            self.tabla_am.setRowCount(0)
+            self.tabla_am.setColumnCount(1)
+            self.tabla_am.setHorizontalHeaderLabels(["No hay frecuencias AM configuradas"])
+            return
+        
+        # Definir columnas para AM
+        columnas = ['Frecuencia (MHz)', 'Estación', 'Estado']
+        
+        self.tabla_am.setRowCount(len(datos_am))
+        self.tabla_am.setColumnCount(len(columnas))
+        self.tabla_am.setHorizontalHeaderLabels(columnas)
+        
+        # Guardar referencias a los grupos de botones
+        self.grupos_am = []
+        
+        for fila, dato in enumerate(datos_am):
+            for col, columna in enumerate(columnas):
+                if columna == 'Estado':
+                    # Crear radio buttons para estado
+                    estado_actual = dato.get('Estado', 'Aut')
+                    widget_estado, grupo = self.crear_radio_buttons_estado(estado_actual)
+                    self.grupos_am.append((fila, grupo))
+                    self.tabla_am.setCellWidget(fila, col, widget_estado)
+                elif columna == 'Estación':
+                    # Crear campo editable para el nombre de la estación
+                    nombre_estacion = dato.get('Estación', '')
+                    edit_estacion = QLineEdit(nombre_estacion)
+                    edit_estacion.setStyleSheet("padding: 2px;")
+                    edit_estacion.textChanged.connect(lambda text, f=fila: self.actualizar_nombre_estacion(f, text, 'AM'))
+                    self.tabla_am.setCellWidget(fila, col, edit_estacion)
+                else:
+                    valor = dato.get(columna, '')
+                    # Formatear valores numéricos
+                    if columna == 'Frecuencia (MHz)' and valor != '':
+                        try:
+                            valor = f"{float(valor):.2f}"
+                        except:
+                            pass
+                    
+                    item = QTableWidgetItem(str(valor))
+                    # Alinear números a la derecha
+                    if columna == 'Frecuencia (MHz)':
+                        item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    self.tabla_am.setItem(fila, col, item)
+        
+        # Ajustar el tamaño de las columnas
+        header = self.tabla_am.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        header.setStretchLastSection(True)
+
+
+
+
+
+
     def actualizar_nombre_estacion(self, fila, texto, tipo):
         """Actualizar el nombre de la estación en los datos actuales"""
         if tipo == 'FM' and fila < len(self.datos_actuales.get('FM', [])):
@@ -1286,6 +1376,15 @@ class ObservacionTab(QWidget):
         self.tabla_tv = QTableWidget()
         layout_tv.addWidget(self.tabla_tv)
         self.tabs_datos.addTab(self.tab_tv, "Frecuencias TV")
+
+        # Pestaña AM
+        self.tab_am = QWidget()
+        layout_am = QVBoxLayout(self.tab_am)
+        self.tabla_am = QTableWidget()
+        layout_am.addWidget(self.tabla_am)
+        self.tabs_datos.addTab(self.tab_am, "Frecuencias AM")
+
+
         
         layout.addWidget(self.tabs_datos)
         
@@ -1343,6 +1442,7 @@ class ObservacionTab(QWidget):
             
             self.log_text.append("✅ Actualización completada")
     
+    # En el método cargar_frecuencias_ciudad, actualizar para incluir AM:
     def cargar_frecuencias_ciudad(self, ciudad):
         """Cargar las frecuencias en observación para la ciudad seleccionada"""
         if not ciudad or ciudad == "No hay ciudades configuradas":
@@ -1379,20 +1479,21 @@ class ObservacionTab(QWidget):
             # Actualizar la información
             total_fm = resultado.get('total_fm', 0)
             total_tv = resultado.get('total_tv', 0)
+            total_am = resultado.get('total_am', 0)  # ← NUEVO
             archivo = resultado.get('archivo_utilizado', 'N/A')
             
             self.info_label.setText(
-                f"📊 Encontradas {total_fm} frecuencias FM y {total_tv} frecuencias TV en observación\n"
+                f"📊 Encontradas {total_fm} frecuencias FM, {total_tv} frecuencias TV y {total_am} frecuencias AM en observación\n"  # ← MODIFICADO
                 f"📁 Archivo: {archivo}"
             )
             
             # Actualizar tablas
             self.actualizar_tabla_fm(resultado.get('FM', []))
             self.actualizar_tabla_tv(resultado.get('TV', []))
+            self.actualizar_tabla_am(resultado.get('AM', []))  # ← NUEVO
             
             # Habilitar botones
-            tiene_datos = total_fm + total_tv > 0
-            #self.btn_guardar_estados.setEnabled(tiene_datos)
+            tiene_datos = total_fm + total_tv + total_am > 0  # ← MODIFICADO
             self.btn_guardar_config.setEnabled(tiene_datos)
             self.btn_exportar_excel.setEnabled(tiene_datos)
             
@@ -1496,6 +1597,27 @@ class ObservacionTab(QWidget):
         header = self.tabla_fm.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
         header.setStretchLastSection(True)
+
+
+        # Resaltar filas con ocupación > 50
+        for fila in range(len(datos_fm)):
+            for col in range(len(columnas)):
+                if columnas[col] == 'Ocupación (%)':
+                    item = self.tabla_fm.item(fila, col)
+                    if item and '%' in item.text():
+                        try:
+                            ocupacion = float(item.text().replace('%', ''))
+                            if ocupacion > 50:
+                                item.setBackground(Qt.yellow)
+                        except:
+                            pass
+
+
+
+
+
+
+
     
     def actualizar_tabla_tv(self, datos_tv):
         """Actualizar la tabla de frecuencias TV - Con campos editables para estación y estado"""
@@ -1562,7 +1684,7 @@ class ObservacionTab(QWidget):
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
         header.setStretchLastSection(True)
         
-        # Resaltar filas con ocupación > 0
+        # Resaltar filas con ocupación > 50
         for fila in range(len(datos_tv)):
             for col in range(len(columnas)):
                 if columnas[col] == 'Ocupación (%)':
@@ -1570,22 +1692,108 @@ class ObservacionTab(QWidget):
                     if item and '%' in item.text():
                         try:
                             ocupacion = float(item.text().replace('%', ''))
-                            if ocupacion > 0:
+                            if ocupacion > 50:
+                                item.setBackground(Qt.yellow)
+                        except:
+                            pass
+
+
+
+    # Añadir método para actualizar tabla AM (similar a FM pero sin banda)
+    def actualizar_tabla_am(self, datos_am):
+        """Actualizar la tabla de frecuencias AM - Con campos editables para estación"""
+        if not datos_am:
+            self.tabla_am.setRowCount(0)
+            self.tabla_am.setColumnCount(1)
+            self.tabla_am.setHorizontalHeaderLabels(["No hay frecuencias AM en observación"])
+            return
+        
+        # Definir columnas para AM (similar a FM)
+        columnas = [
+            'Frecuencia (MHz)', 'Estación', 'Ocupación (%)', 'Level (dBµV/m)', 'Estado'
+        ]
+        
+        self.tabla_am.setRowCount(len(datos_am))
+        self.tabla_am.setColumnCount(len(columnas))
+        self.tabla_am.setHorizontalHeaderLabels(columnas)
+        
+        # Guardar referencias a los grupos de botones
+        self.grupos_am = []
+        
+        for fila, dato in enumerate(datos_am):
+            for col, columna in enumerate(columnas):
+                if columna == 'Estado':
+                    # Crear radio buttons para estado
+                    estado_actual = dato.get('Estado', 'Observación')
+                    widget_estado, grupo = self.crear_checkbox_estado(estado_actual)
+                    self.grupos_am.append((fila, grupo))
+                    self.tabla_am.setCellWidget(fila, col, widget_estado)
+                elif columna == 'Estación':
+                    # Crear campo editable para el nombre de la estación
+                    nombre_estacion = dato.get('Estación', '')
+                    edit_estacion = QLineEdit(nombre_estacion)
+                    edit_estacion.setStyleSheet("padding: 2px;")
+                    edit_estacion.textChanged.connect(lambda text, f=fila: self.actualizar_nombre_estacion(f, text, 'AM'))
+                    self.tabla_am.setCellWidget(fila, col, edit_estacion)
+                else:
+                    valor = dato.get(columna, '')
+                    # Formatear valores numéricos
+                    if columna == 'Frecuencia (MHz)' and valor != '':
+                        try:
+                            valor = f"{float(valor):.2f}"
+                        except:
+                            pass
+                    elif columna == 'Ocupación (%)' and valor != '':
+                        try:
+                            valor = f"{float(valor):.1f}%"
+                        except:
+                            pass
+                    elif columna == 'Level (dBµV/m)' and valor != '':
+                        try:
+                            valor = f"{float(valor):.1f}"
+                        except:
+                            pass
+                    
+                    item = QTableWidgetItem(str(valor))
+                    # Alinear números a la derecha
+                    if columna in ['Frecuencia (MHz)', 'Ocupación (%)', 'Level (dBµV/m)']:
+                        item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    self.tabla_am.setItem(fila, col, item)
+        
+        # Ajustar el tamaño de las columnas
+        header = self.tabla_am.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        header.setStretchLastSection(True)
+
+        # Resaltar filas con ocupación > 50
+        for fila in range(len(datos_am)):
+            for col in range(len(columnas)):
+                if columnas[col] == 'Ocupación (%)':
+                    item = self.tabla_am.item(fila, col)
+                    if item and '%' in item.text():
+                        try:
+                            ocupacion = float(item.text().replace('%', ''))
+                            if ocupacion > 50:
                                 item.setBackground(Qt.yellow)
                         except:
                             pass
     
+    # Actualizar el método actualizar_nombre_estacion para incluir AM
     def actualizar_nombre_estacion(self, fila, texto, tipo):
         """Actualizar el nombre de la estación en los datos actuales"""
         if tipo == 'FM' and fila < len(self.datos_actuales.get('FM', [])):
             self.datos_actuales['FM'][fila]['Estación'] = texto
         elif tipo == 'TV' and fila < len(self.datos_actuales.get('TV', [])):
             self.datos_actuales['TV'][fila]['Estación'] = texto
+        elif tipo == 'AM' and fila < len(self.datos_actuales.get('AM', [])):  # ← NUEVO
+            self.datos_actuales['AM'][fila]['Estación'] = texto
     
+    # Actualizar el método obtener_estados_actuales para incluir AM
     def obtener_estados_actuales(self):
         """Obtener los estados actuales seleccionados en las tablas"""
         estados_fm = []
         estados_tv = []
+        estados_am = []  # ← NUEVO
         
         # Obtener estados de FM
         if hasattr(self, 'grupos_fm'):
@@ -1604,7 +1812,7 @@ class ObservacionTab(QWidget):
                         'estado': estado
                     })
         
-        # Obtener estados de TV (AGREGAR ESTA SECCIÓN)
+        # Obtener estados de TV
         if hasattr(self, 'grupos_tv'):
             for fila, grupo in self.grupos_tv:
                 if grupo.checkedButton():
@@ -1621,7 +1829,24 @@ class ObservacionTab(QWidget):
                         'estado': estado
                     })
         
-        return estados_fm, estados_tv
+        # ← NUEVO: Obtener estados de AM
+        if hasattr(self, 'grupos_am'):
+            for fila, grupo in self.grupos_am:
+                if grupo.checkedButton():
+                    estado = "No Autorizada" if grupo.checkedButton().text() == "No Aut" else "Observación"
+                    frecuencia = self.tabla_am.item(fila, 0).text() if self.tabla_am.item(fila, 0) else ""
+                    # Obtener el nombre de la estación del campo editable
+                    estacion_widget = self.tabla_am.cellWidget(fila, 1)
+                    nombre_estacion = estacion_widget.text() if estacion_widget else ""
+                    
+                    estados_am.append({
+                        'fila': fila,
+                        'frecuencia': frecuencia,
+                        'estacion': nombre_estacion,
+                        'estado': estado
+                    })
+        
+        return estados_fm, estados_tv, estados_am  # ← MODIFICADO
     
     """def guardar_estados(self):
         #Guardar los estados seleccionados en un archivo JSON
