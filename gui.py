@@ -2978,7 +2978,7 @@ class MainWindow(QMainWindow):
             self.log_message(f"Error al guardar configuración: {str(e)}", mode)
     
     def initUI(self):
-        self.setWindowTitle("Sistema de Procesamiento de Mediciones")
+        self.setWindowTitle("Sistema de Generacion de Reportes - SACER")
         self.setGeometry(100, 100, 1200, 800)
         
         # Widget central y layout principal
