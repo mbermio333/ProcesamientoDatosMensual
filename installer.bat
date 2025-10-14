@@ -189,7 +189,7 @@ echo Creando acceso directo en el escritorio...
 
 set "DESKTOP_DIR=%USERPROFILE%\Desktop"
 set "SHORTCUT_PATH=%DESKTOP_DIR%\%APP_NAME%.lnk"
-set "TARGET_PATH=%INSTALL_DIR%\main.py"
+set "TARGET_PATH=%INSTALL_DIR%\gui.py"
 set "ICON_PATH=%INSTALL_DIR%\iconos\SACER.ico"  :: Ajusta la ruta del icono
 
 :: Si no hay icono, usar el de Python por defecto
@@ -331,7 +331,7 @@ echo Acceso directo creado en el escritorio.
 echo.
 echo Para ejecutar la aplicacion:
 echo 1. Use el acceso directo en el escritorio
-echo 2. O navegue a %INSTALL_DIR% y ejecute 'python main.py'
+echo 2. O navegue a %INSTALL_DIR% y ejecute 'python gui.py'
 echo.
 echo Para desinstalar, ejecute: %UNINSTALL_BAT%
 echo.
