@@ -610,10 +610,20 @@ class RegistroGeneralTab(QWidget):
                         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                     self.tabla_fm.setItem(fila, col, item)
         
-        # Ajustar el tamaño de las columnas
+        # NUEVO: Configurar tamaños de columnas personalizados
         header = self.tabla_fm.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeToContents)
-        header.setStretchLastSection(True)
+        
+        # Frecuencia (MHz) - tamaño compacto
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        
+        # Estación - tamaño expandible (más espacio)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        
+        # Estado - tamaño fijo para los radio buttons
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        
+        # Establecer un ancho mínimo para la columna Estado
+        self.tabla_fm.setColumnWidth(2, 150)  # Un poco más ancho para los 3 radio buttons
     
     def actualizar_tabla_tv(self, datos_tv):
         """Actualizar la tabla de frecuencias TV"""
@@ -663,10 +673,20 @@ class RegistroGeneralTab(QWidget):
                         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                     self.tabla_tv.setItem(fila, col, item)
         
-        # Ajustar el tamaño de las columnas
+        # NUEVO: Configurar tamaños de columnas personalizados
         header = self.tabla_tv.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeToContents)
-        header.setStretchLastSection(True)
+        
+        # Frecuencia (MHz) - tamaño compacto
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        
+        # Estación - tamaño expandible (más espacio)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        
+        # Estado - tamaño fijo para los radio buttons
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        
+        # Establecer un ancho mínimo para la columna Estado
+        self.tabla_tv.setColumnWidth(2, 150)  # Un poco más ancho para los 3 radio buttons
     
 
 
@@ -718,11 +738,20 @@ class RegistroGeneralTab(QWidget):
                         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                     self.tabla_am.setItem(fila, col, item)
         
-        # Ajustar el tamaño de las columnas
+        # NUEVO: Configurar tamaños de columnas personalizados
         header = self.tabla_am.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeToContents)
-        header.setStretchLastSection(True)
-
+        
+        # Frecuencia (MHz) - tamaño compacto
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        
+        # Estación - tamaño expandible (más espacio)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        
+        # Estado - tamaño fijo para los radio buttons
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        
+        # Establecer un ancho mínimo para la columna Estado
+        self.tabla_am.setColumnWidth(2, 150)  # Un poco más ancho para los 3 radio buttons
 
 
 
@@ -1593,10 +1622,27 @@ class ObservacionTab(QWidget):
                         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                     self.tabla_fm.setItem(fila, col, item)
         
-        # Ajustar el tamaño de las columnas
+
+         # NUEVO: Configurar tamaños de columnas personalizados
         header = self.tabla_fm.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeToContents)
-        header.setStretchLastSection(True)
+        
+        # Frecuencia (MHz) - tamaño compacto
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        
+        # Estación - tamaño expandible (más espacio)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        
+        # Ocupación (%) - tamaño compacto
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        
+        # Level (dBµV/m) - tamaño compacto
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        
+        # Estado - tamaño fijo para los radio buttons
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        
+        # Establecer un ancho mínimo para la columna Estado
+        self.tabla_fm.setColumnWidth(4, 120)  # Ancho suficiente para los radio buttons
 
 
         # Resaltar filas con ocupación > 50
@@ -1678,11 +1724,30 @@ class ObservacionTab(QWidget):
                     if columna in ['Frecuencia (MHz)', 'Ocupación (%)', 'Level (dBµV/m)']:
                         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                     self.tabla_tv.setItem(fila, col, item)
-        
-        # Ajustar el tamaño de las columnas
+
+        # NUEVO: Configurar tamaños de columnas personalizados
         header = self.tabla_tv.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeToContents)
-        header.setStretchLastSection(True)
+        
+        # Frecuencia (MHz) - tamaño compacto
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        
+        # Estación - tamaño expandible (más espacio)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        
+        # Banda - tamaño compacto
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        
+        # Ocupación (%) - tamaño compacto
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        
+        # Level (dBµV/m) - tamaño compacto
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        
+        # Estado - tamaño fijo para los radio buttons
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        
+        # Establecer un ancho mínimo para la columna Estado
+        self.tabla_tv.setColumnWidth(5, 120)  # Ancho suficiente para los radio buttons
         
         # Resaltar filas con ocupación > 50
         for fila in range(len(datos_tv)):
@@ -1760,10 +1825,26 @@ class ObservacionTab(QWidget):
                         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                     self.tabla_am.setItem(fila, col, item)
         
-        # Ajustar el tamaño de las columnas
+        # NUEVO: Configurar tamaños de columnas personalizados
         header = self.tabla_am.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeToContents)
-        header.setStretchLastSection(True)
+        
+        # Frecuencia (MHz) - tamaño compacto
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        
+        # Estación - tamaño expandible (más espacio)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        
+        # Ocupación (%) - tamaño compacto
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        
+        # Level (dBµV/m) - tamaño compacto
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        
+        # Estado - tamaño fijo para los radio buttons
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        
+        # Establecer un ancho mínimo para la columna Estado
+        self.tabla_am.setColumnWidth(4, 120)  # Ancho suficiente para los radio buttons
 
         # Resaltar filas con ocupación > 50
         for fila in range(len(datos_am)):
