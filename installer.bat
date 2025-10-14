@@ -9,6 +9,17 @@ echo    SISTEMA DE PROCESAMIENTO DE MEDICIONES
 echo ===============================================
 echo.
 
+:: Verificar que estamos en el directorio correcto
+if not exist "main.py" (
+    echo [ERROR] No se encuentra main.py en el directorio actual
+    echo Ejecute este instalador desde la carpeta del proyecto
+    echo que contiene todos los archivos del sistema.
+    echo.
+    echo Directorio actual: %CD%
+    pause
+    exit /b 1
+)
+
 :: Verificar si se ejecuta como administrador
 net session >nul 2>&1
 if %errorLevel% neq 0 (
@@ -106,10 +117,11 @@ if not exist "%INSTALL_DIR%" (
 :: Copiar archivos de la aplicacion
 echo Copiando archivos de la aplicacion...
 
-:: Lista de archivos y carpetas a copiar (ajusta segun tu proyecto)
-set "FILES_TO_COPY=main.py main2.py main3.py SPECTRA_Filtro.py normalizarTV.py actualizarConfig.py"
-set "FOLDERS_TO_COPY=Img SPECTRA_Filtrado"
-set "CONFIG_FILES=config_procesamiento.json config_ocupacion.json config_umbrales_ciudades.json config_spectra.json config.json config_backup.json"
+:: Lista CORREGIDA de archivos y carpetas
+set "FILES_TO_COPY=main.py main2.py main3.py SPECTRA_Filtro.py normalizarTV.py actualizarConfig.py gui.py"
+set "FOLDERS_TO_COPY=img SPECTRA_Filtrado iconos"
+set "CONFIG_FILES=config_processamiento.json config_ocupacion.json config_unbrales_ciudades.json config_spectra.json config.json config_backup.json"
+set "OTHER_FILES=.gitignore"
 
 :: Copiar archivos principales
 for %%f in (%FILES_TO_COPY%) do (
@@ -131,6 +143,14 @@ for %%f in (%CONFIG_FILES%) do (
     )
 )
 
+:: Copiar otros archivos
+for %%f in (%OTHER_FILES%) do (
+    if exist "%%f" (
+        copy "%%f" "%INSTALL_DIR%" >nul
+        echo [✓] Copiado: %%f
+    )
+)
+
 :: Copiar carpetas
 for %%d in (%FOLDERS_TO_COPY%) do (
     if exist "%%d" (
@@ -141,41 +161,28 @@ for %%d in (%FOLDERS_TO_COPY%) do (
     )
 )
 
-:: Copiar archivos GUI si existen
-if exist "gui.py" (
-    copy "gui.py" "%INSTALL_DIR%" >nul
-    echo [✓] Copiado: gui.py
+:: Copiar archivo SACER.ico si existe en la raíz
+if exist "SACER.ico" (
+    copy "SACER.ico" "%INSTALL_DIR%\iconos\" >nul 2>&1
+    echo [✓] Copiado: SACER.ico a carpeta iconos
 )
 
-
-if exist "iconos" (
-    xcopy "iconos" "%INSTALL_DIR%\iconos" /E /I /Y >nul
-    echo [✓] Copiada carpeta: iconos
-)
-
-:: Instalar dependencias Python
+:: Crear y instalar dependencias Python
 echo.
-echo Instalando dependencias de Python...
+echo Creando e instalando dependencias de Python...
 
-:: Crear archivo requirements.txt si no existe
-if not exist "%REQUIREMENTS_FILE%" (
-    echo Creando archivo de dependencias...
-    (
-        echo pandas
-        echo openpyxl
-        echo PyQt5
-        echo numpy
-        echo datetime
-        echo json
-        echo os
-        echo sys
-        echo subprocess
-        echo platform
-    ) > "%REQUIREMENTS_FILE%"
-)
+(
+echo pandas
+echo openpyxl
+echo PyQt5
+echo numpy
+) > "%INSTALL_DIR%\%REQUIREMENTS_FILE%"
+
+echo [✓] Archivo %REQUIREMENTS_FILE% creado
 
 :: Instalar dependencias
-pip install -r "%REQUIREMENTS_FILE%"
+echo Instalando dependencias...
+pip install -r "%INSTALL_DIR%\%REQUIREMENTS_FILE%"
 
 if %errorLevel% equ 0 (
     echo [✓] Dependencias instaladas correctamente.
@@ -190,11 +197,11 @@ echo Creando acceso directo en el escritorio...
 set "DESKTOP_DIR=%USERPROFILE%\Desktop"
 set "SHORTCUT_PATH=%DESKTOP_DIR%\%APP_NAME%.lnk"
 set "TARGET_PATH=%INSTALL_DIR%\gui.py"
-set "ICON_PATH=%INSTALL_DIR%\iconos\SACER.ico"  :: Ajusta la ruta del icono
+set "ICON_PATH=%INSTALL_DIR%\iconos\SACER.ico"
 
-:: Si no hay icono, usar el de Python por defecto
+:: Verificar si existe el icono, si no usar Python por defecto
 if not exist "%ICON_PATH%" (
-    set "ICON_PATH=%INSTALL_DIR%\python.exe"
+    for %%P in (python.exe) do set "ICON_PATH=%%~$PATH:P"
 )
 
 :: Crear script VBS para crear acceso directo
@@ -220,7 +227,7 @@ if exist "%SHORTCUT_PATH%" (
     echo [ADVERTENCIA] No se pudo crear el acceso directo.
 )
 
-:: Crear script de desinstalacion
+:: Crear script de desinstalacion CORREGIDO
 echo.
 echo Creando script de desinstalacion...
 
@@ -230,17 +237,11 @@ set "UNINSTALL_BAT=%INSTALL_DIR%\uninstall.bat"
 @echo off
 setlocal enabledelayedexpansion
 
-title Desinstalador - Sistema de Procesamiento de Mediciones
+title Desinstalador - Sistema de Generacion de Reportes - SACER
 color 0C
 
-set "APP_NAME=Sistema de Procesamiento de Mediciones"
-set "INSTALL_DIR=%USERPROFILE%\SistemaProcesamientoMediciones"
-set "DESKTOP_DIR=%USERPROFILE%\Desktop"
-set "SHORTCUT_PATH=%DESKTOP_DIR%\%APP_NAME%.lnk"
-set "REG_KEY=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%APP_NAME%"
-
 echo ===============================================
-echo    DESINSTALANDO %APP_NAME%
+echo    DESINSTALANDO Sistema de Generacion de Reportes - SACER
 echo ===============================================
 echo.
 echo ADVERTENCIA: Esta accion eliminara permanentemente:
@@ -250,7 +251,6 @@ echo [✗] Los accesos directos
 echo [✗] Las configuraciones guardadas
 echo.
 echo [✓] Los archivos de mediciones y reportes NO seran eliminados
-echo     (carpetas MedicionesFmCSV, MedicionesTvCSV, etc.)
 echo.
 set /p confirm=¿Esta seguro que desea continuar? [s/N]: 
 
@@ -266,14 +266,16 @@ echo Iniciando desinstalacion...
 echo.
 
 :: Eliminar acceso directo
-if exist "!SHORTCUT_PATH!" (
-    del "!SHORTCUT_PATH!"
+set "DESKTOP_SHORTCUT=%USERPROFILE%\Desktop\Sistema de Generacion de Reportes - SACER.lnk"
+if exist "!DESKTOP_SHORTCUT!" (
+    del "!DESKTOP_SHORTCUT!"
     echo [✓] Acceso directo eliminado
 ) else (
     echo [i] Acceso directo no encontrado
 )
 
 :: Eliminar directorio de instalacion
+set "INSTALL_DIR=%USERPROFILE%\SistemaGeneracionReportes"
 if exist "!INSTALL_DIR!" (
     rmdir /s /q "!INSTALL_DIR!"
     echo [✓] Archivos de aplicacion eliminados
@@ -282,6 +284,7 @@ if exist "!INSTALL_DIR!" (
 )
 
 :: Eliminar entrada del registro
+set "REG_KEY=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Sistema de Generacion de Reportes - SACER"
 reg delete "!REG_KEY!" /f >nul 2>&1
 if !errorLevel! equ 0 (
     echo [✓] Entrada de registro eliminada
@@ -294,28 +297,27 @@ echo ===============================================
 echo    DESINSTALACION COMPLETADA
 echo ===============================================
 echo.
-echo %APP_NAME% ha sido desinstalado completamente.
-echo.
-echo Los siguientes elementos se conservan:
-echo - Archivos de mediciones en las carpetas originales
-echo - Archivos de reportes generados
-echo - Python y las librerias instaladas
+echo La aplicacion ha sido desinstalado completamente.
 echo.
 pause
 ) > "%UNINSTALL_BAT%"
 
-:: Crear entrada en "Agregar o quitar programas" (opcional)
+:: Crear entrada en "Agregar o quitar programas"
 echo.
 echo Configurando registro de Windows para desinstalacion...
 
-set "REG_KEY=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%APP_NAME%"
+set "REG_KEY=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Sistema de Generacion de Reportes - SACER"
 reg add "%REG_KEY%" /v "DisplayName" /d "%APP_NAME%" /f >nul 2>&1
 reg add "%REG_KEY%" /v "UninstallString" /d "\"%UNINSTALL_BAT%\"" /f >nul 2>&1
 reg add "%REG_KEY%" /v "InstallLocation" /d "%INSTALL_DIR%" /f >nul 2>&1
-reg add "%REG_KEY%" /v "Publisher" /d "MIGBermio" /f >nul 2>&1  :: Cambia por tu nombre/empresa
-reg add "%REG_KEY%" /v "DisplayVersion" /d "1.0.0" /f >nul 2>&1  :: Cambia por tu version
+reg add "%REG_KEY%" /v "Publisher" /d "MIGBermio" /f >nul 2>&1
+reg add "%REG_KEY%" /v "DisplayVersion" /d "1.0.0" /f >nul 2>&1
+reg add "%REG_KEY%" /v "NoModify" /d "1" /f >nul 2>&1
+reg add "%REG_KEY%" /v "NoRepair" /d "1" /f >nul 2>&1
 
-:: Limpiar archivos temporarios
+echo [✓] Entrada de registro creada para desinstalacion
+
+:: Limpiar archivos temporales
 del "%PYTHON_INSTALLER%" 2>nul
 del "%VBS_SCRIPT%" 2>nul
 
@@ -334,6 +336,7 @@ echo 1. Use el acceso directo en el escritorio
 echo 2. O navegue a %INSTALL_DIR% y ejecute 'python gui.py'
 echo.
 echo Para desinstalar, ejecute: %UNINSTALL_BAT%
+echo o use 'Agregar o quitar programas' en Windows
 echo.
 
 pause
