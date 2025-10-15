@@ -9,16 +9,30 @@ echo    SISTEMA DE PROCESAMIENTO DE MEDICIONES
 echo ===============================================
 echo.
 
-:: Verificar que estamos en el directorio correcto
-if not exist "main.py" (
-    echo [ERROR] No se encuentra main.py en el directorio actual
-    echo Ejecute este instalador desde la carpeta del proyecto
-    echo que contiene todos los archivos del sistema.
+:: Obtener el directorio donde está el instalador
+set "INSTALLER_DIR=%~dp0"
+cd /d "!INSTALLER_DIR!"
+echo Directorio del instalador: !CD!
+echo.
+
+:: Verificar que estamos en el directorio correcto buscando archivos con y sin extension
+set "FOUND_MAIN=0"
+if exist "main.py" set "FOUND_MAIN=1"
+if exist "main" set "FOUND_MAIN=1"
+
+if !FOUND_MAIN! equ 0 (
+    echo [ERROR] No se encuentra main.py o main en el directorio actual
     echo.
-    echo Directorio actual: %CD%
+    echo Archivos encontrados en el directorio:
+    dir /b
+    echo.
+    echo Por favor, asegurese de que el instalador esta en la carpeta correcta.
     pause
     exit /b 1
 )
+
+echo [✓] Directorio del proyecto verificado correctamente
+echo.
 
 :: Verificar si se ejecuta como administrador
 net session >nul 2>&1
@@ -117,20 +131,35 @@ if not exist "%INSTALL_DIR%" (
 :: Copiar archivos de la aplicacion
 echo Copiando archivos de la aplicacion...
 
-:: Lista CORREGIDA de archivos y carpetas
-set "FILES_TO_COPY=main.py main2.py main3.py SPECTRA_Filtro.py normalizarTV.py actualizarConfig.py gui.py"
+:: Lista de archivos principales (buscar con y sin extension .py)
+set "FILE_NAMES=main main2 main3 SPECTRA_Filtro normalizarTV actualizarConfig gui"
 set "FOLDERS_TO_COPY=img SPECTRA_Filtrado iconos"
 set "CONFIG_FILES=config_processamiento.json config_ocupacion.json config_unbrales_ciudades.json config_spectra.json config.json config_backup.json"
 set "OTHER_FILES=.gitignore"
 
-:: Copiar archivos principales
-for %%f in (%FILES_TO_COPY%) do (
-    if exist "%%f" (
-        copy "%%f" "%INSTALL_DIR%" >nul
-        echo [✓] Copiado: %%f
+:: Funcion para copiar archivos con o sin extension
+set "COPIED_FILES=0"
+
+for %%f in (%FILE_NAMES%) do (
+    :: Buscar archivo con extension .py primero
+    if exist "%%f.py" (
+        copy "%%f.py" "%INSTALL_DIR%" >nul
+        echo [✓] Copiado: %%f.py
+        set /a COPIED_FILES+=1
+    ) else if exist "%%f" (
+        :: Si no tiene extension, copiar como esta y agregar extension .py
+        copy "%%f" "%INSTALL_DIR%\%%f.py" >nul
+        echo [✓] Copiado: %%f (renombrado a %%f.py)
+        set /a COPIED_FILES+=1
     ) else (
         echo [ADVERTENCIA] No se encontro: %%f
     )
+)
+
+if !COPIED_FILES! equ 0 (
+    echo [ERROR] No se pudieron copiar los archivos principales
+    pause
+    exit /b 1
 )
 
 :: Copiar archivos de configuracion
@@ -161,7 +190,7 @@ for %%d in (%FOLDERS_TO_COPY%) do (
     )
 )
 
-:: Copiar archivo SACER.ico si existe en la raíz
+:: Copiar archivo SACER.ico si existe
 if exist "SACER.ico" (
     copy "SACER.ico" "%INSTALL_DIR%\iconos\" >nul 2>&1
     echo [✓] Copiado: SACER.ico a carpeta iconos
@@ -176,6 +205,12 @@ echo pandas
 echo openpyxl
 echo PyQt5
 echo numpy
+echo datetime
+echo json
+echo os
+echo sys
+echo subprocess
+echo platform
 ) > "%INSTALL_DIR%\%REQUIREMENTS_FILE%"
 
 echo [✓] Archivo %REQUIREMENTS_FILE% creado
@@ -227,7 +262,7 @@ if exist "%SHORTCUT_PATH%" (
     echo [ADVERTENCIA] No se pudo crear el acceso directo.
 )
 
-:: Crear script de desinstalacion CORREGIDO
+:: Crear script de desinstalacion
 echo.
 echo Creando script de desinstalacion...
 
