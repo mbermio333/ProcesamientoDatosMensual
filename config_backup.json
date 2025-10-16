@@ -1,7 +1,7 @@
 {
-    "fm_path": "/Users/mateobermeo/Desktop/ProcesamientoDatosMensual/MedicionesFmCSV",
-    "tv_path": "/Users/mateobermeo/Desktop/ProcesamientoDatosMensual/MedicionesTvCSV",
-    "output_path": "/Users/mateobermeo/Desktop/ProcesamientoDatosMensual/ReportesUnificados",
+    "fm_path": "",
+    "tv_path": "",
+    "output_path": "",
     "emisoras_por_ciudad": {
         "tambo": {
             "FM": [
