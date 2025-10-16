@@ -7,8 +7,8 @@ set PYTHON_VER=3.8.3
 set PYTHON_DIR=python-%PYTHON_VER%
 set PYTHON_LOCAL=%PYTHON_DIR%\python.exe
 set PYTHON_EXE=
-set DEST_DIR=%LOCALAPPDATA%\SACER_PROCESAMIENTO
-set SHORTCUT_PATH=%USERPROFILE%\Desktop\SACER GUI.lnk
+set DEST_DIR=%LOCALAPPDATA%\SistemaGeneracionInformes_SACER
+set SHORTCUT_PATH=%USERPROFILE%\Desktop\Generacion Informes SACER.lnk
 
 echo 📁 Carpeta de destino: %DEST_DIR%
 echo 📦 Iniciando instalación...
