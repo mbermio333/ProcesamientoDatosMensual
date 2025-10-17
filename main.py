@@ -85,24 +85,26 @@ def obtener_estados_spectra(datos_spectra, ciudad, frecuencia, tipo_servicio, ca
 
 
 
+
 def cargar_configuracion():
     """Cargar configuración desde archivo JSON"""
     config_default = {
         "fm_path": "MedicionesFmCSV",
-        "tv_path": "MedicionesTvCSV", 
-        "am_path": "MedicionesAmCSV",
+        "tv_path": "MedicionesTvCSV",
+        "am_path": "MedicionesAmCSV",  # NUEVO
         "output_path": "ReportesUnificados",
         "emisoras_por_ciudad": {}
     }
     
     if os.path.exists(CONFIG_FILE):
         try:
-            with open(CONFIG_FILE, 'r') as f:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 config = json.load(f)
                 if "emisoras_por_ciudad" not in config:
                     config["emisoras_por_ciudad"] = {}
                 return config
-        except:
+        except Exception as e:
+            print(f"Error cargando configuración: {e}")
             return config_default
     
     return config_default
@@ -653,17 +655,24 @@ def normalizar_nombre_ciudad(nombre):
     
     nombre = nombre.lower().strip()
     
-    # Mapeo completo de ciudades
-    mapeo_ciudades = {
-        "zamora": "zamora",
-        "loja": "loja", 
-        "macas": "macas",
-        "tambo": "tambo",
-        "machala": "machala",
-        "cuenca": "cuenca"  # ← AGREGAR CUENCA EXPLÍCITAMENTE
-    }
+    # Manejar todas las variantes de "cañar"
+    #if nombre in ["cañar", "cañar", "canar", "caã±ar", "tambo"]:
+    #    return "TAMBO"
     
-    return mapeo_ciudades.get(nombre, nombre.lower())
+    # Mapeo de otras ciudades si es necesario
+    mapeo_ciudades = {
+        "zamora": "ZAMORA",
+        "loja": "LOJA", 
+        "macas": "MACAS",
+        "tambo":"TAMBO",
+        "machala": "MACHALA",
+        "cuenca": "CUENCA"
+    }
+
+    return mapeo_ciudades.get(nombre, nombre.upper())
+
+
+
 
 def limpiar_configuracion_duplicados(config):
     """Une entradas duplicadas de ciudades en config.json"""

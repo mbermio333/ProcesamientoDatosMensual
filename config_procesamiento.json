@@ -1,6 +1,6 @@
 {
-    "fm_path": "",
-    "tv_path": "",
-    "am_path": "",
-    "output_path": ""
+    "fm_path": "C:/Users/Miguel/Downloads/PRUEBAS_REPORTES/Agosto_REPORTES/Procesamiento/FM",
+    "tv_path": "C:/Users/Miguel/Downloads/PRUEBAS_REPORTES/Agosto_REPORTES/Procesamiento/TV",
+    "am_path": "C:/Users/Miguel/Downloads/PRUEBAS_REPORTES/Agosto_REPORTES/Procesamiento/AM",
+    "output_path": "C:/Users/Miguel/Downloads/PRUEBAS_REPORTES/Agosto_REPORTES/ReportesProcesamiento"
 }
