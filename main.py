@@ -18,7 +18,7 @@ CONFIG_FILE = "config.json"
 def cargar_datos_spectra(ruta_spectra="SPECTRA_filtrado", callback_log=None):
     """
     Carga todos los archivos JSON del directorio SPECTRA_filtrado
-    y organiza los datos por ciudad y frecuencia
+    y organiza los datos por ciudad en MINÚSCULAS para consistencia
     """
     datos_spectra = {}
     
@@ -29,9 +29,14 @@ def cargar_datos_spectra(ruta_spectra="SPECTRA_filtrado", callback_log=None):
     
     try:
         for archivo in os.listdir(ruta_spectra):
-            if archivo.endswith(".json"):
-                ciudad = archivo.replace("_spectra.json", "").replace(".json", "").lower()
+            if archivo.endswith(".json") and "_spectra.json" in archivo:
+                # Extraer ciudad del nombre del archivo y normalizar a MINÚSCULAS
+                ciudad = archivo.replace("_spectra.json", "").lower().strip()
                 ruta_completa = os.path.join(ruta_spectra, archivo)
+                
+                # Filtrar solo ciudades relevantes
+                if ciudad not in ["zamora", "loja", "macas", "tambo", "machala", "cuenca"]:
+                    continue
                 
                 with open(ruta_completa, 'r', encoding='utf-8') as f:
                     datos = json.load(f)
@@ -40,23 +45,32 @@ def cargar_datos_spectra(ruta_spectra="SPECTRA_filtrado", callback_log=None):
                 if callback_log:
                     callback_log(f"✅ Cargado archivo SPECTRA: {archivo} para ciudad: {ciudad}")
         
+        if callback_log:
+            callback_log(f"📊 Total ciudades SPECTRA cargadas: {len(datos_spectra)}")
+            callback_log(f"🏙️ Ciudades disponibles: {list(datos_spectra.keys())}")
+        
         return datos_spectra
     
     except Exception as e:
         if callback_log:
             callback_log(f"❌ Error cargando datos SPECTRA: {str(e)}")
         return {}
+    
 
 def obtener_estados_spectra(datos_spectra, ciudad, frecuencia, tipo_servicio, callback_log=None):
     """
     Obtiene los estados (ESTADO_ESTACION y ESTADO_SOLICITUD) desde los datos SPECTRA
     basándose en la ciudad, frecuencia y tipo de servicio
     """
-    ciudad_normalizada = normalizar_nombre_ciudad(ciudad)
+    # NORMALIZAR A MINÚSCULAS para coincidir con las claves de datos_spectra
+    ciudad_normalizada = ciudad.lower().strip()
+    
+    if callback_log:
+        callback_log(f"🔍 Buscando en SPECTRA: '{ciudad}' -> '{ciudad_normalizada}', freq: {frecuencia}, tipo: {tipo_servicio}")
     
     if ciudad_normalizada not in datos_spectra:
         if callback_log:
-            callback_log(f"⚠️ Ciudad {ciudad_normalizada} no encontrada en datos SPECTRA")
+            callback_log(f"⚠️ Ciudad '{ciudad_normalizada}' no encontrada en datos SPECTRA. Ciudades disponibles: {list(datos_spectra.keys())}")
         return "No disponible", "No disponible"
     
     # Buscar coincidencia por frecuencia y tipo de servicio
@@ -65,18 +79,28 @@ def obtener_estados_spectra(datos_spectra, ciudad, frecuencia, tipo_servicio, ca
         freq_registro = registro.get("FRECUENCIA", 0)
         freq_buscada = float(frecuencia)
         
-        # Para FM, las frecuencias en SPECTRA están en el rango 88-108, igual que nuestros datos
-        # Para AM, están en el rango 0.5-1.6
         if abs(freq_registro - freq_buscada) < 0.01:
             servicio_registro = registro.get("SERVICIO", "")
             
             # Mapear tipos de servicio
             if tipo_servicio == "FM" and "FM - Frecuencia Modulada" in servicio_registro:
-                return registro.get("ESTADO_ESTACION", "No disponible"), registro.get("ESTADO_SOLICITUD", "No disponible")
+                estado_estacion = registro.get("ESTADO_ESTACION", "No disponible")
+                estado_solicitud = registro.get("ESTADO_SOLICITUD", "No disponible")
+                if callback_log:
+                    callback_log(f"✅ Encontrado en SPECTRA: {estado_estacion}, {estado_solicitud}")
+                return estado_estacion, estado_solicitud
             elif tipo_servicio == "AM" and "AM - Amplitud Modulada" in servicio_registro:
-                return registro.get("ESTADO_ESTACION", "No disponible"), registro.get("ESTADO_SOLICITUD", "No disponible")
+                estado_estacion = registro.get("ESTADO_ESTACION", "No disponible")
+                estado_solicitud = registro.get("ESTADO_SOLICITUD", "No disponible")
+                if callback_log:
+                    callback_log(f"✅ Encontrado en SPECTRA: {estado_estacion}, {estado_solicitud}")
+                return estado_estacion, estado_solicitud
             elif tipo_servicio == "TV" and "TV - Televisión Abierta" in servicio_registro:
-                return registro.get("ESTADO_ESTACION", "No disponible"), registro.get("ESTADO_SOLICITUD", "No disponible")
+                estado_estacion = registro.get("ESTADO_ESTACION", "No disponible")
+                estado_solicitud = registro.get("ESTADO_SOLICITUD", "No disponible")
+                if callback_log:
+                    callback_log(f"✅ Encontrado en SPECTRA: {estado_estacion}, {estado_solicitud}")
+                return estado_estacion, estado_solicitud
     
     if callback_log:
         callback_log(f"⚠️ No se encontró registro en SPECTRA para {ciudad}, frecuencia {frecuencia}, tipo {tipo_servicio}")
@@ -949,7 +973,7 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None, datos_spectr
     }
     
     # Función auxiliar para agregar estados SPECTRA
-    def agregar_estados_spectra(datos, tipo, ciudad_normalizada):
+    def agregar_estados_spectra(datos, tipo, ciudad, datos_spectra, callback_log=None):
         """Agrega columnas de estado SPECTRA a los datos"""
         if datos is None or datos.empty:
             return datos
@@ -962,19 +986,32 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None, datos_spectr
         datos_con_estados["ESTADO_SOLICITUD"] = ""
         
         # Buscar en datos SPECTRA si están disponibles
-        if datos_spectra and ciudad_normalizada in datos_spectra:
-            for idx, row in datos_con_estados.iterrows():
-                frecuencia = row["Frecuencia (MHz)"]
-                nombre_estacion = row["ESTACION"]
-                
-                # Buscar coincidencia en SPECTRA
-                estado_estacion, estado_solicitud = obtener_estados_spectra(
-                    datos_spectra, ciudad_normalizada, frecuencia, tipo
-                )
-                
-                # Asignar valores encontrados
-                datos_con_estados.at[idx, "ESTADO_ESTACION"] = estado_estacion
-                datos_con_estados.at[idx, "ESTADO_SOLICITUD"] = estado_solicitud
+        if datos_spectra:
+            ciudad_spectra = ciudad.lower().strip()  # Asegurar minúsculas para SPECTRA
+            
+            if callback_log:
+                callback_log(f"🔍 Buscando estados SPECTRA para {ciudad_spectra}, tipo {tipo}")
+            
+            if ciudad_spectra in datos_spectra:
+                for idx, row in datos_con_estados.iterrows():
+                    frecuencia = row["Frecuencia (MHz)"]
+                    nombre_estacion = row["ESTACION"]
+                    
+                    # Buscar coincidencia en SPECTRA
+                    estado_estacion, estado_solicitud = obtener_estados_spectra(
+                        datos_spectra, ciudad_spectra, frecuencia, tipo, callback_log
+                    )
+                    
+                    # Asignar valores encontrados
+                    datos_con_estados.at[idx, "ESTADO_ESTACION"] = estado_estacion
+                    datos_con_estados.at[idx, "ESTADO_SOLICITUD"] = estado_solicitud
+                    
+                    # DEBUG: Log cuando se encuentran estados
+                    if estado_estacion != "No encontrado" and callback_log:
+                        callback_log(f"✅ Asignados estados para {nombre_estacion} ({frecuencia} MHz): {estado_estacion}, {estado_solicitud}")
+            else:
+                if callback_log:
+                    callback_log(f"⚠️ Ciudad {ciudad_spectra} no encontrada en datos SPECTRA. Disponibles: {list(datos_spectra.keys())}")
         
         return datos_con_estados
 
@@ -984,7 +1021,7 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None, datos_spectr
     # Agregar datos de FM (ordenados por frecuencia)
     if datos_fm is not None and not datos_fm.empty:
         # Agregar estados SPECTRA
-        datos_fm_con_estados = agregar_estados_spectra(datos_fm, "FM", ciudad_normalizada)
+        datos_fm_con_estados = agregar_estados_spectra(datos_fm, "FM", ciudad, datos_spectra)
         
         # Ordenar datos FM por frecuencia (de menor a mayor)
         datos_fm_ordenados = datos_fm_con_estados.sort_values(by="Frecuencia (MHz)")
@@ -1050,7 +1087,7 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None, datos_spectr
     # Agregar datos de TV (ordenados por frecuencia)
     if datos_tv is not None and not datos_tv.empty:
         # Agregar estados SPECTRA
-        datos_tv_con_estados = agregar_estados_spectra(datos_tv, "TV", ciudad_normalizada)
+        datos_tv_con_estados = agregar_estados_spectra(datos_tv, "TV", ciudad, datos_spectra)
         
         # Ordenar datos TV por frecuencia (de menor a mayor)
         datos_tv_ordenados = datos_tv_con_estados.sort_values(by="Frecuencia (MHz)")
@@ -1115,7 +1152,7 @@ def crear_hoja_observaciones(wb, datos_fm, datos_tv, datos_am=None, datos_spectr
     # Después de procesar TV, agregar AM
     if datos_am is not None and not datos_am.empty:
         # Agregar estados SPECTRA
-        datos_am_con_estados = agregar_estados_spectra(datos_am, "AM", ciudad_normalizada)
+        datos_am_con_estados = agregar_estados_spectra(datos_am, "AM", ciudad, datos_spectra)
         
         # Ordenar datos AM por frecuencia (de menor a mayor)
         datos_am_ordenados = datos_am_con_estados.sort_values(by="Frecuencia (MHz)")
